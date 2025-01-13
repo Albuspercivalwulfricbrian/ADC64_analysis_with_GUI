@@ -7,7 +7,7 @@
 class ConfigManager {
 public:
     ConfigManager(int id, const std::string& name, double leftBoundary, double rightBoundary, bool UseSpline, bool UseSmartScope)
-        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary), UseSpline(UseSpline), UseSmartScope() {}
+        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary), UseSpline(UseSpline), UseSmartScope(UseSmartScope) {}
 
     // Метод для сохранения данных в JSON файл
     static void saveToJson(const std::string& filename, const std::unordered_map<int, ConfigManager*>& channels) {

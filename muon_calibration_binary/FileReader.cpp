@@ -1,24 +1,30 @@
 #include "BinaryDataStructs.h"
-#include <string>
+// #include <string>
 
 int main(int argc, char **argv)
 {
-    string dir, fname, tempdir;
-    if(argc == 4) {
-        // dir = string(argv[1]);
-        // tempdir = string(argv[2]);
-        // fname = string(argv[3]);        
+    DataFileReader DFR;
+
+    // string dir, fname, tempdir;
+    if(argc == 2) {    
+        argv[1];
+        DFR.setName(argv[1]); 
+        cout << argv[1] << endl;
+
+    }
+    else if (argc == 3)
+    {
         argv[1];
         argv[2];
-        argv[3];
-
-        // argv[2];
-        // argv[4];
+        DFR.setName(argv[1], argv[2]); 
+        cout << argv[1] << " " << argv[2];
     }
-    // DataFileReader DFR(argv[1]);
-    cout << argv[1] << " " << argv[2] <<" " <<argv[3] << endl;
-    DataFileReader DFR(argv[1], argv[2], argv[3]);
-    
-    DFR.ConsequentialEventsReading();
+
+    if (argv[1])
+    {
+        DFR.CreateRootFile();
+        DFR.ConsequentialEventsReading();        
+    }
+
     return 0;
 }

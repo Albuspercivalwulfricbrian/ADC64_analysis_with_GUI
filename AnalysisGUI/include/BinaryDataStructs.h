@@ -40,12 +40,14 @@ class DataFileReader
   TOTAL_HEADER TotalHeader;
   uint32_t uiEventWithMaxSize = 0;
   FILE *fd;
-  bool FileIsSet;
-  ChannelEntry event_waveform;
 
   size_t sSizeOfFile = 0;
   size_t currPos = 0;
+
   public:
+  ChannelEntry event_waveform;
+  bool FileIsSet;
+
   DataFileReader()
   {
     FileIsSet = 0;
@@ -54,8 +56,9 @@ class DataFileReader
   ~DataFileReader(){};
   uint32_t getTotalEvents(){return uiTotalEvents;}
   uint32_t getCurrentPosition(){return ftello(fd);}
-
   void setName(const char * a);
+
+
 
   vector<size_t> eventPositions;
   bool FileIsIndexed = 0;

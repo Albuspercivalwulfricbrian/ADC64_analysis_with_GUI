@@ -1,5 +1,4 @@
 #include "BinaryDataStructs.h"
-
 void DataFileReader::DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time)
 {
   std::cout<< u8"\033[2J\033[1;1H"; 
@@ -66,7 +65,6 @@ uint32_t DataFileReader::ConsequentialEventsReading()
         while (end > 0)
         {
         //   cout << "OS: " <<offset << endl;
-
           TotalHeader.ChHeader.ch     = (uiBuffer[offset] & 0xFF000000) >> 24;
           TotalHeader.ChHeader.length = (uiBuffer[offset] & 0x00FFFFFC)  >> 2;
           TotalHeader.ChHeader.type   = (uiBuffer[offset] & 0x3);
@@ -103,7 +101,6 @@ uint32_t DataFileReader::ConsequentialEventsReading()
               int32_t polarity = 1;
               int32_t iSignalOffset = 0;
               short_channel_info[ch]->ADCTimeStamp = (float)TotalHeader.SubHeader.wf_tslo+(float)(TotalHeader.SubHeader.wf_tsup/1000000000.0);
-
               event_waveform.channel=ch;
 
               for (int s=0; s<(SN/2); s++)
@@ -116,27 +113,31 @@ uint32_t DataFileReader::ConsequentialEventsReading()
               }
               event_waveform.wf_size = event_waveform.wf.size();
               ////////////////
+              // cout << config_manager[ch]->leftBoundary << " " <<config_manager[ch]->rightBoundary << endl;
               // event_waveform.InvertSignal();
-
-              event_waveform.Set_Zero_Level_Area(60);
-              // event_waveform.SplineWf();
-              // event_waveform.SplineWf();
+              if (config_manager[ch]) {event_waveform.Set_Zero_Level_Area(config_manager[ch]->leftBoundary);}
+              else {event_waveform.Set_Zero_Level_Area(60);}
+              if (config_manager[ch] && config_manager[ch]->UseSpline==1) event_waveform.SplineWf();
               short_channel_info[ch]->zl = event_waveform.CalculateZlwithNoisePeaks(130);
-              // short_channel_info[ch]->zl = event_waveform.Get_Zero_Level();
               short_channel_info[ch]->zl_rms = event_waveform.Get_Zero_Level_RMS();
 
-              event_waveform.SetBoarders(50,100);//Sanya smotry syuda. Zdes yobannye granitsy tvoyego signala dlya poiska polozhemiya pika
+              if (config_manager[ch]) 
+              {
+                event_waveform.SetBoarders(config_manager[ch]->leftBoundary,config_manager[ch]->rightBoundary);
+              }
+              else 
+              {
+                event_waveform.SetBoarders(50,100);
+              }
+              //Sanya smotry syuda. Zdes yobannye granitsy tvoyego signala dlya poiska polozhemiya pika
               int pp = event_waveform.Get_time();
               // event_waveform.SetBoarders(pp-12,pp+25);
               short_channel_info[ch]->amp = event_waveform.Get_Amplitude();
-              event_waveform.AssumeSmartScope();// Sanya!!!! Zdes granitsy dlya umnogo integrirovaniye. Dlya bolshih signalov otklyuchai blyat
-              
+              if (config_manager[ch] && config_manager[ch]->UseSmartScope==1)  event_waveform.AssumeSmartScope();// Sanya!!!! Zdes granitsy dlya umnogo integrirovaniye. Dlya bolshih signalov otklyuchai blyat
               short_channel_info[ch]->time = event_waveform.Get_time_gauss();
               short_channel_info[ch]->charge = event_waveform.Get_Charge();
               short_channel_info[ch]->ADC_ID = event_waveform.ADCID;
               short_channel_info[ch]->II = event_waveform.GetIntegralInfo();
-              
-
               offset += (SN/2);
               break;
           }
@@ -146,37 +147,43 @@ uint32_t DataFileReader::ConsequentialEventsReading()
         if (end <= 1) break;
       }
       RootDataTree->Fill();
-
     }
+    if (uiTotalEvents > 1000) return uiTotalEvents;
   }
   return uiTotalEvents;
 }
 
-void DataFileReader::setName(const char * a)
+void DataFileReader::setName(const char * a, const char * b)
 {
     snprintf(fileName,sizeof(fileName),"%s",a);
+    if (b[0]) snprintf(configName,sizeof(configName),"%s",b);      
+    else snprintf(configName,sizeof(configName),"%s",a);
+    cout << "File Name: " << fileName << "; Config File Name: " << configName << endl; 
 }
 
 void DataFileReader::CreateRootFile()
 {
-  const char * dirName = std::filesystem::path(fileName).parent_path().c_str();
-  const char * Name = std::filesystem::path(fileName).stem().c_str();
-  char rootName[1024];
-
+  auto dirName = std::filesystem::path(fileName).parent_path().string();
+  auto Name = std::filesystem::path(fileName).stem().string();
   if ((fd=fopen(fileName, "rb")) == NULL)
   {
       printf("Achtung: Open file error or file not found!\n");
       return;
   }
-  cout << "Starting" << endl;
-  // RootDataFile = new TFile ((TString)(rootName)+ ".root", "RECREATE");
+  auto cpath = std::filesystem::path(configName).parent_path().string() + 
+    "/" + std::filesystem::path(configName).stem().string()+".json";
+
+  config_manager = ConfigManager::loadFromJson(cpath); 
+
+  // cout << "Starting" << endl;
   RootDataFile = new TFile ((TString)(dirName)+"/calibrated_files/"+(TString)(Name)+ ".root", "RECREATE");
   RootDataTree = new TTree ("adc64_data","adc64_data");
   for(int ch = 0; ch < total_channels; ch++)
   {
     short_channel_info[ch] = new short_energy_ChannelEntry();
     short_channel_info[ch]->Initialize();
-    RootDataTree->Branch((TString::Format("channel_%i", ch+1)).Data(), &short_channel_info[ch]);
+    // if (config_manager[ch]) RootDataTree->Branch((TString::Format("channel_%i", ch+1)).Data(), &short_channel_info[ch]);
+    if (config_manager[ch]) RootDataTree->Branch((TString)(config_manager[ch]->name), &short_channel_info[ch]);
   }
   start_time = std::time(nullptr);
 }

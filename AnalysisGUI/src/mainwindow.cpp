@@ -28,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
     // connect(customPlot, &QCustomPlot::keyPressEvent, this, &MainWindow::keyPressEvent);
-    for (int i = 0; i < 128; i++) channels[i] = new ConfigManager(i, "channel_"+to_string(i), 0.0, 2048.,1,1);
+    for (int i = 0; i < 128; i++) channels[i] = new ConfigManager(i, "channel_"+to_string(i+1), 0.0, 2048.,1,1);
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
     BranchName->setText(QString::fromStdString(channels[currChannel]->name));
@@ -111,8 +111,6 @@ void MainWindow::UpdateGraph() {
         customPlot->xAxis->rescale();
         customPlot->replot();        
     }
-
-  
 }
 void MainWindow::onMouseMove(QMouseEvent *event) {
     // Получаем координаты курсора на графикеc
@@ -149,7 +147,7 @@ void MainWindow::on_eventSpinBox_valueChanged()
 {
     DFR.event_waveform.clear();
     currEvent = (int16_t)eventSpinBox->value();
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
+    if (DFR.FileIsSet == 1 && currEvent < DFR.getTotalEvents())
     {
         DFR.ReadEvent(currEvent,currChannel);
         UpdateGraph();        
@@ -164,7 +162,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
 
 void MainWindow::on_NextEventButton_clicked() {
 
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
+    if (DFR.FileIsSet == 1 && currEvent < DFR.getTotalEvents())
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
@@ -283,23 +281,23 @@ void MainWindow::showContextMenu(const QPoint &pos)
 {
 
 
-        QMenu contextMenu(tr("Save Menu"), this);
+    QMenu contextMenu(tr("Save Menu"), this);
 
-        QAction actionSavePng("Save Plot as PNG", this);
-        connect(&actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
-        
-        QAction actionSaveJpeg("Save Plot as JPEG", this);
-        connect(&actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
+    QAction actionSavePng("Save Plot as PNG", this);
+    connect(&actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
+    
+    QAction actionSaveJpeg("Save Plot as JPEG", this);
+    connect(&actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
 
-        QAction actionSavePdf("Save Plot as PDF", this);
-        connect(&actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
-        customPlot->clearItems();
+    QAction actionSavePdf("Save Plot as PDF", this);
+    connect(&actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
+    customPlot->clearItems();
 
-        contextMenu.addAction(&actionSavePng);
-        contextMenu.addAction(&actionSaveJpeg);
-        contextMenu.addAction(&actionSavePdf);
+    contextMenu.addAction(&actionSavePng);
+    contextMenu.addAction(&actionSaveJpeg);
+    contextMenu.addAction(&actionSavePdf);
 
-        contextMenu.exec(pos);
+    contextMenu.exec(pos);
 }
 
     void MainWindow::savePlotAsPng() {
@@ -329,9 +327,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::onTimeout() {
     // Update the value in the custom class
-    emit progressUpdated(1000*DFR.GetIndexationProgress());
-
-    // auto progress = DFR.GetIndexationProgress();
-    // cout << DFR.GetIndexationProgress() << endl;
+    emit progressUpdated(1000*DFR.getIndexationProgress());
     timer->start(100);
 }

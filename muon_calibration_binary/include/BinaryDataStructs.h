@@ -9,11 +9,11 @@
 #include <TTree.h>
 #include <TFile.h>
 #include "ctime"
-// #include "time_left.h"
 #include "string.h"
 #include "ADCHeaderStructs.h"
 #include "ChannelEntry.h"
 #include <nlohmann/json.hpp>
+#include "configmanager.h"
 
 #define WORD_SIZE       4           // 4 bytes
 // #define SYNC_WORD_TIME  0x72617453//0x3f60b8a8  // ADC64
@@ -27,6 +27,8 @@ class DataFileReader
   private:
   static const int32_t total_channels = 128;
   char fileName[1024];
+  char configName[1024];
+
   uint32_t uiTotalEvents;
   TOTAL_HEADER TotalHeader;
   uint32_t uiEventWithMaxSize = 0;
@@ -41,7 +43,7 @@ class DataFileReader
   time_t start_time;
   TFile* RootDataFile = nullptr;
   TTree* RootDataTree = nullptr;
-  
+  std::map<int, ConfigManager*> config_manager;
   public:
   DataFileReader()
   {
@@ -53,7 +55,7 @@ class DataFileReader
   };
   uint32_t GetTotalEvents(){return uiTotalEvents;}
   uint32_t GetCurrentPosition(){return ftello(fd);}
-  void setName(const char * a);
+  void setName(const char * a, const char * b = "");
 
   void CreateRootFile();
   void SaveRootFile()
