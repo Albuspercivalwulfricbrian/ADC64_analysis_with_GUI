@@ -1,3 +1,6 @@
+#ifndef CONFIGMANAGER
+#define CONFIGMANAGER
+
 #include <iostream>
 #include <map>
 #include <fstream>
@@ -65,3 +68,5 @@ public:
     bool UseSpline;
     bool UseSmartScope;
 };
+
+#endif CONFIGMANAGER

@@ -15,7 +15,7 @@ public:
   double getIndexationProgress();
   void ReadEvent(int64_t i, int16_t extChannel);
 public slots:
-    void doWork(ProgressDialog *dialog, const char * a) ;
+  void doWork(ProgressDialog *dialog, const char * a) ;
     // {
     //     ReadFile();
     //     dialog->accept();

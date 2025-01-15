@@ -5,8 +5,18 @@ project(AnalysisGUI LANGUAGES CXX)
 add_subdirectory(qcustomplot-fetch)
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
-file(GLOB HEADERS_H ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h ${PARENT_DIR}/muon_calibration_binary/include/DataFormat.h ${PARENT_DIR}/muon_calibration_binary/include/ChannelEntry.h ${PARENT_DIR}/muon_calibration_binary/include/ADCHeaderStructs.h)
-file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${PARENT_DIR}/muon_calibration_binary/src/DataFormat.cpp ${PARENT_DIR}/muon_calibration_binary/src/ChannelEntry.cpp)
+file(GLOB HEADERS_H ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h 
+${PARENT_DIR}/muon_calibration_binary/include/DataFormat.h 
+${PARENT_DIR}/muon_calibration_binary/include/DataFileReader.h 
+${PARENT_DIR}/muon_calibration_binary/include/ChannelEntry.h 
+${PARENT_DIR}/muon_calibration_binary/include/ADCHeaderStructs.h
+
+)
+file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp 
+${PARENT_DIR}/muon_calibration_binary/src/DataFormat.cpp 
+${PARENT_DIR}/muon_calibration_binary/src/DataFileReader.cpp
+${PARENT_DIR}/muon_calibration_binary/src/ChannelEntry.cpp
+)
 file(GLOB UIS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.ui)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
