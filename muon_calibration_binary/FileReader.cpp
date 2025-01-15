@@ -1,4 +1,4 @@
-#include "BinaryDataStructs.h"
+#include "DataFileReader.h"
 // #include <string>
 
 int main(int argc, char **argv)

@@ -6,7 +6,7 @@
 #include <QLabel>
 #include <QSpinBox>
 #include <QVBoxLayout>
-#include "BinaryDataStructs.h"
+// #include "DataFileReader.h"
 #include "configmanager.h"
 #include <QTimer>
 #include "Worker.h"
@@ -67,6 +67,7 @@ private slots:
     void keyPressEvent(QKeyEvent *event) override;
     void on_NextEventButton_clicked();
     void on_PreviousEventButton_clicked();
+    void on_SetFileAnalysisButton_clicked();
     void on_action_Open_triggered();
     // void on_action_Use_Smart_Boarders();
     // void on_action_Use_Spline();

@@ -1,11 +1,6 @@
-#include "BinaryDataStructs.h"
+#include "Worker.h"
 
-void DataFileReader::setName(const char * a)
-{
-    snprintf(fileName,sizeof(fileName),"%s",a);
-}
-
-void DataFileReader::ReadFile()
+void Worker::ReadFile()
 {
     // snprintf(fileName,sizeof(fileName),"%s",a);
     // strcat(fileName,Name);
@@ -26,7 +21,7 @@ void DataFileReader::ReadFile()
 }
 
 
-bool DataFileReader::FileIndexation() {
+bool Worker::FileIndexation() {
   bool iFileIsIndexed = 0;
   FileIsIndexed = 0;
 
@@ -61,9 +56,9 @@ bool DataFileReader::FileIndexation() {
   return iFileIsIndexed;
 }
 
-void DataFileReader::ReadEvent(int64_t i, int16_t extChannel)
+void Worker::ReadEvent(int64_t i, int16_t extChannel)
 {
-  event_waveform.clear();
+  event_waveform.Initialize();
   fseek(fd,eventPositions[i],SEEK_SET);
   fread(&TotalHeader.EvHeader,sizeof(TotalHeader.EvHeader),1,fd);
   const uint32_t BS = (TotalHeader.EvHeader.length/4); // size of event block excluding event header
@@ -146,10 +141,16 @@ void DataFileReader::ReadEvent(int64_t i, int16_t extChannel)
   }
 }
 
-double DataFileReader::getIndexationProgress()
+double Worker::getIndexationProgress()
 {
   double progress = 0;
   if (currPos >=0 && currPos <= sSizeOfFile) progress = (double)currPos/(double)sSizeOfFile;
   else progress = 1.;
   return progress;
+}
+
+void Worker::doWork(ProgressDialog *dialog, const char * a) 
+{
+    ReadFile();
+    dialog->accept();
 }

@@ -1,6 +1,8 @@
 #ifndef CHANNEL_ENTRY_H
 #define CHANNEL_ENTRY_H
-#include<TTree.h>
+// #include<TTree.h>
+#include <stdint.h>
+#include <math.h>
 #include <vector>
 using namespace std;
 const int MAX_N_SAMPLES = 2048;
@@ -42,7 +44,6 @@ class ChannelEntry {
     int16_t channel = 0;
     int16_t wf_size;
     vector<int16_t> wf;
-
 
     private:
     vector<int16_t> dwf;

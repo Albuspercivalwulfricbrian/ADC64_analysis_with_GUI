@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=AnalysisGUI
+Type=Application
+Exec=/mnt/DATA/testing_analysis_gui/ADC64_analysis_with_GUI/build/AnalysisGUI/AnalysisGUI
+Terminal=false
+Icon=/mnt/DATA/testing_analysis_gui/ADC64_analysis_with_GUI/AnalysisGUI.jpg
+Comment=Any comment
+NoDisplay=false
+Name[en]=AnalysisGUI.desktop

@@ -5,8 +5,6 @@
 #include <qnamespace.h>
 
 
-
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -145,9 +143,9 @@ void MainWindow::on_channelSpinBox_valueChanged()
 
 void MainWindow::on_eventSpinBox_valueChanged()
 {
-    DFR.event_waveform.clear();
+    DFR.event_waveform.Initialize();
     currEvent = (int16_t)eventSpinBox->value();
-    if (DFR.FileIsSet == 1 && currEvent < DFR.getTotalEvents())
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
     {
         DFR.ReadEvent(currEvent,currChannel);
         UpdateGraph();        
@@ -162,13 +160,13 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
 
 void MainWindow::on_NextEventButton_clicked() {
 
-    if (DFR.FileIsSet == 1 && currEvent < DFR.getTotalEvents())
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
         {
             currEvent++;
-            // DFR.event_waveform.clear();
+            // DFR.event_waveform.Initialize();
             DFR.ReadEvent(currEvent,currChannel);
             if (DFR.event_waveform.wf.size() > 0) 
             {
@@ -180,7 +178,7 @@ void MainWindow::on_NextEventButton_clicked() {
      }
 }
 void MainWindow::on_PreviousEventButton_clicked() {
-    DFR.event_waveform.clear();
+    DFR.event_waveform.Initialize();
 
     if (DFR.FileIsSet == 1 && currEvent > 1)
     {
@@ -300,26 +298,26 @@ void MainWindow::showContextMenu(const QPoint &pos)
     contextMenu.exec(pos);
 }
 
-    void MainWindow::savePlotAsPng() {
-        QString fileName = QFileDialog::getSaveFileName(this, tr("Save Plot as PNG"), "", tr("PNG Files (*.png)"));
-        if (!fileName.isEmpty()) {
-            customPlot->savePng(fileName);
-        }
+void MainWindow::savePlotAsPng() {
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save Plot as PNG"), "", tr("PNG Files (*.png)"));
+    if (!fileName.isEmpty()) {
+        customPlot->savePng(fileName);
     }
+}
 
-    void MainWindow::savePlotAsJpeg() {
-        QString fileName = QFileDialog::getSaveFileName(this, tr("Save Plot as JPEG"), "", tr("JPEG Files (*.jpeg *.jpg)"));
-        if (!fileName.isEmpty()) {
-            customPlot->saveJpg(fileName);
-        }
+void MainWindow::savePlotAsJpeg() {
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save Plot as JPEG"), "", tr("JPEG Files (*.jpeg *.jpg)"));
+    if (!fileName.isEmpty()) {
+        customPlot->saveJpg(fileName);
     }
+}
 
-    void MainWindow::savePlotAsPdf() {
-        QString fileName = QFileDialog::getSaveFileName(this, tr("Save Plot as PDF"), "", tr("PDF Files (*.pdf)"));
-        if (!fileName.isEmpty()) {
-            customPlot->savePdf(fileName);
-        }
+void MainWindow::savePlotAsPdf() {
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save Plot as PDF"), "", tr("PDF Files (*.pdf)"));
+    if (!fileName.isEmpty()) {
+        customPlot->savePdf(fileName);
     }
+}
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -329,4 +327,19 @@ void MainWindow::onTimeout() {
     // Update the value in the custom class
     emit progressUpdated(1000*DFR.getIndexationProgress());
     timer->start(100);
+}
+
+void MainWindow::on_SetFileAnalysisButton_clicked()
+{
+    // DataFileReader DFR;
+
+    // if (argv[1])
+    // {
+    //     argv[1];
+    //     argv[2];
+    //     DFR.setName(argv[1], argv[2]); 
+    //     cout << argv[1] << " " << argv[2];        
+    //     DFR.CreateRootFile();
+    //     DFR.ConsequentialEventsReading();        
+    // }
 }
