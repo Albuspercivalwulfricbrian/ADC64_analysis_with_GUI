@@ -3,7 +3,7 @@
 #include "qcustomplot.h"
 #include <algorithm>
 #include <qnamespace.h>
-#include "DataFileReader.h"
+// #include "DataFileReader.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -139,6 +139,18 @@ void MainWindow::on_channelSpinBox_valueChanged()
 {
     currChannel = (int16_t)channelSpinBox->value();
     if (channels[currChannel]) BranchName->setText(QString::fromStdString(channels[currChannel]->name));
+    if (xLeftBoundary!=channels[currChannel]->leftBoundary) 
+    {
+        xLeftBoundary=channels[currChannel]->leftBoundary;
+        LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
+    }
+
+    if (xRightBoundary!=channels[currChannel]->rightBoundary)
+    {
+        xRightBoundary=channels[currChannel]->rightBoundary;
+        RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
+    }
+    ReDrawBoundaries();
 }
 
 void MainWindow::on_eventSpinBox_valueChanged()
@@ -331,16 +343,10 @@ void MainWindow::onTimeout() {
 
 void MainWindow::on_SetFileAnalysisButton_clicked()
 {
-    DataFileReader DFR1;
-    auto a = (fileName.toUtf8().constData());
+    // DataFileReader DFR1;
+    // auto a = (fileName.toUtf8().constData());
 
-    // if (argv[1])
-    // {
-    //     argv[1];
-    //     argv[2];
-        DFR1.setName(a); 
-    //     cout << argv[1] << " " << argv[2];        
-        DFR1.CreateRootFile();
-        DFR1.ConsequentialEventsReading();        
-    // }
+    // DFR1.setName(a); 
+    // DFR1.CreateRootFile();
+    // DFR1.ConsequentialEventsReading();        
 }
