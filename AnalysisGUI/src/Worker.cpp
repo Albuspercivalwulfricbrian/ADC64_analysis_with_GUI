@@ -28,7 +28,7 @@ bool Worker::FileIndexation() {
   TotalHeader.clear();
   uint32_t uiBuffer[3] = {0,0,0};
   uiEventWithMaxSize = 0;
-  // uiTotalEvents=0;
+  uiTotalEvents=0;
   uint32_t uiMaxSize = 0;
   fseek(fd,0,SEEK_SET);
   if (sSizeOfFile!=0)
@@ -128,7 +128,7 @@ void Worker::ReadEvent(int64_t i, int16_t extChannel)
               event_waveform.wf.push_back(wave);
             }
             // event_waveform.wf_size = event_waveform.wf.size();
-            if (event_waveform.wf.size() > 0) break;
+            // if (event_waveform.wf.size() > 0) break;
           }
 
           offset += (SN/2);

@@ -156,7 +156,7 @@ void MainWindow::on_channelSpinBox_valueChanged()
 void MainWindow::on_eventSpinBox_valueChanged()
 {
     DFR.event_waveform.Initialize();
-    currEvent = (int16_t)eventSpinBox->value();
+    currEvent = (int32_t)eventSpinBox->value();
     if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
     {
         DFR.ReadEvent(currEvent,currChannel);
@@ -171,20 +171,19 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
 }
 
 void MainWindow::on_NextEventButton_clicked() {
-
     if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
         {
             currEvent++;
-            // DFR.event_waveform.Initialize();
             DFR.ReadEvent(currEvent,currChannel);
+
             if (DFR.event_waveform.wf.size() > 0) 
             {
                 NonEmpty = 1;   
                 eventSpinBox->setValue(currEvent);
-                UpdateGraph();    
+                // UpdateGraph();    
             }
         }
      }
@@ -203,7 +202,7 @@ void MainWindow::on_PreviousEventButton_clicked() {
             {
                 NonEmpty = 1;   
                 eventSpinBox->setValue(currEvent);
-                UpdateGraph();    
+                // UpdateGraph();    
             }
         }        
     }
