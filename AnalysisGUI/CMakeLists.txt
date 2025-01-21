@@ -5,7 +5,7 @@ project(AnalysisGUI LANGUAGES CXX)
 add_subdirectory(qcustomplot-fetch)
 get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
 
-file(GLOB HEADERS_H ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h 
+file(GLOB HEADERS_H ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h* 
 ${PARENT_DIR}/muon_calibration_binary/include/DataFormat.h 
 # ${PARENT_DIR}/muon_calibration_binary/include/DataFileReader.h 
 ${PARENT_DIR}/muon_calibration_binary/include/ChannelEntry.h 

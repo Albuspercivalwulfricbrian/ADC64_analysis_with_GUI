@@ -7,8 +7,8 @@ add_subdirectory(ChannelMap)
 # file(GLOB HEADERS_HPP ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp)
 
 file(GLOB HEADERS_H ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h)
-file(GLOB CONFIG_H ${PARENT_DIR}/AnalysisGUI/include/configmanager.h) 
-message(${CONFIG_H})
+file(GLOB CONFIG_H ${PARENT_DIR}/AnalysisGUI/include/configmanager.h ${PARENT_DIR}/AnalysisGUI/include/json.hpp) 
+# message(${CONFIG_H})
 file(GLOB MAP_H ${CMAKE_CURRENT_SOURCE_DIR}/ChannelMap/ChannelMap/include/*.h*)
 file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 
