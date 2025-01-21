@@ -171,39 +171,49 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
 }
 
 void MainWindow::on_NextEventButton_clicked() {
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents()-1)
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
         {
             currEvent++;
-            DFR.ReadEvent(currEvent,currChannel);
-
-            if (DFR.event_waveform.wf.size() > 0) 
+            if (currEvent < DFR.GetTotalEvents())
             {
-                NonEmpty = 1;   
-                eventSpinBox->setValue(currEvent);
-                // UpdateGraph();    
+                DFR.ReadEvent(currEvent,currChannel);
+
+                if (DFR.event_waveform.wf.size() > 0) 
+                {
+                    NonEmpty = 1;   
+                    eventSpinBox->setValue(currEvent);
+                    // UpdateGraph();    
+                }                
             }
+            else {eventSpinBox->setValue(currEvent); cout << "Oops. Out of file Bounds" << endl; break;}
+
         }
      }
 }
 void MainWindow::on_PreviousEventButton_clicked() {
     DFR.event_waveform.Initialize();
 
-    if (DFR.FileIsSet == 1 && currEvent > 1)
+    if (DFR.FileIsSet == 1 && currEvent >= 1)
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
         {
             currEvent--;
-            DFR.ReadEvent(currEvent,currChannel);
-            if (DFR.event_waveform.wf.size() > 0) 
+            if (currEvent >= 0)
             {
-                NonEmpty = 1;   
-                eventSpinBox->setValue(currEvent);
-                // UpdateGraph();    
+                DFR.ReadEvent(currEvent,currChannel);
+                if (DFR.event_waveform.wf.size() > 0) 
+                {
+                    NonEmpty = 1;   
+                    eventSpinBox->setValue(currEvent);
+                    // UpdateGraph();    
+                }
             }
+            else {eventSpinBox->setValue(currEvent); cout << "Oops. Out of file Bounds" << endl; break;}
+
         }        
     }
 }
