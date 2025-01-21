@@ -5,7 +5,7 @@
 #include <map>
 #include <fstream>
 #include <string>
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 
 class ConfigManager {
 public:
