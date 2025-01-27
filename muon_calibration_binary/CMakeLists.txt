@@ -33,8 +33,9 @@ ROOT_GENERATE_DICTIONARY(G__CustomClassDictionary ${HEADERS_H} LINKDEF LinkDef.h
 
 add_library(CustomClassDictionary SHARED G__CustomClassDictionary.cxx ${HEADERS_H} ${HEADERS_HPP} ${SOURCES})
 
-add_executable(FileReader FileReader.cpp ${SOURCES} ${CONFIG_H})
-target_link_libraries(FileReader CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
+# add_executable(FileReader FileReader.cpp ${SOURCES} ${CONFIG_H})
+# target_link_libraries(FileReader CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
+target_link_libraries(CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
 
 # add_executable(CreateTrackTree CreateTrackTree.C ${HEADERS_H} ${HEADERS_HPP} ${SOURCES} ${MAP_H})
 # target_link_libraries(CreateTrackTree CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Gui ROOT::Physics)

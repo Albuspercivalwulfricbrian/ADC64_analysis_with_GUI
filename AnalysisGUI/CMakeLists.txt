@@ -37,6 +37,6 @@ add_executable(AnalysisGUI
   ${UIS}
 )
 
-target_link_libraries(AnalysisGUI PUBLIC Qt5::Widgets Qt5::Core qcustomplot)
+target_link_libraries(AnalysisGUI PUBLIC Qt5::Widgets Qt5::Core qcustomplot CustomClassDictionary)
 target_compile_definitions(AnalysisGUI PUBLIC ANALYSISGUI_LIBRARY)
 target_include_directories(AnalysisGUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${PARENT_DIR}/muon_calibration_binary/include)

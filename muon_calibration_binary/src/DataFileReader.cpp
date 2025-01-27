@@ -182,6 +182,8 @@ void DataFileReader::CreateRootFile()
   config_manager = ConfigManager::loadFromJson(cpath); 
 
   // cout << "Starting" << endl;
+  // if () auto tempdir = ((dirName)+"/calibrated_files/").data();
+  std::filesystem::create_directory(((dirName)+"/calibrated_files/").data());
   RootDataFile = new TFile ((TString)(dirName)+"/calibrated_files/"+(TString)(Name)+ ".root", "RECREATE");
   RootDataTree = new TTree ("adc64_data","adc64_data");
   for(int ch = 0; ch < total_channels; ch++)

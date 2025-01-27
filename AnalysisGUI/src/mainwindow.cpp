@@ -3,6 +3,7 @@
 #include "qcustomplot.h"
 #include <algorithm>
 #include <qnamespace.h>
+#include "DataFileReader.h"
 // #include "DataFileReader.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -352,10 +353,10 @@ void MainWindow::onTimeout() {
 
 void MainWindow::on_SetFileAnalysisButton_clicked()
 {
-    // DataFileReader DFR1;
-    // auto a = (fileName.toUtf8().constData());
+    DataFileReader DFR1;
+    auto a = (fileName.toUtf8().constData());
 
-    // DFR1.setName(a); 
-    // DFR1.CreateRootFile();
-    // DFR1.ConsequentialEventsReading();        
+    DFR1.setName(a); 
+    DFR1.CreateRootFile();
+    DFR1.ConsequentialEventsReading();        
 }

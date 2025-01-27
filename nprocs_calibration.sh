@@ -7,7 +7,7 @@ export SOURCE_PATH=/home/admin/HOLODILNIK/HAMAMATSU/LED/T4/
 
 echo $SOURCE_PATH
 export temp_DIR=calibrated_files/
-export BUILD_DIR=$PROJECT_PATH/build
+export BUILD_DIR=$PROJECT_PATH/build/muon_calibration_binary/
 
 echo $SOURCE_PATH
 mkdir -p  $SOURCE_PATH/$temp_DIR
