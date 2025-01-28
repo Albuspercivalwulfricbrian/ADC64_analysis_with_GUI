@@ -11,6 +11,7 @@
 #include <QTimer>
 #include "Worker.h"
 #include <QAction>
+#include <ctpl.h>
 
 
 QT_BEGIN_NAMESPACE
@@ -42,7 +43,7 @@ private:
     QLineEdit *BranchName;
     QSpinBox *channelSpinBox;
     QSpinBox *eventSpinBox;
-    std::unordered_map<int, ConfigManager*> channels;
+    std::map<int, ConfigManager*> channels;
     // QCPItemLine *line;
     QCPItemLine *lineLeft;
     QCPItemLine *lineRight;
@@ -55,11 +56,13 @@ private:
 
     QAction *action_UseSpline;
     QAction *action_UseSmartScope;
+    QAction *action_Signal_is_Negative;
 
     void setupGraph();
     void UpdateGraph();
     void ReDrawBoundaries();
     void showContextMenu(const QPoint &pos);
+    ctpl::thread_pool p;
 
 
 private slots:
@@ -69,6 +72,7 @@ private slots:
     void on_PreviousEventButton_clicked();
     void on_SetFileAnalysisButton_clicked();
     void on_action_Open_triggered();
+    void on_action_Open_Config_triggered();
     // void on_action_Use_Smart_Boarders();
     // void on_action_Use_Spline();
     void on_channelSpinBox_valueChanged();

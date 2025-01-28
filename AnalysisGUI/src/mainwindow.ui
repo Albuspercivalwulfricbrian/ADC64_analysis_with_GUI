@@ -410,7 +410,7 @@
          </font>
         </property>
         <property name="text">
-         <string>Analyse chosen file</string>
+         <string>Analyse files</string>
         </property>
        </widget>
       </item>
@@ -442,6 +442,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="action_Open"/>
+    <addaction name="action_Open_Config"/>
    </widget>
    <widget class="QMenu" name="menu_Analysis_Options">
     <property name="title">
@@ -449,6 +450,7 @@
     </property>
     <addaction name="action_Use_Spline"/>
     <addaction name="action_Use_Smart_Boarders"/>
+    <addaction name="action_Signal_is_Negative"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Analysis_Options"/>
@@ -456,11 +458,17 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action_Open">
    <property name="text">
-    <string>&amp;Open</string>
+    <string>&amp;Open Binary</string>
+   </property>
+   <property name="iconText">
+    <string>Open Binary</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Binary</string>
    </property>
    <property name="font">
     <font>
-     <pointsize>14</pointsize>
+     <pointsize>12</pointsize>
     </font>
    </property>
   </action>
@@ -479,6 +487,11 @@
    <property name="text">
     <string>&amp;Use Spline</string>
    </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+    </font>
+   </property>
   </action>
   <action name="action_Use_Smart_Boarders">
    <property name="checkable">
@@ -489,6 +502,48 @@
    </property>
    <property name="text">
     <string>Use Smart Boarders</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionSignal_is_Negative">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Signal is Neagtive</string>
+   </property>
+  </action>
+  <action name="action_Signal_is_Negative">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Signal is Negative</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="action_Open_Config">
+   <property name="text">
+    <string>&amp;Open Config</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+    </font>
    </property>
   </action>
  </widget>

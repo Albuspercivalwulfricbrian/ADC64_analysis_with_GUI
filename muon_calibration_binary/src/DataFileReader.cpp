@@ -1,4 +1,5 @@
 #include "DataFileReader.h"
+
 void DataFileReader::DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time)
 {
   std::cout<< u8"\033[2J\033[1;1H"; 
@@ -52,7 +53,7 @@ uint32_t DataFileReader::ConsequentialEventsReading()
       fread(&uiBuffer, sizeof(uiBuffer),1,fd);
       uint32_t offset = 0;   // in elements of event buffer
       int32_t  end    = BS;  // remain number of elements (32-bit words)
-      if (uiTotalEvents%10000==0) DisplayTimeToCalculate(ftell(fd)/1024,sSizeOfFile/1024,start_time);
+      // if (uiTotalEvents%10000==0) DisplayTimeToCalculate(ftell(fd)/1024,sSizeOfFile/1024,start_time);
       while (end > 0)
       {
         TotalHeader.DeviceHeader.sn     = uiBuffer[offset];
@@ -114,7 +115,7 @@ uint32_t DataFileReader::ConsequentialEventsReading()
               event_waveform.wf_size = event_waveform.wf.size();
               ////////////////
               // cout << config_manager[ch]->leftBoundary << " " <<config_manager[ch]->rightBoundary << endl;
-              // event_waveform.InvertSignal();
+              if (!config_manager[ch]->SignalNegative) event_waveform.InvertSignal();
               if (config_manager[ch]) {event_waveform.Set_Zero_Level_Area(config_manager[ch]->leftBoundary);}
               else {event_waveform.Set_Zero_Level_Area(60);}
               if (config_manager[ch] && config_manager[ch]->UseSpline==1) event_waveform.SplineWf();
@@ -148,8 +149,9 @@ uint32_t DataFileReader::ConsequentialEventsReading()
       }
       RootDataTree->Fill();
     }
-    // if (uiTotalEvents > 1000) return uiTotalEvents;
+    // if (uiTotalEvents > 10000) return uiTotalEvents;
   }
+  std::cout << "File " << fileName << " analysis finished" << endl;
   return uiTotalEvents;
 }
 
@@ -158,6 +160,9 @@ void DataFileReader::setName(const char * a)
     snprintf(fileName,sizeof(fileName),"%s",a);
     snprintf(configName,sizeof(configName),"%s",a);
     cout << "File Name: " << fileName << "; Config File Name: " << configName << endl; 
+    auto cpath = std::filesystem::path(configName).parent_path().string() + 
+      "/" + std::filesystem::path(configName).stem().string()+".json";
+    config_manager = ConfigManager::loadFromJson(cpath); 
 }
 void DataFileReader::setName(const char * a, const char * b)
 {
@@ -165,32 +170,32 @@ void DataFileReader::setName(const char * a, const char * b)
     if (b[0]) snprintf(configName,sizeof(configName),"%s",b);      
     else snprintf(configName,sizeof(configName),"%s",a);
     cout << "File Name: " << fileName << "; Config File Name: " << configName << endl; 
+    auto cpath = std::filesystem::path(configName).parent_path().string() + 
+      "/" + std::filesystem::path(configName).stem().string()+".json";
+    config_manager = ConfigManager::loadFromJson(cpath); 
 }
+void DataFileReader::setName(const char * a, std::map<int, ConfigManager*> ext_config)
+{
+    snprintf(fileName,sizeof(fileName),"%s",a);
 
+    config_manager = ext_config; 
+}
 void DataFileReader::CreateRootFile()
 {
   auto dirName = std::filesystem::path(fileName).parent_path().string();
   auto Name = std::filesystem::path(fileName).stem().string();
   if ((fd=fopen(fileName, "rb")) == NULL)
   {
-      printf("Achtung: Open file error or file not found!\n");
+      std::cout << "Achtung: Open file error or file not found! File Name = " << fileName << std::endl;
       return;
   }
-  auto cpath = std::filesystem::path(configName).parent_path().string() + 
-    "/" + std::filesystem::path(configName).stem().string()+".json";
-
-  config_manager = ConfigManager::loadFromJson(cpath); 
-
-  // cout << "Starting" << endl;
-  // if () auto tempdir = ((dirName)+"/calibrated_files/").data();
-  std::filesystem::create_directory(((dirName)+"/calibrated_files/").data());
-  RootDataFile = new TFile ((TString)(dirName)+"/calibrated_files/"+(TString)(Name)+ ".root", "RECREATE");
+  if (!std::filesystem::is_directory(((dirName)+"/calibrated_files/").data())) std::filesystem::create_directory(((dirName)+"/calibrated_files/").data());
+  RootDataFile = TFile::Open((dirName+"/calibrated_files/"+Name+ ".root").c_str(), "RECREATE");
   RootDataTree = new TTree ("adc64_data","adc64_data");
   for(int ch = 0; ch < total_channels; ch++)
   {
     short_channel_info[ch] = new short_energy_ChannelEntry();
     short_channel_info[ch]->Initialize();
-    // if (config_manager[ch]) RootDataTree->Branch((TString::Format("channel_%i", ch+1)).Data(), &short_channel_info[ch]);
     if (config_manager[ch]) RootDataTree->Branch((TString)(config_manager[ch]->name), &short_channel_info[ch]);
   }
   start_time = std::time(nullptr);

@@ -3,12 +3,12 @@
 #include "qcustomplot.h"
 #include <algorithm>
 #include <qnamespace.h>
+#include <QStringList>
 #include "DataFileReader.h"
-// #include "DataFileReader.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    , ui(new Ui::MainWindow), p(8)
 {
     ui->setupUi(this);
     ui->LeftBoundaryLabel->setStyleSheet("QLabel { color : green; }");
@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
     // connect(customPlot, &QCustomPlot::keyPressEvent, this, &MainWindow::keyPressEvent);
-    for (int i = 0; i < 128; i++) channels[i] = new ConfigManager(i, "channel_"+to_string(i+1), 0.0, 2048.,1,1);
+    for (int i = 0; i < 128; i++) channels[i] = new ConfigManager(i, "channel_"+to_string(i+1), 0.0, 2048.,1,1,1);
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
     BranchName->setText(QString::fromStdString(channels[currChannel]->name));
@@ -47,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
     lineRight->setPen(QPen(Qt::red,4)); // Задаем цвет линии
     action_UseSpline=ui->action_Use_Spline;
     action_UseSmartScope=ui->action_Use_Smart_Boarders;
+    action_Signal_is_Negative= ui->action_Signal_is_Negative;
     // graphLayer->setMode( QCPLayer::LayerMode::lmLogical);
         // ProgressDialog *progressDialog = new ProgressDialog(this);
         // progressDialog->show();
@@ -151,7 +152,7 @@ void MainWindow::on_channelSpinBox_valueChanged()
         xRightBoundary=channels[currChannel]->rightBoundary;
         RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
     }
-    ReDrawBoundaries();
+    // ReDrawBoundaries();
 }
 
 void MainWindow::on_eventSpinBox_valueChanged()
@@ -221,21 +222,22 @@ void MainWindow::on_PreviousEventButton_clicked() {
 
 void MainWindow::on_SetChannelBoundaries_clicked() 
 {
-        channels[currChannel]->leftBoundary=xLeftBoundary;
-        channels[currChannel]->rightBoundary=xRightBoundary;
-        channels[currChannel]->UseSpline=action_UseSpline->isChecked();
-        channels[currChannel]->UseSmartScope =action_UseSmartScope->isChecked();
+        channels[currChannel]->leftBoundary = xLeftBoundary;
+        channels[currChannel]->rightBoundary = xRightBoundary;
+        channels[currChannel]->UseSpline = action_UseSpline->isChecked();
+        channels[currChannel]->UseSmartScope = action_UseSmartScope->isChecked();
+        channels[currChannel]->SignalNegative = action_Signal_is_Negative->isChecked();
 }
 
 void MainWindow::on_SetAllChannelsBoundaries_clicked() 
 {
     for (int i = 0; i < 128; i++) 
     {
-        channels[i]->leftBoundary=xLeftBoundary;
-        channels[i]->rightBoundary=xRightBoundary;
-        channels[i]->UseSpline=action_UseSpline->isChecked();
-        channels[i]->UseSmartScope =action_UseSmartScope->isChecked();
-        
+        channels[i]->leftBoundary = xLeftBoundary;
+        channels[i]->rightBoundary = xRightBoundary;
+        channels[i]->UseSpline = action_UseSpline->isChecked();
+        channels[i]->UseSmartScope = action_UseSmartScope->isChecked();
+        channels[i]->SignalNegative = action_Signal_is_Negative->isChecked();
     }    
 }
 
@@ -287,6 +289,25 @@ void MainWindow::on_action_Open_triggered() {
     {
         cout << "File NOT chosen" << endl;
     }
+}
+
+void MainWindow::on_action_Open_Config_triggered() {
+    QString configName = QFileDialog::getOpenFileName(
+      this, tr("Open File"), "~",
+      tr( "binary files ( *.json)"));
+    auto a = (fileName.toUtf8().constData());
+    if (configName!="")
+    {
+        std::cout << configName.toStdString() << endl;
+        // channels.clear();
+        channels=ConfigManager::loadFromJson(configName.toStdString());
+    }
+    // }
+    else
+    {
+        cout << "File NOT chosen" << endl;
+    }
+    
 }
 
 void MainWindow::mousePressEvent(QMouseEvent *event){
@@ -353,10 +374,35 @@ void MainWindow::onTimeout() {
 
 void MainWindow::on_SetFileAnalysisButton_clicked()
 {
-    DataFileReader DFR1;
-    auto a = (fileName.toUtf8().constData());
 
-    DFR1.setName(a); 
-    DFR1.CreateRootFile();
-    DFR1.ConsequentialEventsReading();        
+    QStringList files = QFileDialog::getOpenFileNames(
+                        this,
+                        "Select one or more files to open",
+                        // QString::fromLocal8Bit(std::filesystem::path(a).parent_path().c_str()),
+                        QFileInfo(fileName).absolutePath(),
+                        "Images (*.data)");
+
+    // float file_counter = 0;
+    for (auto file:files)
+    {
+        auto a = (file.toLocal8Bit().constData());
+        auto fdirName = std::filesystem::path(a).parent_path().string();
+        auto fName = std::filesystem::path(a).stem().string();
+        cout << a << endl;
+        auto name = std::string(a);
+        p.push( [&, name] (int id)
+        {
+            DataFileReader DFR1;
+            DFR1.setName(name.c_str(), channels); 
+            // DFR1.setName(a, (fileName.left(fileName.lastIndexOf(".")).toUtf8().toStdString()+".json").c_str()); 
+            DFR1.CreateRootFile();
+            DFR1.ConsequentialEventsReading();
+            // file_counter++;
+            // std::cout<< u8"\033[2J\033[1;1H"; 
+            // std::cout << "Analyzed " << file_counter << " out of " << files.size() << " files" << std::endl;
+
+    });
+    }
+ 
+   
 }

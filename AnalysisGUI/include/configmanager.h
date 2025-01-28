@@ -9,11 +9,11 @@
 
 class ConfigManager {
 public:
-    ConfigManager(int id, const std::string& name, double leftBoundary, double rightBoundary, bool UseSpline, bool UseSmartScope)
-        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary), UseSpline(UseSpline), UseSmartScope(UseSmartScope) {}
+    ConfigManager(int id, const std::string& name, double leftBoundary, double rightBoundary, bool UseSpline, bool UseSmartScope, bool SignalNegative)
+        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary), UseSpline(UseSpline), UseSmartScope(UseSmartScope), SignalNegative(SignalNegative) {}
 
     // Метод для сохранения данных в JSON файл
-    static void saveToJson(const std::string& filename, const std::unordered_map<int, ConfigManager*>& channels) {
+    static void saveToJson(const std::string& filename, const std::map<int, ConfigManager*>& channels) {
         nlohmann::json j;
         
         for (const auto& channel : channels) {
@@ -22,7 +22,8 @@ public:
                 {"left_boundary", channel.second->leftBoundary},
                 {"right_boundary", channel.second->rightBoundary},
                 {"Use_Spline", channel.second->UseSpline},
-                {"Use_Smart_Area", channel.second->UseSmartScope}
+                {"Use_Smart_Area", channel.second->UseSmartScope},
+                {"Signal_is_Negative", channel.second->SignalNegative}
             };
         }
 
@@ -51,7 +52,9 @@ public:
                 const auto& channelInfo = item.value();
                 channels[id] = new ConfigManager(id, channelInfo["name"].get<std::string>(), 
                 channelInfo["left_boundary"].get<double>(), channelInfo["right_boundary"].get<double>(),
-                channelInfo["Use_Spline"].get<bool>(),channelInfo["Use_Smart_Area"].get<bool>());
+                channelInfo["Use_Spline"].get<bool>(),channelInfo["Use_Smart_Area"].get<bool>(),
+                channelInfo["Signal_is_Negative"].get<bool>()
+                );
             }
             return channels;
         } else {
@@ -67,6 +70,7 @@ public:
     double rightBoundary;
     bool UseSpline;
     bool UseSmartScope;
+    bool SignalNegative;
 };
 
 #endif CONFIGMANAGER
