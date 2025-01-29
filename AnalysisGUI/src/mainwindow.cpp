@@ -5,7 +5,8 @@
 #include <qnamespace.h>
 #include <QStringList>
 #include "DataFileReader.h"
-
+#include "thread"
+#include <ProgressWidget.h>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), p(8)
@@ -49,8 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
     action_UseSmartScope=ui->action_Use_Smart_Boarders;
     action_Signal_is_Negative= ui->action_Signal_is_Negative;
     // graphLayer->setMode( QCPLayer::LayerMode::lmLogical);
-        // ProgressDialog *progressDialog = new ProgressDialog(this);
-        // progressDialog->show();
+
     connect(LeftBoundaryEdit, &QLineEdit::textChanged, [=](QString obj) { xLeftBoundary = obj.toInt(); ReDrawBoundaries(); });
     connect(RightBoundaryEdit, &QLineEdit::textChanged, [=](QString obj) { xRightBoundary = obj.toInt(); ReDrawBoundaries(); });
 }
@@ -294,7 +294,7 @@ void MainWindow::on_action_Open_triggered() {
 void MainWindow::on_action_Open_Config_triggered() {
     QString configName = QFileDialog::getOpenFileName(
       this, tr("Open File"), "~",
-      tr( "binary files ( *.json)"));
+      tr( "config files ( *.json)"));
     auto a = (fileName.toUtf8().constData());
     if (configName!="")
     {
@@ -374,15 +374,70 @@ void MainWindow::onTimeout() {
 
 void MainWindow::on_SetFileAnalysisButton_clicked()
 {
-
+    
     QStringList files = QFileDialog::getOpenFileNames(
                         this,
                         "Select one or more files to open",
                         // QString::fromLocal8Bit(std::filesystem::path(a).parent_path().c_str()),
                         QFileInfo(fileName).absolutePath(),
-                        "Images (*.data)");
+                        "Binary files (*.data)");
+    vector<Progress*> progress_vector;
+    for (auto file:files) progress_vector.push_back(new Progress(file.toStdString()));  
 
-    // float file_counter = 0;
+    vector<ProgressDialog*> progressDialog_vector;
+    for (auto file:files) progressDialog_vector.push_back(new ProgressDialog(this));  
+
+    int file_counter = 0;
+
+
+        // ProgressDialog *progressDialog = new ProgressDialog(this);
+        
+        // // Worker *worker = new Worker();
+        // QThread *prthread = new QThread();
+        // DFR.moveToThread(prthread);
+        // connect(thread, &QThread::started, [=]() { DFR.doWork(progressDialog, a); });
+        // connect(this, &MainWindow::progressUpdated, progressDialog, &ProgressDialog::updateProgress);
+        // connect(progressDialog, &QDialog::finished, prthread, &QThread::quit);
+        // connect(thread, &QThread::finished, prthread, &QObject::deleteLater);
+        // progressDialog->show();
+        // prthread->start();
+
+
+
+
+
+
+
+
+    std::thread progress_thread(
+        // display_progress
+        [](const std::vector<Progress*> progresses, vector<ProgressDialog*> progressDialog_vector)
+        {
+            
+            while (true) 
+            {
+                bool all_done = true;
+                std::cout<< u8"\033[2J\033[1;1H"; 
+                std::cout << "\rProgress:\n";
+                // int ccc = 0;
+                for (auto progress : progresses) {
+                    std::cout << "File: " << progress->fileName << " - " 
+                            << progress->percentage*100 << "%\n";
+
+                    if (progress->percentage < 0.99) {
+                        all_done = false; // At least one file is not done
+                    }
+                    // progressDialog_vector[ccc]->updateProgress((int)(100*progress->percentage)); 
+                    // ccc++;
+                }      
+                // std::cout.flush();
+                if (all_done) break; // Exit if all files are done
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Update every second
+            }
+        }
+    , progress_vector, progressDialog_vector);
+
+
     for (auto file:files)
     {
         auto a = (file.toLocal8Bit().constData());
@@ -390,19 +445,16 @@ void MainWindow::on_SetFileAnalysisButton_clicked()
         auto fName = std::filesystem::path(a).stem().string();
         cout << a << endl;
         auto name = std::string(a);
-        p.push( [&, name] (int id)
+        p.push( [&, name, progress_vector, file_counter] (int id)
         {
+
             DataFileReader DFR1;
             DFR1.setName(name.c_str(), channels); 
-            // DFR1.setName(a, (fileName.left(fileName.lastIndexOf(".")).toUtf8().toStdString()+".json").c_str()); 
             DFR1.CreateRootFile();
-            DFR1.ConsequentialEventsReading();
-            // file_counter++;
-            // std::cout<< u8"\033[2J\033[1;1H"; 
-            // std::cout << "Analyzed " << file_counter << " out of " << files.size() << " files" << std::endl;
-
+            DFR1.ConsequentialEventsReading(progress_vector[file_counter]);
     });
+        file_counter++;
     }
- 
+    progress_thread.join(); 
    
 }

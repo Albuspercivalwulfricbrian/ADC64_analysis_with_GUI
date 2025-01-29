@@ -36,7 +36,6 @@ private:
     int32_t xLeftBoundary = -1000;
     int32_t xRightBoundary = 3000;
     QLabel* coordinateLabel = new QLabel();
-    // DataFileReader DFR;
     Worker DFR;
     QLineEdit *LeftBoundaryEdit;
     QLineEdit *RightBoundaryEdit;
@@ -44,13 +43,10 @@ private:
     QSpinBox *channelSpinBox;
     QSpinBox *eventSpinBox;
     std::map<int, ConfigManager*> channels;
-    // QCPItemLine *line;
     QCPItemLine *lineLeft;
     QCPItemLine *lineRight;
-    // QCPLayer *graphLayer;
     QCPLayer *customLayer;
     int32_t size;
-    // ProgressDialog *progressDialog;
     QTimer *timer = new QTimer();
     QString fileName = "";
 

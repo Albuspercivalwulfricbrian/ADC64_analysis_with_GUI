@@ -17,7 +17,7 @@ void DataFileReader::DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries
   cout << (time_left%3600)%60<< "s " <<std::endl;
 }
 
-uint32_t DataFileReader::ConsequentialEventsReading()
+uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
 { 
   TotalHeader.clear();
   uint32_t uiBuffer[3] = {0,0,0};
@@ -30,7 +30,6 @@ uint32_t DataFileReader::ConsequentialEventsReading()
   fseek(fd,0,SEEK_SET);
   while (!feof(fd))
   {
-
     fread(&(TotalHeader.syncword),WORD_SIZE,1,fd);
     if ((TotalHeader.syncword) == SYNC_WORD || (TotalHeader.syncword) == SYNC_WORD_ADC64)
     {
@@ -61,7 +60,6 @@ uint32_t DataFileReader::ConsequentialEventsReading()
         TotalHeader.DeviceHeader.id     = (uiBuffer[offset] & 0xFF000000)>>24;
         TotalHeader.DeviceHeader.length = (uiBuffer[offset] & 0x00FFFFFF);
         offset++;
-
 
         while (end > 0)
         {
@@ -112,6 +110,8 @@ uint32_t DataFileReader::ConsequentialEventsReading()
                 wave = ((uiBuffer[ind] & 0xFFFF) * polarity + iSignalOffset);
                 event_waveform.wf.push_back(wave);
               }
+                    progress->percentage = (float)(ftell(fd))/sSizeOfFile;
+
               event_waveform.wf_size = event_waveform.wf.size();
               ////////////////
               // cout << config_manager[ch]->leftBoundary << " " <<config_manager[ch]->rightBoundary << endl;

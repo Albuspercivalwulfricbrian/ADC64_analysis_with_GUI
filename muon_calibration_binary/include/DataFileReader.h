@@ -8,6 +8,8 @@
 #include <TTree.h>
 #include <TFile.h>
 #include <TROOT.h>
+#include <Progress.h>
+
 class DataFileReader : public DataFormat
 {
   private:
@@ -42,6 +44,6 @@ class DataFileReader : public DataFormat
   void setName(const char * a, const char * b);
   void setName(const char * a, std::map<int, ConfigManager*> ext_config);
   void DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time);
-  uint32_t ConsequentialEventsReading();
+  uint32_t ConsequentialEventsReading(Progress *progress);
 };
 #endif DATAFILEREADER_H
