@@ -78,6 +78,7 @@ private:
 
     void clearLayout() {
         // Clear the QVBoxLayout
+        for (auto pb: progressBars) delete pb;
         progressBars.clear();
 
         QLayoutItem *item;
@@ -89,6 +90,7 @@ private:
                 widget->deleteLater(); // Schedule widget for deletion
             }
         }
+
     }
 };
 
