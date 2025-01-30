@@ -12,6 +12,7 @@
 #include "Worker.h"
 #include <QAction>
 #include <ctpl.h>
+#include <ProgressWidget.h>
 
 
 QT_BEGIN_NAMESPACE
@@ -58,10 +59,13 @@ private:
     void UpdateGraph();
     void ReDrawBoundaries();
     void showContextMenu(const QPoint &pos);
+    void processFiles(const QStringList &files);
+
     ctpl::thread_pool p;
 
 
 private slots:
+
     void onMouseMove(QMouseEvent *event);
     void keyPressEvent(QKeyEvent *event) override;
     void on_NextEventButton_clicked();

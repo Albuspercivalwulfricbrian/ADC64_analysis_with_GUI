@@ -149,7 +149,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
       }
       RootDataTree->Fill();
     }
-    // if (uiTotalEvents > 10000) return uiTotalEvents;
+    if (uiTotalEvents > 100000) return uiTotalEvents;
   }
   std::cout << "File " << fileName << " analysis finished" << endl;
   return uiTotalEvents;
