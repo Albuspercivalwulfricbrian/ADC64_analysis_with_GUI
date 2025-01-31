@@ -6,7 +6,8 @@ struct Progress
   float percentage;
   std::string fileName;
   bool active;
-  Progress(const std::string& name) : percentage(0), fileName(name), active(false) {}  
+  bool processed;
+  Progress(const std::string& name) : percentage(0), fileName(name), active(false), processed(0) {}  
 
 };
 #endif PROGRESS_H

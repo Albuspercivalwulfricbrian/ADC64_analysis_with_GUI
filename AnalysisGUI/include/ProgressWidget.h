@@ -1,99 +1,65 @@
 #ifndef PROGRESSWIDGET_H
 #define PROGRESSWIDGET_H
 #include <QDialog>
+#include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QProgressBar>
 #include <QString>
+#include <qalgorithms.h>
 #include <vector>
 #include <QLabel>
 #include <Progress.h>
-#include <iostream>
 class ProgressWidget : public QDialog {
     Q_OBJECT
 
 public:
-    ProgressWidget(const std::vector<Progress*>& progressList, bool* changelayout, QWidget* parent = nullptr)
-        : QDialog(parent), fchangelayout(changelayout), progressPointers(progressList) {
+    ProgressWidget(const std::vector<Progress*>& progressList, QWidget* parent = nullptr)
+        : QDialog(parent){
         setWindowTitle("Прогресс анализа");
         setModal(true); // Блокирует основное окно
-        layout = new QVBoxLayout(this);
-        fillLayoutActive();
+        qDeleteAll(progressBars); progressBars.clear(); 
+        // qDeleteAll(labels); labels.clear();   
+        qDeleteAll(activeProcesses); activeProcesses.clear();
+
+
+        QHBoxLayout* layout  = new QHBoxLayout(this);
+        QVBoxLayout* layoutleft  = new QVBoxLayout(this);
+        QVBoxLayout* layoutright  = new QVBoxLayout(this);
+        layoutright->addWidget(new QLabel("Finished:", this));
+
+        for (const auto& progressPtr : progressList) 
+        {
+            if (progressPtr->active)
+            {
+                activeProcesses.push_back(progressPtr);
+                QLabel* label = new QLabel(QString::fromStdString(progressPtr->fileName), this);
+                layoutleft->addWidget(label);
+                progressBars.push_back(new QProgressBar(this));
+                progressBars.back()->setRange(0, 100);
+                layoutleft->addWidget(progressBars.back());
+                progressBars.back()->setValue(static_cast<int>(100*progressPtr->percentage));
+            }  
+            if (progressPtr->processed)
+            {
+                QLabel* label = new QLabel(QString::fromStdString(progressPtr->fileName), this);
+                layoutright->addWidget(label);
+            }
+        }
+        layout->addLayout(layoutleft); layout->addLayout(layoutright);
+        // setLayout(layoutleft);setLayout(layoutright);
+        setLayout(layout);
     }
 
-
     void updateProgress() 
-    {
-        if (*fchangelayout == true)
-        {
-            clearLayout();
-            fillLayoutActive();
-            *fchangelayout = false;
-        }        
+    { 
         for (int index = 0; index < progressBars.size(); index++)
         {
-            progressBars[index]->setValue(static_cast<int>(100*progressPointers[index]->percentage ));
+            progressBars[index]->setValue(static_cast<int>(100*activeProcesses[index]->percentage ));
         }
     }
 
 private:
     std::vector<QProgressBar*> progressBars;
-    std::vector<Progress*> progressPointers; // Store pointers to Progress objects
-    bool *fchangelayout;
-    QVBoxLayout* layout;
-    void fillLayoutActive()
-    {
-        this->close();
-        for (const auto& progressPtr : progressPointers) 
-        {
-            std::cout << progressPtr->fileName << std::endl;
-
-            if (progressPtr->active)
-            {
-                QLabel* label = new QLabel(QString::fromStdString(progressPtr->fileName), this);
-                layout->addWidget(label);
-
-                QProgressBar* progressBar = new QProgressBar(this);
-                progressBar->setRange(0, 100);
-                progressBar->setValue(static_cast<int>(100*progressPtr->percentage));
-                layout->addWidget(progressBar);
-
-            //     // Store the progress bar for later updates
-                progressBars.push_back(progressBar);
-
-            //     progressPointers.push_back(progressPtr); // Store the pointer to the Progress object 
-
-            }  
-        }
-
-        setLayout(layout);
-        this->show();
-    }
-
-    // void clearLayout() 
-    // {
-    //     progressBars.clear();
-    //     delete layout;
-    //     layout = new QVBoxLayout(this);
-    // }
-
-    void clearLayout() {
-        // Clear the QVBoxLayout
-        for (auto pb: progressBars) delete pb;
-        progressBars.clear();
-
-        QLayoutItem *item;
-        while ((item = layout->takeAt(0)) != nullptr) {
-            QWidget *widget = item->widget();
-            delete item; // Delete the layout item
-            if (widget) {
-                if (QLabel *label = qobject_cast<QLabel*>(widget)) label->setText("");
-                widget->deleteLater(); // Schedule widget for deletion
-            }
-        }
-
-    }
+    std::vector<Progress*> activeProcesses;
 };
-
-
-
 #endif PROGRESSWIDGET_H

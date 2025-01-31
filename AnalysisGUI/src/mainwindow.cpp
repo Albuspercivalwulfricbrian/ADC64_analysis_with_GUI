@@ -1,12 +1,10 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "qcustomplot.h"
-#include <algorithm>
 #include <qnamespace.h>
 #include <QStringList>
 #include "DataFileReader.h"
 #include "thread"
-#include <ProgressWidget.h>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), p(8)
@@ -191,7 +189,7 @@ void MainWindow::on_NextEventButton_clicked() {
                     // UpdateGraph();    
                 }                
             }
-            else {eventSpinBox->setValue(currEvent); cout << "Oops. Out of file Bounds" << endl; break;}
+            else {eventSpinBox->setValue(currEvent); std::cout << "Oops. Out of file Bounds" << std::endl; break;}
 
         }
      }
@@ -263,7 +261,7 @@ void MainWindow::on_action_Open_triggered() {
     QApplication::processEvents();
 
     if (fileName!="") {
-        cout << a << " is set" << endl;
+        std::cout << a << " is set" << std::endl;
         DFR.setName(a);
         ProgressDialog *progressDialog = new ProgressDialog(this);
         
@@ -288,7 +286,7 @@ void MainWindow::on_action_Open_triggered() {
     }
     else
     {
-        cout << "File NOT chosen" << endl;
+        std::cout << "File NOT chosen" << std::endl;
     }
 }
 
@@ -306,7 +304,7 @@ void MainWindow::on_action_Open_Config_triggered() {
     // }
     else
     {
-        cout << "File NOT chosen" << endl;
+        std::cout << "File NOT chosen" << std::endl;
     }
     
 }
@@ -373,89 +371,6 @@ void MainWindow::onTimeout() {
     timer->start(100);
 }
 
-// void MainWindow::on_SetFileAnalysisButton_clicked()
-// {
-    
-//     QStringList files = QFileDialog::getOpenFileNames(
-//         this,
-//         "Select one or more files to open",
-//         QFileInfo(fileName).absolutePath(),
-//         "Binary files (*.data)");
-
-//     vector<Progress*> progress_vector;
-//     for (auto file:files) progress_vector.push_back(new Progress(file.toStdString()));  
-
-//     vector<ProgressDialog*> progressDialog_vector;
-//     for (auto file:files) progressDialog_vector.push_back(new ProgressDialog(this));  
-
-//     int file_counter = 0;
-
-
-//         // ProgressDialog *progressDialog = new ProgressDialog(this);
-        
-//         // Worker *worker = new Worker();
-//         // QThread *prthread = new QThread();
-//         // DFR.moveToThread(prthread);
-//         // connect(thread, &QThread::started, [=]() { DFR.doWork(progressDialog, a); });
-//         // connect(this, &MainWindow::progressUpdated, progressDialog, &ProgressDialog::updateProgress);
-//         // connect(progressDialog, &QDialog::finished, prthread, &QThread::quit);
-//         // connect(thread, &QThread::finished, prthread, &QObject::deleteLater);
-//         // progressDialog->show();
-//         // prthread->start();
-
-
-//     std::thread progress_thread(
-//         // display_progress
-//         [&](const std::vector<Progress*> progresses)
-//         {
-//             ProgressWidget* progressWidget = new ProgressWidget(progresses, this);
-//             progressWidget->show();
-//             while (true) 
-//             {
-//                 bool all_done = true;
-//                 std::cout<< u8"\033[2J\033[1;1H"; 
-//                 std::cout << "\rProgress:\n";
-//                 // int ccc = 0;
-//                 for (auto progress : progresses) {
-//                     std::cout << "File: " << progress->fileName << " - " 
-//                             << progress->percentage*100 << "%\n";
-
-//                     if (progress->percentage < 0.99) {
-//                         all_done = false; // At least one file is not done
-//                     }
-//                 }      
-//                 if (all_done) break; // Exit if all files are done
-//                 for (size_t j = 0; j < progresses.size(); ++j) 
-//                 {
-//                     progressWidget->updateProgress(j, progresses[j]->percentage);
-//                 }
-//             std::this_thread::sleep_for(std::chrono::seconds(1)); // Update every second
-//             }
-//         }
-//     , progress_vector);
-
-
-//     for (auto file:files)
-//     {
-//         auto a = (file.toLocal8Bit().constData());
-//         auto fdirName = std::filesystem::path(a).parent_path().string();
-//         auto fName = std::filesystem::path(a).stem().string();
-//         cout << a << endl;
-//         auto name = std::string(a);
-//         p.push( [&, name, progress_vector, file_counter] (int id)
-//         {
-
-//             DataFileReader DFR1;
-//             DFR1.setName(name.c_str(), channels); 
-//             DFR1.CreateRootFile();
-//             DFR1.ConsequentialEventsReading(progress_vector[file_counter]);
-//     });
-//         file_counter++;
-//     }
-//     progress_thread.join(); 
-   
-// }
-
 
 void MainWindow::on_SetFileAnalysisButton_clicked()
 {
@@ -480,79 +395,62 @@ void MainWindow::on_SetFileAnalysisButton_clicked()
 void MainWindow::processFiles(const QStringList &files)
 {
     vector<Progress*> progress_vector;
+    vector<std::string> *processed_files = nullptr;
     for (const auto &file : files) {
         progress_vector.push_back(new Progress(file.toStdString()));  
     }
     bool *changelayout = new bool(false);
     p.push(
-        [&, progress_vector, changelayout](int id)
+        [&, progress_vector, processed_files, changelayout](int id)
         {
-            ProgressWidget* progressWidget = new ProgressWidget(progress_vector, changelayout, this);
+            std::unique_ptr<ProgressWidget> progressWidget = std::make_unique<ProgressWidget>(progress_vector, this);
+            // ProgressWidget* progressWidget = new ProgressWidget(progress_vector, changelayout, this);
             progressWidget->show();
             while (true) 
             {
-                bool all_done = true;
+
                 // std::cout<< u8"\033[2J\033[1;1H"; 
-                std::cout << *changelayout << std::endl;
+                // std::cout << *changelayout << std::endl;
                 // std::cout << "\rProgress:\n";
                 // for (auto progress : progress_vector) {
                 //     std::cout << "File: " << progress->fileName << " - " 
-                //             << progress->percentage * 100 << "%\n";
+                //             << progress->percentage * 100  << "%; is active: " <<progress->active << 
+                //             "is processed: " <<progress->processed <<  "\n";
+                // }
+                if (*changelayout==true)
+                {
+                    *changelayout=false;
+                    progressWidget->close(); // Close the existing widget
+                    progressWidget.reset();   // Resetting the unique pointer will delete the old instance
+                    progressWidget = std::make_unique<ProgressWidget>(progress_vector, this);
+                    progressWidget->show();
+                }
                 progressWidget->updateProgress();
-                for (auto progress : progress_vector) {
-                if (progress->percentage < 1) {all_done = false; }
-                }      
+                bool all_done = true;
+                for (auto progress : progress_vector) if (!progress->processed) {all_done = false;break;}
+
                 if (all_done) break; // Exit if all files are done
                 std::this_thread::sleep_for(std::chrono::seconds(1)); // Update every second
             }
+            progressWidget->close();
         }
     );
 
-    for (int file_counter = 0; file_counter <  progress_vector.size();file_counter++)
+
+    for (auto &analysis_process : progress_vector)
     {
-        // auto name = file.toLocal8Bit().constData();
-        p.push([&, progress_vector, file_counter, changelayout](int id)
+        p.push([&, analysis_process, changelayout](int id)
         {
-            progress_vector[file_counter]->active = true;            
+            analysis_process->active = true;            
             DataFileReader DFR1;
-            DFR1.setName(progress_vector[file_counter]->fileName.c_str(), channels); 
+            DFR1.setName(analysis_process->fileName.c_str(), channels); 
             DFR1.CreateRootFile();
-            DFR1.ConsequentialEventsReading(progress_vector[file_counter]);
-            progress_vector[file_counter]->active = false;    
+            DFR1.ConsequentialEventsReading(analysis_process);
+            analysis_process->active = false;    
+            analysis_process->processed = true;
             *changelayout = true;
 
         });
     }
     
 }
-
-
-
-    // std::thread progress_thread(
-    //     [&](MainWindow*, const std::vector<Progress*> progresses)
-    //     {
-    //         ProgressWidget* progressWidget = new ProgressWidget(progresses, this);
-    //         progressWidget->show();
-    //         while (true) 
-    //         {
-    //             bool all_done = true;
-    //              std::cout<< u8"\033[2J\033[1;1H"; 
-    //             std::cout << "\rProgress:\n";
-    //             for (auto progress : progresses) {
-    //                 std::cout << "File: " << progress->fileName << " - " 
-    //                           << progress->percentage * 100 << "%\n";
-
-    //                 if (progress->percentage < 0.99) {
-    //                     all_done = false; // At least one file is not done
-    //                 }
-    //             }      
-    //             if (all_done) break; // Exit if all files are done
-    //             for (size_t j = 0; j < progresses.size(); ++j) {
-    //                 progressWidget->updateProgress(j, progresses[j]->percentage);
-    //             }
-    //             std::this_thread::sleep_for(std::chrono::seconds(1)); // Update every second
-    //         }
-    //     }, this, progress_vector);
-
-
-    // progress_thread.join(); 
