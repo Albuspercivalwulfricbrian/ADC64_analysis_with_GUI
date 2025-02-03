@@ -11,7 +11,7 @@
 #include <QTimer>
 #include "Worker.h"
 #include <QAction>
-#include <ctpl.h>
+#include <ctpl_stl.h>
 #include <ProgressWidget.h>
 
 
