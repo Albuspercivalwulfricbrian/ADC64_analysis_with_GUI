@@ -5,10 +5,10 @@
 FFTFilter::FFTFilter(const std::vector<int16_t>& input_signal, double sample_rate, double cutoff_frequency)
     : wf(input_signal), sample_rate(sample_rate), cutoff_frequency(cutoff_frequency) {
     // Prepare FFT output array
-    out.resize(wf.size() / 2 + 1);
+    // out.resize((static_cast<int16_t>(wf.size()) / 2+ 1) );
     fourier_transform();
-    apply_frequency_cutoff();
-    backward_transform();
+    // apply_frequency_cutoff();
+    // backward_transform();
 }
 
 const std::vector<int16_t>& FFTFilter::get_signal() const {
@@ -81,38 +81,38 @@ void FFTFilter::backward_transform() {
 }
 
 
-#include "FFTFilter.h"
-#include <iostream>
-#include <vector>
+// #include "FFTFilter.h"
+// #include <iostream>
+// #include <vector>
 
-int main() {
-    // Example signal
-    std::vector<int16_t> input_signal = { /* Your signal data here */ };    
-    double sample_rate = 44100; // Sample rate in Hz
-    double cutoff_frequency = 1000; // Initial cutoff frequency in Hz
+// int main() {
+//     // Example signal
+//     std::vector<int16_t> input_signal = { /* Your signal data here */ };    
+//     double sample_rate = 44100; // Sample rate in Hz
+//     double cutoff_frequency = 1000; // Initial cutoff frequency in Hz
 
-    // Create an instance of FFTFilter
-    FFTFilter filter(input_signal, sample_rate, cutoff_frequency);
+//     // Create an instance of FFTFilter
+//     FFTFilter filter(input_signal, sample_rate, cutoff_frequency);
 
-    // Get and display filtered signal
-    const auto& filtered_signal = filter.get_signal();
-    std::cout << "Filtered Signal: ";
-    for (const auto& value : filtered_signal) {
-        std::cout << value << " ";
-    }
-    std::cout << std::endl;
+//     // Get and display filtered signal
+//     const auto& filtered_signal = filter.get_signal();
+//     std::cout << "Filtered Signal: ";
+//     for (const auto& value : filtered_signal) {
+//         std::cout << value << " ";
+//     }
+//     std::cout << std::endl;
 
-    // Set a new cutoff frequency and reapply filtering
-    double new_cutoff_frequency = 500; // New cutoff frequency in Hz
-    filter.set_cutoff_frequency(new_cutoff_frequency);
+//     // Set a new cutoff frequency and reapply filtering
+//     double new_cutoff_frequency = 500; // New cutoff frequency in Hz
+//     filter.set_cutoff_frequency(new_cutoff_frequency);
 
-    // Get and display filtered signal after changing cutoff frequency
-    const auto& updated_filtered_signal = filter.get_signal();
-    std::cout << "Updated Filtered Signal: ";
-    for (const auto& value : updated_filtered_signal) {
-        std::cout << value << " ";
-    }
-    std::cout << std::endl;
+//     // Get and display filtered signal after changing cutoff frequency
+//     const auto& updated_filtered_signal = filter.get_signal();
+//     std::cout << "Updated Filtered Signal: ";
+//     for (const auto& value : updated_filtered_signal) {
+//         std::cout << value << " ";
+//     }
+//     std::cout << std::endl;
 
-    return 0;
-}
+//     return 0;
+// }

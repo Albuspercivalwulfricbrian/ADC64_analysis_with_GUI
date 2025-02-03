@@ -5,6 +5,7 @@
 #include <QStringList>
 #include "DataFileReader.h"
 #include "thread"
+#include "FFTFilter.h"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), p(8)
@@ -103,7 +104,8 @@ void MainWindow::UpdateGraph() {
         for (int i = 0; i < size; ++i) {
             x[i] = i; // x от 0 до 10
         }    
-        QVector<double> y(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end());     
+        QVector<double> y(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end()); 
+
         customPlot->graph(0)->setData(x, y);
         customPlot->yAxis->rescale();
         customPlot->xAxis->rescale();
