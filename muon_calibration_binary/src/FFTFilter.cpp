@@ -14,7 +14,7 @@ FFTFilter::FFTFilter(const std::vector<int16_t>& input_signal, double sample_rat
 const std::vector<int16_t>& FFTFilter::get_signal() const {
     return wf; // Return the filtered signal
 }
-
+ 
 std::vector<double> FFTFilter::get_transformed_signal() const {
     std::vector<double> real_parts(out.size());
     for (size_t i = 0; i < out.size(); ++i) {
