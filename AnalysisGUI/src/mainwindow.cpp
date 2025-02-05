@@ -5,7 +5,7 @@
 #include <QStringList>
 #include "DataFileReader.h"
 #include "thread"
-// #include "FFTFilter.h"
+#include "FFTFilter.h"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), p(8)

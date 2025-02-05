@@ -5,7 +5,6 @@
 FFTFilter::FFTFilter(const std::vector<int16_t>& input_signal, double sample_rate, double cutoff_frequency)
     : wf(input_signal), sample_rate(sample_rate), cutoff_frequency(cutoff_frequency) {
     // Prepare FFT output array
-    // out.resize((static_cast<int16_t>(wf.size()) / 2+ 1) );
     fourier_transform();
     // apply_frequency_cutoff();
     // backward_transform();
@@ -64,6 +63,7 @@ void FFTFilter::apply_frequency_cutoff() {
 void FFTFilter::backward_transform() {
     int N = wf.size();
     std::vector<double> in(N);
+    // out.resize(N/2+1);
 
     // Create FFTW plan for inverse FFT
     fftw_plan plan_backward = fftw_plan_dft_c2r_1d(N, const_cast<fftw_complex*>(out.data()), in.data(), FFTW_ESTIMATE);
@@ -79,40 +79,3 @@ void FFTFilter::backward_transform() {
     // Cleanup
     fftw_destroy_plan(plan_backward);
 }
-
-
-// #include "FFTFilter.h"
-// #include <iostream>
-// #include <vector>
-
-// int main() {
-//     // Example signal
-//     std::vector<int16_t> input_signal = { /* Your signal data here */ };    
-//     double sample_rate = 44100; // Sample rate in Hz
-//     double cutoff_frequency = 1000; // Initial cutoff frequency in Hz
-
-//     // Create an instance of FFTFilter
-//     FFTFilter filter(input_signal, sample_rate, cutoff_frequency);
-
-//     // Get and display filtered signal
-//     const auto& filtered_signal = filter.get_signal();
-//     std::cout << "Filtered Signal: ";
-//     for (const auto& value : filtered_signal) {
-//         std::cout << value << " ";
-//     }
-//     std::cout << std::endl;
-
-//     // Set a new cutoff frequency and reapply filtering
-//     double new_cutoff_frequency = 500; // New cutoff frequency in Hz
-//     filter.set_cutoff_frequency(new_cutoff_frequency);
-
-//     // Get and display filtered signal after changing cutoff frequency
-//     const auto& updated_filtered_signal = filter.get_signal();
-//     std::cout << "Updated Filtered Signal: ";
-//     for (const auto& value : updated_filtered_signal) {
-//         std::cout << value << " ";
-//     }
-//     std::cout << std::endl;
-
-//     return 0;
-// }
