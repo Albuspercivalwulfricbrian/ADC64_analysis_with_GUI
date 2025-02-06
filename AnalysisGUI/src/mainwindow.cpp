@@ -118,11 +118,13 @@ void MainWindow::UpdateGraph() {
             FF.forwardTransform(); 
             vector<double> y0 = FF.getFourierTransformedSignal(); 
             QVector<double> y(y0.begin(), y0.end()); 
+            customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
             customPlot->graph(0)->setData(x, y);
             customPlot->graph(1)->data()->clear();
         }
         else
         {
+
             QVector<double> y(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end()); 
             customPlot->graph(0)->setData(x, y);
 
@@ -138,11 +140,10 @@ void MainWindow::UpdateGraph() {
                 {
                     FF.applyLowPassFilter(passfilter); FF.backwardTransform(); vector<int16_t> y0 = FF.getFilteredSignal();                 
                     QVector<double> yfilter(y0.begin(), y0.end()); 
+                    customPlot->yAxis->setScaleType(QCPAxis::stLinear);
                     customPlot->graph(1)->setData(x, yfilter);                    
                 }
                 else customPlot->graph(1)->data()->clear();
-
-
             }
             else customPlot->graph(1)->data()->clear();
         
