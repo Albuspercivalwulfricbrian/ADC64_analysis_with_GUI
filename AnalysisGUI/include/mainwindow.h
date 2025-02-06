@@ -31,6 +31,7 @@ public:
 private:
     Ui::MainWindow *ui;
 
+    int32_t passfilter = 0;
     int64_t currEvent = 1;
     int16_t currChannel = 0;
     double currentX = 0;
@@ -43,6 +44,7 @@ private:
     QLineEdit *BranchName;
     QSpinBox *channelSpinBox;
     QSpinBox *eventSpinBox;
+    QSpinBox *FrequencySpinBox;
     std::map<int, ConfigManager*> channels;
     QCPItemLine *lineLeft;
     QCPItemLine *lineRight;
@@ -54,6 +56,8 @@ private:
     QAction *action_UseSpline;
     QAction *action_UseSmartScope;
     QAction *action_Signal_is_Negative;
+    QAction *action_Show_Fourier_Transform;
+    QAction *action_Show_Filtered;
 
     void setupGraph();
     void UpdateGraph();
@@ -75,12 +79,15 @@ private slots:
     void on_action_Open_Config_triggered();
     // void on_action_Use_Smart_Boarders();
     // void on_action_Use_Spline();
-    void on_channelSpinBox_valueChanged();
-    void on_eventSpinBox_valueChanged();
+    void on_channelSpinBox_valueChanged(int);
+    void on_eventSpinBox_valueChanged(int);
+    void on_FrequencySpinBox_valueChanged(int);
     void on_SaveConfigButton_clicked();
     void on_SetChannelBoundaries_clicked();
     void on_SetAllChannelsBoundaries_clicked();
     void on_setBranchName_clicked(); 
+    void on_action_Show_Fourier_Transform_changed();
+    void on_action_Show_Filtered_changed();
     // void savePlot();
     void savePlotAsPng();
     void savePlotAsJpeg();

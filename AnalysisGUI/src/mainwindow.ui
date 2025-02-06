@@ -70,6 +70,36 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QLabel" name="FrequencyLabel">
+          <property name="font">
+           <font>
+            <pointsize>14</pointsize>
+           </font>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LayoutDirection::LeftToRight</enum>
+          </property>
+          <property name="text">
+           <string>Frequency Cutoff:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="FrequencySpinBox">
+          <property name="font">
+           <font>
+            <pointsize>14</pointsize>
+           </font>
+          </property>
+          <property name="maximum">
+           <number>2048</number>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
       <item>
@@ -452,8 +482,16 @@
     <addaction name="action_Use_Smart_Boarders"/>
     <addaction name="action_Signal_is_Negative"/>
    </widget>
+   <widget class="QMenu" name="menuGraphics">
+    <property name="title">
+     <string>Graphics</string>
+    </property>
+    <addaction name="action_Show_Fourier_Transform"/>
+    <addaction name="action_Show_Filtered"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Analysis_Options"/>
+   <addaction name="menuGraphics"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action_Open">
@@ -544,6 +582,22 @@
     <font>
      <pointsize>12</pointsize>
     </font>
+   </property>
+  </action>
+  <action name="action_Show_Fourier_Transform">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Show Fourier Transform</string>
+   </property>
+  </action>
+  <action name="action_Show_Filtered">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Show Filtered</string>
    </property>
   </action>
  </widget>

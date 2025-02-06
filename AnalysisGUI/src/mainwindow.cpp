@@ -5,7 +5,7 @@
 #include <QStringList>
 #include "DataFileReader.h"
 #include "thread"
-#include "FFTFilter.h"
+#include "FourierFilter.h"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), p(8)
@@ -22,6 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     BranchName=ui->BranchName;
     channelSpinBox=ui->channelSpinBox;
     eventSpinBox=ui->eventSpinBox;
+    FrequencySpinBox=ui->FrequencySpinBox;
     setupGraph();
     int64_t counter = 0;
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
@@ -48,6 +49,8 @@ MainWindow::MainWindow(QWidget *parent)
     action_UseSpline=ui->action_Use_Spline;
     action_UseSmartScope=ui->action_Use_Smart_Boarders;
     action_Signal_is_Negative= ui->action_Signal_is_Negative;
+    action_Show_Fourier_Transform=ui->action_Show_Fourier_Transform;
+    action_Show_Filtered=ui->action_Show_Filtered;
     // graphLayer->setMode( QCPLayer::LayerMode::lmLogical);
 
     connect(LeftBoundaryEdit, &QLineEdit::textChanged, [=](QString obj) { xLeftBoundary = obj.toInt(); ReDrawBoundaries(); });
@@ -93,7 +96,9 @@ void MainWindow::setupGraph() {
     customPlot->setSelectionRectMode(QCP::srmZoom);
 
     customPlot->replot(QCustomPlot::rpQueuedRefresh);
-  
+    customPlot->addGraph();
+    customPlot->graph(1)->setPen(QPen(Qt::red,2, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
+
 }
 
 void MainWindow::UpdateGraph() {
@@ -101,12 +106,48 @@ void MainWindow::UpdateGraph() {
     if (size > 1)
     {
         QVector<double> x(size);
-        for (int i = 0; i < size; ++i) {
-            x[i] = i; // x от 0 до 10
-        }    
-        QVector<double> y(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end()); 
+        for (int i = 0; i < size; ++i) x[i] = i; // x от 0 до 10
 
-        customPlot->graph(0)->setData(x, y);
+        if (action_Show_Fourier_Transform->isChecked())
+        {
+            int32_t gate = 0;
+            if (xLeftBoundary > 0 && xLeftBoundary < DFR.event_waveform.wf.size()) gate = xLeftBoundary;
+            else gate = 20;
+            DFR.event_waveform.Set_Zero_Level_Area(gate);
+            FourierFilter FF(DFR.event_waveform.wf, DFR.event_waveform.Get_Zero_Level(), gate);
+            FF.forwardTransform(); 
+            vector<double> y0 = FF.getFourierTransformedSignal(); 
+            QVector<double> y(y0.begin(), y0.end()); 
+            customPlot->graph(0)->setData(x, y);
+            customPlot->graph(1)->data()->clear();
+        }
+        else
+        {
+            QVector<double> y(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end()); 
+            customPlot->graph(0)->setData(x, y);
+
+            if (action_Show_Filtered->isChecked()) 
+            {
+                int32_t gate = 0;
+                if (xLeftBoundary > 0 && xLeftBoundary < DFR.event_waveform.wf.size()) gate = xLeftBoundary;
+                else gate = 20;
+                DFR.event_waveform.Set_Zero_Level_Area(gate);
+                FourierFilter FF(DFR.event_waveform.wf, DFR.event_waveform.Get_Zero_Level(), gate);
+                FF.forwardTransform(); 
+                if (passfilter > 0 && passfilter < DFR.event_waveform.wf.size())
+                {
+                    FF.applyLowPassFilter(passfilter); FF.backwardTransform(); vector<int16_t> y0 = FF.getFilteredSignal();                 
+                    QVector<double> yfilter(y0.begin(), y0.end()); 
+                    customPlot->graph(1)->setData(x, yfilter);                    
+                }
+                else customPlot->graph(1)->data()->clear();
+
+
+            }
+            else customPlot->graph(1)->data()->clear();
+        
+        }
+
         customPlot->yAxis->rescale();
         customPlot->xAxis->rescale();
         customPlot->replot();        
@@ -137,7 +178,7 @@ void MainWindow::ReDrawBoundaries() {
 }
 
 
-void MainWindow::on_channelSpinBox_valueChanged()
+void MainWindow::on_channelSpinBox_valueChanged(int)
 {
     currChannel = (int16_t)channelSpinBox->value();
     if (channels[currChannel]) BranchName->setText(QString::fromStdString(channels[currChannel]->name));
@@ -155,13 +196,21 @@ void MainWindow::on_channelSpinBox_valueChanged()
     // ReDrawBoundaries();
 }
 
-void MainWindow::on_eventSpinBox_valueChanged()
+void MainWindow::on_eventSpinBox_valueChanged(int)
 {
     DFR.event_waveform.Initialize();
     currEvent = (int32_t)eventSpinBox->value();
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents())
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >=0)
     {
         DFR.ReadEvent(currEvent,currChannel);
+        UpdateGraph();        
+    }
+}
+void MainWindow::on_FrequencySpinBox_valueChanged(int)
+{
+    passfilter = (int32_t)FrequencySpinBox->value();
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >=0 && action_Show_Filtered->isChecked() && !action_Show_Fourier_Transform->isChecked())
+    {
         UpdateGraph();        
     }
 }
@@ -170,11 +219,12 @@ void MainWindow::on_eventSpinBox_valueChanged()
 void MainWindow::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_A) {xLeftBoundary = (int32_t)currentX;    ReDrawBoundaries(); LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));}
     if (event->key() == Qt::Key_D) {xRightBoundary = (int32_t)currentX;    ReDrawBoundaries(); RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));}
+    if (event->key() == Qt::Key_F) {FrequencySpinBox->setValue((int32_t)currentX);}
     if (event->key() == Qt::Key_F5) {ReDrawBoundaries();}
 }
 
 void MainWindow::on_NextEventButton_clicked() {
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents()-1)
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents()-1 && currEvent >=0)
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
@@ -199,7 +249,7 @@ void MainWindow::on_NextEventButton_clicked() {
 void MainWindow::on_PreviousEventButton_clicked() {
     DFR.event_waveform.Initialize();
 
-    if (DFR.FileIsSet == 1 && currEvent >= 1)
+    if (DFR.FileIsSet == 1 && currEvent >= 1 && currEvent < DFR.GetTotalEvents()-1)
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
@@ -309,6 +359,14 @@ void MainWindow::on_action_Open_Config_triggered() {
         std::cout << "File NOT chosen" << std::endl;
     }
     
+}
+
+void MainWindow::on_action_Show_Fourier_Transform_changed(){
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >=0) UpdateGraph();
+}
+
+void MainWindow::on_action_Show_Filtered_changed(){
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >=0) UpdateGraph();
 }
 
 void MainWindow::mousePressEvent(QMouseEvent *event){
