@@ -19,7 +19,7 @@ list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
 #---Locate the ROOT package and defines a number of variables (e.g. ROOT_INCLUDE_DIRS)
 find_package(ROOT REQUIRED COMPONENTS RIO Core Tree Net Hist Graf Gpad Gui Physics)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-find_package (FFTW REQUIRED)
+# find_package (FFTW REQUIRED)
 
 include(${ROOT_USE_FILE})
 

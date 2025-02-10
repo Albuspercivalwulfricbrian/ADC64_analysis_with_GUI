@@ -58,6 +58,9 @@ private:
     QAction *action_Signal_is_Negative;
     QAction *action_Show_Fourier_Transform;
     QAction *action_Show_Filtered;
+    QAction *actionSavePng;
+    QAction *actionSavePdf;
+    QAction *actionSaveJpeg;  
 
     void setupGraph();
     void UpdateGraph();
@@ -93,8 +96,10 @@ private slots:
     void savePlotAsJpeg();
     void savePlotAsPdf();
     void onTimeout();
+    void windowEnable();
+    void windowDisable();
 protected:
-    void mousePressEvent(QMouseEvent *event) override;
+    // void mousePressEvent(QMouseEvent *event) override;
 signals:
     void progressUpdated(int value);
 

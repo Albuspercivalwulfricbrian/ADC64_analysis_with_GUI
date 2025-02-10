@@ -471,8 +471,17 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
+    <widget class="QMenu" name="menu_Save_Graph">
+     <property name="title">
+      <string>&amp;Save Graph</string>
+     </property>
+     <addaction name="actionSavePdf"/>
+     <addaction name="actionSavePng"/>
+     <addaction name="actionSaveJpeg"/>
+    </widget>
     <addaction name="action_Open"/>
     <addaction name="action_Open_Config"/>
+    <addaction name="menu_Save_Graph"/>
    </widget>
    <widget class="QMenu" name="menu_Analysis_Options">
     <property name="title">
@@ -598,6 +607,21 @@
    </property>
    <property name="text">
     <string>&amp;Show Filtered</string>
+   </property>
+  </action>
+  <action name="actionSavePdf">
+   <property name="text">
+    <string>PDF</string>
+   </property>
+  </action>
+  <action name="actionSavePng">
+   <property name="text">
+    <string>PNG</string>
+   </property>
+  </action>
+  <action name="actionSaveJpeg">
+   <property name="text">
+    <string>JPEG</string>
    </property>
   </action>
  </widget>

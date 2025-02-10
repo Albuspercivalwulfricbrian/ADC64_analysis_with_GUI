@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupGraph();
     int64_t counter = 0;
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
-    connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
+    // connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
     // connect(customPlot, &QCustomPlot::keyPressEvent, this, &MainWindow::keyPressEvent);
     for (int i = 0; i < 128; i++) channels[i] = new ConfigManager(i, "channel_"+to_string(i+1), 0.0, 2048.,1,1,1);
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
@@ -52,7 +52,14 @@ MainWindow::MainWindow(QWidget *parent)
     action_Show_Fourier_Transform=ui->action_Show_Fourier_Transform;
     action_Show_Filtered=ui->action_Show_Filtered;
     // graphLayer->setMode( QCPLayer::LayerMode::lmLogical);
+    actionSavePng=ui->actionSavePng;
+    actionSaveJpeg=ui->actionSaveJpeg;
+    actionSavePdf=ui->actionSavePdf;
 
+    connect(actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
+    connect(actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
+    connect(actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
+    
     connect(LeftBoundaryEdit, &QLineEdit::textChanged, [=](QString obj) { xLeftBoundary = obj.toInt(); ReDrawBoundaries(); });
     connect(RightBoundaryEdit, &QLineEdit::textChanged, [=](QString obj) { xRightBoundary = obj.toInt(); ReDrawBoundaries(); });
 }
@@ -370,19 +377,31 @@ void MainWindow::on_action_Show_Filtered_changed(){
     if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >=0) UpdateGraph();
 }
 
-void MainWindow::mousePressEvent(QMouseEvent *event){
-    if (event->button() == Qt::RightButton) {
-            showContextMenu(event->globalPos());
-    }
-    // Вызываем базовый класс для обработки других событий
-    QMainWindow::mousePressEvent(event);
-}
+// void MainWindow::mousePressEvent(QMouseEvent *event){
+//     if (event->button() == Qt::RightButton) {
+//             showContextMenu(event->globalPos());
+//     }
+//     // Вызываем базовый класс для обработки других событий
+//     QMainWindow::mousePressEvent(event);
+// }
+
+void MainWindow::windowEnable(){
+    setEnabled(true); 
+} 
+
+void MainWindow::windowDisable(){
+    setEnabled(false); 
+} 
+
 
 void MainWindow::showContextMenu(const QPoint &pos) 
 {
 
-
+    windowDisable();
     QMenu contextMenu(tr("Save Menu"), this);
+    // contextMenu.setModal(true);
+    // connect(&contextMenu, &QMenu::aboutToShow, this, &MainWindow::windowDisable);
+    connect(&contextMenu, &QMenu::aboutToHide, this, &MainWindow::windowEnable);
 
     QAction actionSavePng("Save Plot as PNG", this);
     connect(&actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
@@ -392,6 +411,7 @@ void MainWindow::showContextMenu(const QPoint &pos)
 
     QAction actionSavePdf("Save Plot as PDF", this);
     connect(&actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
+    
     customPlot->clearItems();
 
     contextMenu.addAction(&actionSavePng);
