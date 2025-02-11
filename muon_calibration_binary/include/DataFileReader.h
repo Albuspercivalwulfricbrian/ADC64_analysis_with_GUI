@@ -32,6 +32,12 @@ class DataFileReader : public DataFormat
   ~DataFileReader()
   {
     if (RootDataFile && RootDataTree) SaveRootFile();
+    // delete RootDataTree;
+    // delete RootDataFile;
+    // for (auto &[sh, sh2] : config_manager) delete sh2;
+    delete fd;
+
+
   };
 
   void CreateRootFile();

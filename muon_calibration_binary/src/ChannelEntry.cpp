@@ -23,7 +23,6 @@ using namespace std;
         II.Initialize();
     }
 
-
     void diff_short_energy_ChannelEntry::Initialize()
     {
         min_diff = 0;
