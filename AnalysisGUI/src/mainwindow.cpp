@@ -201,6 +201,9 @@ void MainWindow::on_channelSpinBox_valueChanged(int)
         xRightBoundary=channels[currChannel]->rightBoundary;
         RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
     }
+    action_UseSmartScope->setChecked(channels[currChannel]->UseSmartScope);
+    action_UseSpline->setChecked(channels[currChannel]->UseSpline);
+    action_Signal_is_Negative->setChecked(channels[currChannel]->SignalNegative);
     // ReDrawBoundaries();
 }
 
