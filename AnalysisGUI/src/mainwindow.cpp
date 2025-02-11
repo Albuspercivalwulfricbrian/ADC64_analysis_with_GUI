@@ -16,6 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
     // QToolTip::showText( ui->LeftBoundaryLabel->mapToGlobal( QPoint( 0, 0 ) ), "errorString" );
     customPlot=ui->customPlot;
     // ui->LeftBoundaryLabel->setToolTip("press \"A\" to win");
+    FileNameLabel=ui->FileNameLabel;
     coordinateLabel=ui->coordinateLabel;
     LeftBoundaryEdit=ui->LeftBoundaryEdit;
     RightBoundaryEdit=ui->RightBoundaryEdit;
@@ -51,6 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     action_Signal_is_Negative= ui->action_Signal_is_Negative;
     action_Show_Fourier_Transform=ui->action_Show_Fourier_Transform;
     action_Show_Filtered=ui->action_Show_Filtered;
+    action_Use_Fourier_Filtering=ui->action_Use_Fourier_Filtering;
     // graphLayer->setMode( QCPLayer::LayerMode::lmLogical);
     actionSavePng=ui->actionSavePng;
     actionSaveJpeg=ui->actionSaveJpeg;
@@ -324,6 +326,7 @@ void MainWindow::on_action_Open_triggered() {
     QApplication::processEvents();
 
     if (fileName!="") {
+        FileNameLabel->setText("Open File: "+fileName);
         std::cout << a << " is set" << std::endl;
         DFR.setName(a);
         ProgressDialog *progressDialog = new ProgressDialog(this);

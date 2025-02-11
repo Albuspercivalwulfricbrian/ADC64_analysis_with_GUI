@@ -38,6 +38,7 @@ private:
     int32_t xLeftBoundary = -1000;
     int32_t xRightBoundary = 3000;
     QLabel* coordinateLabel = new QLabel();
+    QLabel* FileNameLabel;
     Worker DFR;
     QLineEdit *LeftBoundaryEdit;
     QLineEdit *RightBoundaryEdit;
@@ -55,6 +56,7 @@ private:
 
     QAction *action_UseSpline;
     QAction *action_UseSmartScope;
+    QAction *action_Use_Fourier_Filtering;
     QAction *action_Signal_is_Negative;
     QAction *action_Show_Fourier_Transform;
     QAction *action_Show_Filtered;

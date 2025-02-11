@@ -33,7 +33,28 @@
        <number>10</number>
       </property>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <widget class="QLabel" name="FileNameLabel">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Open File:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="ChannelLayout">
         <property name="spacing">
          <number>10</number>
         </property>
@@ -103,7 +124,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_11">
+       <layout class="QHBoxLayout" name="BoundaryLayout">
         <property name="sizeConstraint">
          <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
         </property>
@@ -288,7 +309,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_12">
+       <layout class="QHBoxLayout" name="BranchNameLayout">
         <property name="spacing">
          <number>4</number>
         </property>
@@ -329,7 +350,7 @@
         <property name="maximumSize">
          <size>
           <width>60000</width>
-          <height>50</height>
+          <height>30</height>
          </size>
         </property>
         <property name="font">
@@ -355,7 +376,7 @@
        </widget>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_1">
+       <layout class="QHBoxLayout" name="EventLayout">
         <property name="sizeConstraint">
          <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
         </property>
@@ -490,6 +511,7 @@
     <addaction name="action_Use_Spline"/>
     <addaction name="action_Use_Smart_Boarders"/>
     <addaction name="action_Signal_is_Negative"/>
+    <addaction name="action_Use_Fourier_Filtering"/>
    </widget>
    <widget class="QMenu" name="menuGraphics">
     <property name="title">
@@ -622,6 +644,19 @@
   <action name="actionSaveJpeg">
    <property name="text">
     <string>JPEG</string>
+   </property>
+  </action>
+  <action name="action_Use_Fourier_Filtering">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Use Fourier Filtering</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+    </font>
    </property>
   </action>
  </widget>
