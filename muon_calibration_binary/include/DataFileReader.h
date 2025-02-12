@@ -32,7 +32,7 @@ class DataFileReader : public DataFormat
   }
   ~DataFileReader()
   {
-    SaveRootFile();
+    // SaveRootFile();
   };
 
   void CreateRootFile();
