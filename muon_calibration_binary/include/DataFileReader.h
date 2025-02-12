@@ -9,6 +9,7 @@
 #include <TFile.h>
 #include <TROOT.h>
 #include <Progress.h>
+#include <mutex>
 
 class DataFileReader : public DataFormat
 {
@@ -19,7 +20,7 @@ class DataFileReader : public DataFormat
   TFile* RootDataFile = nullptr;
   TTree* RootDataTree = nullptr;
   std::map<int, ConfigManager*> config_manager;
-
+  std::mutex write_lock;
   public:
   ChannelEntry event_waveform;
   bool FileIsSet;
@@ -27,24 +28,22 @@ class DataFileReader : public DataFormat
   DataFileReader()
   {
     FileIsSet = 0;
-    ROOT::EnableThreadSafety();
+    // ROOT::EnableThreadSafety();
   }
   ~DataFileReader()
   {
-    if (RootDataFile && RootDataTree) SaveRootFile();
-    // delete RootDataTree;
-    // delete RootDataFile;
-    // for (auto &[sh, sh2] : config_manager) delete sh2;
-    delete fd;
-
-
+    SaveRootFile();
   };
 
   void CreateRootFile();
   void SaveRootFile()
   {
-    RootDataTree->Write();
-    RootDataFile->Close();    
+    // if (RootDataFile && RootDataTree)
+    // {
+      RootDataTree->Write();
+      RootDataFile->Close();     
+      delete fd;     
+    // } 
   }
   void setName(const char * a) override;
   void setName(const char * a, const char * b);

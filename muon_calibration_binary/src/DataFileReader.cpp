@@ -52,7 +52,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
       fread(&uiBuffer, sizeof(uiBuffer),1,fd);
       uint32_t offset = 0;   // in elements of event buffer
       int32_t  end    = BS;  // remain number of elements (32-bit words)
-      // if (uiTotalEvents%10000==0) DisplayTimeToCalculate(ftell(fd)/1024,sSizeOfFile/1024,start_time);
+      if (uiTotalEvents%10000==0) DisplayTimeToCalculate(ftell(fd)/1024,sSizeOfFile/1024,start_time);
       while (end > 0)
       {
         TotalHeader.DeviceHeader.sn     = uiBuffer[offset];
@@ -114,7 +114,6 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
 
               event_waveform.wf_size = event_waveform.wf.size();
               ////////////////
-              // cout << config_manager[ch]->leftBoundary << " " <<config_manager[ch]->rightBoundary << endl;
               if (!config_manager[ch]->SignalNegative) event_waveform.InvertSignal();
               if (config_manager[ch]) {event_waveform.Set_Zero_Level_Area(config_manager[ch]->leftBoundary);}
               else {event_waveform.Set_Zero_Level_Area(60);}
@@ -130,7 +129,6 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
               {
                 event_waveform.SetBoarders(50,100);
               }
-              //Sanya smotry syuda. Zdes yobannye granitsy tvoyego signala dlya poiska polozhemiya pika
               int pp = event_waveform.Get_time();
               // event_waveform.SetBoarders(pp-12,pp+25);
               short_channel_info[ch]->amp = event_waveform.Get_Amplitude();
@@ -149,8 +147,8 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
       }
       RootDataTree->Fill();
     }
-    // if (uiTotalEvents > 100000) return uiTotalEvents;
   }
+
   std::cout << "File " << fileName << " analysis finished" << endl;
   return uiTotalEvents;
 }
@@ -190,7 +188,7 @@ void DataFileReader::CreateRootFile()
       return;
   }
   if (!std::filesystem::is_directory(((dirName)+"/calibrated_files/").data())) std::filesystem::create_directory(((dirName)+"/calibrated_files/").data());
-  RootDataFile = TFile::Open((dirName+"/calibrated_files/"+Name+ ".root").c_str(), "RECREATE");
+  RootDataFile = new TFile((dirName+"/calibrated_files/"+Name+ ".root").c_str(), "RECREATE");
   RootDataTree = new TTree ("adc64_data","adc64_data");
   for(int ch = 0; ch < total_channels; ch++)
   {

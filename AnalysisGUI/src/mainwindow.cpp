@@ -533,6 +533,7 @@ void MainWindow::processFiles(const QStringList &files)
             DFR1.setName(analysis_process->fileName.c_str(), channels); 
             DFR1.CreateRootFile();
             DFR1.ConsequentialEventsReading(analysis_process);
+            DFR1.SaveRootFile();
             analysis_process->active = false;    
             analysis_process->processed = true;
             *changelayout = true;
