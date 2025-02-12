@@ -189,7 +189,11 @@ void DataFileReader::CreateRootFile()
   }
   if (!std::filesystem::is_directory(((dirName)+"/calibrated_files/").data())) std::filesystem::create_directory(((dirName)+"/calibrated_files/").data());
   RootDataFile = new TFile((dirName+"/calibrated_files/"+Name+ ".root").c_str(), "RECREATE");
+  RootDataFile->cd();
   RootDataTree = new TTree ("adc64_data","adc64_data");
+
+  RootDataTree->SetAutoFlush(-1000000);	
+
   for(int ch = 0; ch < total_channels; ch++)
   {
     short_channel_info[ch] = new short_energy_ChannelEntry();

@@ -28,7 +28,7 @@ class DataFileReader : public DataFormat
   DataFileReader()
   {
     FileIsSet = 0;
-    // ROOT::EnableThreadSafety();
+    ROOT::EnableThreadSafety();
   }
   ~DataFileReader()
   {
@@ -38,12 +38,12 @@ class DataFileReader : public DataFormat
   void CreateRootFile();
   void SaveRootFile()
   {
-    // if (RootDataFile && RootDataTree)
-    // {
+    if (RootDataFile && RootDataTree)
+    {
       RootDataTree->Write();
       RootDataFile->Close();     
       delete fd;     
-    // } 
+    } 
   }
   void setName(const char * a) override;
   void setName(const char * a, const char * b);
