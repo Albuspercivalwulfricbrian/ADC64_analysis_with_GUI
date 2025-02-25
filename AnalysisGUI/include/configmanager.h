@@ -9,8 +9,8 @@
 
 class ConfigManager {
 public:
-    ConfigManager(int id, const std::string& name, double leftBoundary, double rightBoundary, bool UseSpline, bool UseSmartScope, bool SignalNegative)
-        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary), UseSpline(UseSpline), UseSmartScope(UseSmartScope), SignalNegative(SignalNegative) {}
+    ConfigManager(int id, const std::string& name, double leftBoundary, double rightBoundary, bool UseSpline, bool UseSmartScope, bool SignalNegative, bool UseFourierFiltering, double FrequencyCutoff)
+        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary), UseSpline(UseSpline), UseSmartScope(UseSmartScope), SignalNegative(SignalNegative), UseFourierFiltering(UseFourierFiltering), FrequencyCutoff(FrequencyCutoff) {}
 
     // Метод для сохранения данных в JSON файл
     static void saveToJson(const std::string& filename, const std::map<int, ConfigManager*>& channels) {
@@ -23,7 +23,9 @@ public:
                 {"right_boundary", channel.second->rightBoundary},
                 {"Use_Spline", channel.second->UseSpline},
                 {"Use_Smart_Area", channel.second->UseSmartScope},
-                {"Signal_is_Negative", channel.second->SignalNegative}
+                {"Signal_is_Negative", channel.second->SignalNegative},
+                {"Use_Fourier_Filtering", channel.second->UseFourierFiltering},
+                {"Fourier_Filtering_Cutoff", channel.second->FrequencyCutoff}
             };
         }
 
@@ -53,7 +55,9 @@ public:
                 channels[id] = new ConfigManager(id, channelInfo["name"].get<std::string>(), 
                 channelInfo["left_boundary"].get<double>(), channelInfo["right_boundary"].get<double>(),
                 channelInfo["Use_Spline"].get<bool>(),channelInfo["Use_Smart_Area"].get<bool>(),
-                channelInfo["Signal_is_Negative"].get<bool>()
+                channelInfo["Use_Fourier_Filtering"].get<bool>(),
+                channelInfo["Signal_is_Negative"].get<bool>(),
+                channelInfo["Fourier_Filtering_Cutoff"].get<double>()
                 );
             }
             return channels;
@@ -71,6 +75,9 @@ public:
     bool UseSpline;
     bool UseSmartScope;
     bool SignalNegative;
+    bool UseFourierFiltering;
+    double FrequencyCutoff;
+
 };
 
 #endif CONFIGMANAGER

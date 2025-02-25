@@ -110,7 +110,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
                 wave = ((uiBuffer[ind] & 0xFFFF) * polarity + iSignalOffset);
                 event_waveform.wf.push_back(wave);
               }
-                    progress->percentage = (float)(ftell(fd))/sSizeOfFile;
+              progress->percentage = (float)(ftell(fd))/sSizeOfFile;
 
               event_waveform.wf_size = event_waveform.wf.size();
               ////////////////
@@ -132,10 +132,12 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
               int pp = event_waveform.Get_time();
               // event_waveform.SetBoarders(pp-12,pp+25);
               short_channel_info[ch]->amp = event_waveform.Get_Amplitude();
-              if (config_manager[ch] && config_manager[ch]->UseSmartScope==1)  event_waveform.AssumeSmartScope();// Sanya!!!! Zdes granitsy dlya umnogo integrirovaniye. Dlya bolshih signalov otklyuchai blyat
+              if (config_manager[ch] && config_manager[ch]->UseSmartScope==1)  
+                event_waveform.AssumeSmartScope();
               short_channel_info[ch]->time = event_waveform.Get_time_gauss();
-              short_channel_info[ch]->charge = event_waveform.Get_Charge();
               short_channel_info[ch]->ADC_ID = event_waveform.ADCID;
+
+              short_channel_info[ch]->charge = event_waveform.Get_Charge();
               short_channel_info[ch]->II = event_waveform.GetIntegralInfo();
               offset += (SN/2);
               break;

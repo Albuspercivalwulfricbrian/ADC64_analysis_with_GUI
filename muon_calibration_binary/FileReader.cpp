@@ -20,19 +20,9 @@ int main(int argc, char **argv)
 
 
     }
-    else if (argc == 3)
-    {
-        // argv[1];
-        // argv[2];
-        // DFR.setName(argv[1], argv[2]); 
-        // cout << argv[1] << " " << argv[2];
-    }
-
-    // if (argv[1])
+    // else if (argc == 3)
     // {
-    //     DFR.CreateRootFile();
-    //     DFR.ConsequentialEventsReading();    
-  
+
     // }
 
     return 0;

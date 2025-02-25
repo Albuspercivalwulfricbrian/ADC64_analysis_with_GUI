@@ -46,7 +46,7 @@ using namespace std;
     {
         vector<float> wf1;
         const int32_t SplineWidth = 2;
-        for (int16_t i = 0; i < wf_size; i++)
+        for (int32_t i = 0; i < wf_size; i++)
         {
             float point = 0;
             int32_t il=i-SplineWidth; int32_t ir=i+SplineWidth;
@@ -57,18 +57,18 @@ using namespace std;
             point/=counter;
             wf1.push_back(point);
         }
-        for (int16_t i = 0; i < wf_size; i++) wf[i] = wf1[i];
+        for (int32_t i = 0; i < wf_size; i++) wf[i] = wf1[i];
     }
 
     int32_t ChannelEntry::PointAmpl(int32_t i)
     {
-        int32_t v = zl - (int32_t)wf[i];
+        int32_t v = zl - wf[i];
         return v;
 
     }
-    int16_t ChannelEntry::CountCoincidencePeaks(int32_t threshold1, int32_t threshold2) 
+    int32_t ChannelEntry::CountCoincidencePeaks(int32_t threshold1, int32_t threshold2) 
     {
-        int16_t nCoincidencePeaks=0;
+        int32_t nCoincidencePeaks=0;
         int32_t epsilon1 = 10;
         int32_t epsilon2 = 100;
         for (int32_t i = fGATE_BEG; i < fGATE_END; i++)
@@ -89,12 +89,12 @@ using namespace std;
     {
         const float Diff_window = 4;
         dwf.clear();
-        for (int16_t i = 0; i < wf_size; i++)
+        for (int32_t i = 0; i < wf_size; i++)
         {
             int32_t il=i-Diff_window; int32_t ir=i+Diff_window;
             if (il<0) il=0;
             if (ir>wf_size-1) ir=wf_size-1;
-            dwf.push_back((int16_t)((float)(wf[ir]-wf[il])/(float)(ir-il)));
+            dwf.push_back((int32_t)((float)(wf[ir]-wf[il])/(float)(ir-il)));
         }
     } 
 
@@ -135,10 +135,10 @@ using namespace std;
         fGATE_BEG = BEG;
         fGATE_END = END;
     }
-    void ChannelEntry::FindDiffWfPars(int16_t &min_diff, int16_t &min_time, int16_t &max_diff, int16_t &max_time)
+    void ChannelEntry::FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time)
     {
-        for (int16_t s=fGATE_BEG; s < fGATE_END; ++s) {
-            int16_t v = wf[s];
+        for (int32_t s=fGATE_BEG; s < fGATE_END; ++s) {
+            int32_t v = wf[s];
             if (v < min_diff) 
             {
                 min_diff = v;
@@ -235,7 +235,7 @@ using namespace std;
     }
 
 
-    int16_t ChannelEntry::Get_time() //!this time is the number of peak point of waveform
+    int32_t ChannelEntry::Get_time() //!this time is the number of peak point of waveform
     {
         amp = 0;
         peak_position = 0;
@@ -271,12 +271,12 @@ using namespace std;
     return 16.0*peak_search;
     }
 ////////////
-    uint16_t ChannelEntry::Get_Amplitude()
+    uint32_t ChannelEntry::Get_Amplitude()
     {
-        return (uint16_t)amp;
+        return (uint32_t)amp;
     }
 
-    void ChannelEntry::FillWf(int16_t *Ewf)
+    void ChannelEntry::FillWf(int32_t *Ewf)
     {
         for (int i = 0; i < 1024; i++)
         {

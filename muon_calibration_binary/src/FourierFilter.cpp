@@ -2,7 +2,7 @@
 #include <cmath>
 #include <iostream>
 
-FourierFilter::FourierFilter(const std::vector<int16_t>& signal, const int32_t zl, const int32_t gate) : signal(signal), zl(zl), gate(gate) {
+FourierFilter::FourierFilter(const std::vector<int32_t>& signal, const int32_t zl, const int32_t gate) : signal(signal), zl(zl), gate(gate) {
     N = signal.size();
     in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
     out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
@@ -48,10 +48,10 @@ void FourierFilter::backwardTransform() {
     float zl_local = 0;
     for (size_t i = 0; i < gate; ++i) zl_local+=in[i][0];
     zl_local/=gate;
-    for (size_t i = 0; i < N; ++i) filtered_signal[i] = static_cast<int16_t>((in[i][0])-zl_local+zl); // Normalize by N
+    for (size_t i = 0; i < N; ++i) filtered_signal[i] = static_cast<int32_t>((in[i][0])-zl_local+zl); // Normalize by N
 }
 
-const std::vector<int16_t>& FourierFilter::getFilteredSignal() const {
+const std::vector<int32_t>& FourierFilter::getFilteredSignal() const {
     return filtered_signal;
 }
 
@@ -65,13 +65,13 @@ std::vector<double> FourierFilter::getFourierTransformedSignal() const {
 
 // int main() {
 //     // Example usage
-//     std::vector<int16_t> signal = { /* your signal data here */ };
+//     std::vector<int32_t> signal = { /* your signal data here */ };
 //     FourierFilter filter(signal);
 
 //     double cutoffFrequency = 0.1; // Example cutoff frequency
 //     filter.applyLowPassFilter(cutoffFrequency);
 
-//     std::vector<int16_t> filteredSignal = filter.getFilteredSignal();
+//     std::vector<int32_t> filteredSignal = filter.getFilteredSignal();
 
 //     // Output the filtered signal
 //     for (const auto& sample : filteredSignal) {

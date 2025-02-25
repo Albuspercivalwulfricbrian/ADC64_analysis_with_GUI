@@ -29,7 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     // connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
     // connect(customPlot, &QCustomPlot::keyPressEvent, this, &MainWindow::keyPressEvent);
-    for (int i = 0; i < 128; i++) channels[i] = new ConfigManager(i, "channel_"+to_string(i+1), 0.0, 2048.,1,1,1);
+    for (int i = 0; i < 128; i++) channels[i] = new ConfigManager(i, "channel_"+to_string(i+1), 0.0, 2048.,1,1,1,0,0);
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
     BranchName->setText(QString::fromStdString(channels[currChannel]->name));
@@ -136,6 +136,7 @@ void MainWindow::UpdateGraph() {
 
             QVector<double> y(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end()); 
             customPlot->graph(0)->setData(x, y);
+            customPlot->yAxis->setScaleType(QCPAxis::stLinear);
 
             if (action_Show_Filtered->isChecked()) 
             {
@@ -147,9 +148,8 @@ void MainWindow::UpdateGraph() {
                 FF.forwardTransform(); 
                 if (passfilter > 0 && passfilter < DFR.event_waveform.wf.size())
                 {
-                    FF.applyLowPassFilter(passfilter); FF.backwardTransform(); vector<int16_t> y0 = FF.getFilteredSignal();                 
+                    FF.applyLowPassFilter(passfilter); FF.backwardTransform(); vector<int32_t> y0 = FF.getFilteredSignal();                 
                     QVector<double> yfilter(y0.begin(), y0.end()); 
-                    customPlot->yAxis->setScaleType(QCPAxis::stLinear);
                     customPlot->graph(1)->setData(x, yfilter);                    
                 }
                 else customPlot->graph(1)->data()->clear();
@@ -237,7 +237,9 @@ void MainWindow::keyPressEvent(QKeyEvent *event) {
 }
 
 void MainWindow::on_NextEventButton_clicked() {
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents()-1 && currEvent >=0)
+    if (currEvent < 0) currEvent = 0;
+
+    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents()-1)
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
@@ -261,8 +263,8 @@ void MainWindow::on_NextEventButton_clicked() {
 }
 void MainWindow::on_PreviousEventButton_clicked() {
     DFR.event_waveform.Initialize();
-
-    if (DFR.FileIsSet == 1 && currEvent >= 1 && currEvent < DFR.GetTotalEvents()-1)
+    if (currEvent > DFR.GetTotalEvents()) currEvent = DFR.GetTotalEvents();
+    if (DFR.FileIsSet == 1 && currEvent >= 1)
     {
         bool NonEmpty = 0;
         while (NonEmpty == 0)
@@ -291,6 +293,9 @@ void MainWindow::on_SetChannelBoundaries_clicked()
         channels[currChannel]->UseSpline = action_UseSpline->isChecked();
         channels[currChannel]->UseSmartScope = action_UseSmartScope->isChecked();
         channels[currChannel]->SignalNegative = action_Signal_is_Negative->isChecked();
+        channels[currChannel]->UseFourierFiltering = action_Signal_is_Negative->isChecked();
+        channels[currChannel]->FrequencyCutoff = passfilter;
+
 }
 
 void MainWindow::on_SetAllChannelsBoundaries_clicked() 
