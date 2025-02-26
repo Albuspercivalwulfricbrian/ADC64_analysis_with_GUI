@@ -23,7 +23,7 @@ class DataFormat
   uint32_t uiTotalEvents;
   TOTAL_HEADER TotalHeader;
   uint32_t uiEventWithMaxSize = 0;
-  FILE *fd;
+  FILE *fd = nullptr;
   size_t sSizeOfFile = 0;
   size_t currPos = 0;
 

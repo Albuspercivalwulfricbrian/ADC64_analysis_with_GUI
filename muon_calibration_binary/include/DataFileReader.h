@@ -33,17 +33,18 @@ class DataFileReader : public DataFormat
   ~DataFileReader()
   {
     // SaveRootFile();
+    delete fd;
   };
 
   void CreateRootFile();
   void SaveRootFile()
   {
-    if (RootDataFile && RootDataTree)
+    if (RootDataFile!=nullptr)
     {
-      RootDataTree->Write();
-      RootDataFile->Close();     
-      delete fd;     
-    } 
+      // if (RootDataTree!=nullptr) RootDataTree->Write();
+      RootDataFile->Write(0,TObject::kOverwrite);
+      RootDataFile->Close();    
+     } 
   }
   void setName(const char * a) override;
   void setName(const char * a, const char * b);

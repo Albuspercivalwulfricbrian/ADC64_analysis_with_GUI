@@ -180,10 +180,10 @@ void MainWindow::ReDrawBoundaries() {
     //Отрисовка вертикального курсора
     // line->start->setCoords(currentX, -32767);
     // line->end->setCoords(currentX, 32767);
-    lineLeft->start->setCoords(xLeftBoundary, -32767);
-    lineLeft->end->setCoords(xLeftBoundary, 32767);
-    lineRight->start->setCoords(xRightBoundary, -32767);
-    lineRight->end->setCoords(xRightBoundary, 32767);
+    lineLeft->start->setCoords(xLeftBoundary, -32767000);
+    lineLeft->end->setCoords(xLeftBoundary, 32767000);
+    lineRight->start->setCoords(xRightBoundary, -32767000);
+    lineRight->end->setCoords(xRightBoundary, 32767000);
     customPlot->replot(QCustomPlot::rpQueuedRefresh);
 }
 
@@ -314,7 +314,6 @@ void MainWindow::on_setBranchName_clicked()
 {
     channels[currChannel]->name = BranchName->displayText().toStdString();
 }
-
 
 void MainWindow::on_SaveConfigButton_clicked() {
         // cout << fileName.left(fileName.lastIndexOf(".")).toUtf8().toStdString() << endl;
