@@ -41,7 +41,7 @@ class DataFileReader : public DataFormat
   {
     if (RootDataFile!=nullptr)
     {
-      // if (RootDataTree!=nullptr) RootDataTree->Write();
+      // if (RootDataTree!=nullptr) {RootDataFile->cd(); RootDataTree->Write();}
       RootDataFile->Write(0,TObject::kOverwrite);
       RootDataFile->Close();    
      } 

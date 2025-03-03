@@ -8,11 +8,14 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/AnalysisGUI/AnalysisGUI",
-            "args": [],
+            // "program": "${workspaceFolder}/build/AnalysisGUI/AnalysisGUI",
+            // "args": [],
 
             // "program": "${workspaceFolder}/build/muon_calibration_binary/FileReader",
-            // "args": ["/home/strizhak/Downloads/mpd_20241104_181940_p355.data"],
+            // "args": ["/home/strizhak/Downloads/mpd_20241104_181940_p355.data"],         
+
+            "program": "${workspaceFolder}/build/muon_calibration_binary/Calibrator",
+            "args": ["/mnt/DATA/DataBinary/calibrated_files/"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
             "environment": [],

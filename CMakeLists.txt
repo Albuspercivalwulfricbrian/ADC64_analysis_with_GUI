@@ -16,3 +16,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(AnalysisGUI)
 add_subdirectory(muon_calibration_binary)
+add_subdirectory(ChannelMap)

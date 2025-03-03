@@ -35,8 +35,8 @@ add_executable(FileReader FileReader.cpp ${SOURCES} ${CONFIG_H})
 target_link_libraries(FileReader CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
 target_link_libraries(CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics fftw3)
 
-# add_executable(CreateTrackTree CreateTrackTree.C ${HEADERS_H} ${HEADERS_HPP} ${SOURCES} ${MAP_H})
-# target_link_libraries(CreateTrackTree CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Gui ROOT::Physics)
+add_executable(CreateTrackTree CreateTrackTree.C ${HEADERS_H} ${HEADERS_HPP} ${SOURCES} ${MAP_H})
+target_link_libraries(CreateTrackTree CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Gui ROOT::Physics)
 
-# add_executable(Calibrator Calibrator.C ${HEADERS_H} ${HEADERS_HPP} ${SOURCES})
-# target_link_libraries(Calibrator PUBLIC CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
+add_executable(Calibrator Calibrator.C ${HEADERS_H} ${HEADERS_HPP} ${SOURCES})
+target_link_libraries(Calibrator PUBLIC CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
