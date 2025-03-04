@@ -14,7 +14,7 @@ namespace MAP_H
 
     int32_t Map[64*ADCnumber+1][3] = {0};
 
-    std::vector<std::vector<int32_t>> mapz{{33, 41, 34, 42, 35, 43, 36},            // 4
+    inline std::vector<std::vector<int32_t>> mapz {{33, 41, 34, 42, 35, 43, 36},            // 4
                             {44, 37, 45, 38, 46, 39, 47},           // 5
                             {40, 48, 1, 9, 2, 10, 3}, 
                             {11, 4, 12, 5, 13, 6, 14},            // 4
@@ -38,7 +38,7 @@ namespace MAP_H
 
                             
 
-    std::vector<std::vector<int32_t>> mapxy  {
+    inline std::vector<std::vector<int32_t>> mapxy  {
                                     {1, 1},
                                     {2, 1},
                                     {3, 1},
@@ -60,29 +60,29 @@ namespace MAP_H
                                     {3, 6}
                                 };
 
-    // void CreateMap()
-    // {
-    //     for (int32_t i = 0; i < 64*ADCnumber+1; i++) 
-    //     {
-    //         for (int32_t j = 0; j < 3; j++) Map[i][j] = 0;
-    //     }
-    //     cout << mapxy.size() << endl;
-    //     for (int32_t i = 0; i < mapxy.size(); i++)
-    //     {
-    //         int32_t xx = mapxy[i][0];
-    //         int32_t yy = mapxy[i][1];
+    void CreateMap()
+    {
+        for (int32_t i = 0; i < 64*ADCnumber+1; i++) 
+        {
+            for (int32_t j = 0; j < 3; j++) Map[i][j] = 0;
+        }
+        cout << mapxy.size() << endl;
+        for (int32_t i = 0; i < mapxy.size(); i++)
+        {
+            int32_t xx = mapxy[i][0];
+            int32_t yy = mapxy[i][1];
 
-    //         for (int32_t j = 0; j < 7; j++)
-    //         {
-    //             int32_t zz = j+1;
-    //             int32_t chch = mapz[i][j];
-    //             Map[chch][0] = xx;
-    //             Map[chch][1] = yy;
-    //             Map[chch][2] = zz; 
-    //             if (yy==1) std::cout << "X = " << xx << "; Y = " << yy << "; Z =  " << zz << "; Ch = " << chch << " : ";
-    //         }
-    //         std::cout << std::endl;
-    //     }
-    // }
+            for (int32_t j = 0; j < 7; j++)
+            {
+                int32_t zz = j+1;
+                int32_t chch = mapz[i][j];
+                Map[chch][0] = xx;
+                Map[chch][1] = yy;
+                Map[chch][2] = zz; 
+                if (yy==1) std::cout << "X = " << xx << "; Y = " << yy << "; Z =  " << zz << "; Ch = " << chch << " : ";
+            }
+            std::cout << std::endl;
+        }
+    }
 }
 #endif MAP_H0

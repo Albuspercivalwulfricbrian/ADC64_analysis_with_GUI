@@ -1,5 +1,5 @@
 #include "DataFileReader.h"
-
+#include "FourierFilter.h"
 void DataFileReader::DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time)
 {
   std::cout<< u8"\033[2J\033[1;1H"; 
@@ -117,8 +117,25 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
               if (!config_manager[ch]->SignalNegative) event_waveform.InvertSignal();
               if (config_manager[ch]) {event_waveform.Set_Zero_Level_Area(config_manager[ch]->leftBoundary);}
               else {event_waveform.Set_Zero_Level_Area(60);}
-              if (config_manager[ch] && config_manager[ch]->UseSpline==1) event_waveform.SplineWf();
               short_channel_info[ch]->zl = event_waveform.CalculateZlwithNoisePeaks(130);
+
+
+              if (config_manager[ch]->UseFourierFiltering && config_manager[ch]->FrequencyCutoff!=0)
+              {
+                auto passfilter = config_manager[ch]->FrequencyCutoff;
+                int32_t gate = 20; if (gate < config_manager[ch]->leftBoundary) gate = config_manager[ch]->leftBoundary;
+                FourierFilter FF(event_waveform.wf, event_waveform.Get_Zero_Level(), gate);
+                FF.forwardTransform(); 
+                if (passfilter > 0 && passfilter < event_waveform.wf.size())
+                {
+                    FF.applyLowPassFilter(passfilter); FF.backwardTransform(); vector<int32_t> y0 = FF.getFilteredSignal(); 
+                    event_waveform.wf.clear();
+                    event_waveform.wf = y0;
+                    short_channel_info[ch]->zl = event_waveform.CalculateZlwithNoisePeaks(130);
+
+                }
+              }
+              else if (config_manager[ch] && config_manager[ch]->UseSpline==1) event_waveform.SplineWf();
               short_channel_info[ch]->zl_rms = event_waveform.Get_Zero_Level_RMS();
 
               if (config_manager[ch]) 

@@ -10,11 +10,11 @@
 #include <string.h>
 #include "muon_struct.h"
 // #include "ChannelMap/ChannelMap/include/ChannelMap.h"
-// #include "Map.h"
+#include "Map.h"
 #include "ctime"
 
 using namespace std;
-// using namespace MAP_H;
+using namespace MAP_H;
 int main(int argc, char** argv)
 {
     if(argc == 3) {
@@ -25,7 +25,7 @@ int main(int argc, char** argv)
 	TString source_path = (TString)argv[1];
     TString run_name = (TString)argv[2];
     const Int_t total_channels = 128;
-    // CreateMap();
+    CreateMap();
     TFile *source_file = TFile::Open(source_path+run_name);
     TTree *source_tree = (TTree*)source_file->Get("adc64_data");
     std::array<short_energy_ChannelEntry*, total_channels> short_channel_info;
@@ -64,9 +64,9 @@ int main(int argc, char** argv)
                 
                 hitinfo.time = short_channel_info[ch]->time;
                 hitinfo.channel = ch+1;
-                // hitinfo.X = Map[ch+1][0];
-                // hitinfo.Y = Map[ch+1][1];
-                // hitinfo.Z = Map[ch+1][2];
+                hitinfo.X = Map[ch+1][0];
+                hitinfo.Y = Map[ch+1][1];
+                hitinfo.Z = Map[ch+1][2];
                 
                 hitinfo.zl_rms = short_channel_info[ch]->zl_rms;
                 trackinfo.AddHit(hitinfo);                

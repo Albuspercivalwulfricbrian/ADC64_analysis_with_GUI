@@ -1,0 +1,445 @@
+{
+    "channels": {
+        "1": {
+            "channel": 1,
+            "connector": 3,
+            "x1": 3,
+            "x2": 1,
+            "x3": 3
+        },
+        "10": {
+            "channel": 10,
+            "connector": 3,
+            "x1": 3,
+            "x2": 1,
+            "x3": 6
+        },
+        "11": {
+            "channel": 11,
+            "connector": 4,
+            "x1": 1,
+            "x2": 2,
+            "x3": 1
+        },
+        "12": {
+            "channel": 12,
+            "connector": 4,
+            "x1": 1,
+            "x2": 2,
+            "x3": 3
+        },
+        "13": {
+            "channel": 13,
+            "connector": 4,
+            "x1": 1,
+            "x2": 2,
+            "x3": 5
+        },
+        "14": {
+            "channel": 14,
+            "connector": 4,
+            "x1": 1,
+            "x2": 2,
+            "x3": 7
+        },
+        "15": {
+            "channel": 15,
+            "connector": 5,
+            "x1": 2,
+            "x2": 2,
+            "x3": 2
+        },
+        "16": {
+            "channel": 16,
+            "connector": 5,
+            "x1": 2,
+            "x2": 2,
+            "x3": 4
+        },
+        "17": {
+            "channel": 17,
+            "connector": 5,
+            "x1": 2,
+            "x2": 2,
+            "x3": 5
+        },
+        "18": {
+            "channel": 18,
+            "connector": 5,
+            "x1": 2,
+            "x2": 2,
+            "x3": 7
+        },
+        "19": {
+            "channel": 19,
+            "connector": 6,
+            "x1": 3,
+            "x2": 2,
+            "x3": 2
+        },
+        "2": {
+            "channel": 2,
+            "connector": 3,
+            "x1": 3,
+            "x2": 1,
+            "x3": 5
+        },
+        "20": {
+            "channel": 20,
+            "connector": 6,
+            "x1": 3,
+            "x2": 2,
+            "x3": 4
+        },
+        "21": {
+            "channel": 21,
+            "connector": 6,
+            "x1": 3,
+            "x2": 2,
+            "x3": 6
+        },
+        "22": {
+            "channel": 22,
+            "connector": 7,
+            "x1": 1,
+            "x2": 3,
+            "x3": 1
+        },
+        "23": {
+            "channel": 23,
+            "connector": 7,
+            "x1": 1,
+            "x2": 3,
+            "x3": 3
+        },
+        "24": {
+            "channel": 24,
+            "connector": 7,
+            "x1": 1,
+            "x2": 3,
+            "x3": 5
+        },
+        "25": {
+            "channel": 25,
+            "connector": 5,
+            "x1": 2,
+            "x2": 2,
+            "x3": 6
+        },
+        "26": {
+            "channel": 26,
+            "connector": 6,
+            "x1": 3,
+            "x2": 2,
+            "x3": 1
+        },
+        "27": {
+            "channel": 27,
+            "connector": 6,
+            "x1": 3,
+            "x2": 2,
+            "x3": 3
+        },
+        "28": {
+            "channel": 28,
+            "connector": 6,
+            "x1": 3,
+            "x2": 2,
+            "x3": 5
+        },
+        "29": {
+            "channel": 29,
+            "connector": 6,
+            "x1": 3,
+            "x2": 2,
+            "x3": 7
+        },
+        "3": {
+            "channel": 3,
+            "connector": 3,
+            "x1": 3,
+            "x2": 1,
+            "x3": 7
+        },
+        "30": {
+            "channel": 30,
+            "connector": 7,
+            "x1": 1,
+            "x2": 3,
+            "x3": 2
+        },
+        "31": {
+            "channel": 31,
+            "connector": 7,
+            "x1": 1,
+            "x2": 3,
+            "x3": 4
+        },
+        "32": {
+            "channel": 32,
+            "connector": 7,
+            "x1": 1,
+            "x2": 3,
+            "x3": 6
+        },
+        "33": {
+            "channel": 33,
+            "connector": 1,
+            "x1": 1,
+            "x2": 1,
+            "x3": 1
+        },
+        "34": {
+            "channel": 34,
+            "connector": 1,
+            "x1": 1,
+            "x2": 1,
+            "x3": 3
+        },
+        "35": {
+            "channel": 35,
+            "connector": 1,
+            "x1": 1,
+            "x2": 1,
+            "x3": 5
+        },
+        "36": {
+            "channel": 36,
+            "connector": 1,
+            "x1": 1,
+            "x2": 1,
+            "x3": 7
+        },
+        "37": {
+            "channel": 37,
+            "connector": 2,
+            "x1": 2,
+            "x2": 1,
+            "x3": 2
+        },
+        "38": {
+            "channel": 38,
+            "connector": 2,
+            "x1": 2,
+            "x2": 1,
+            "x3": 4
+        },
+        "39": {
+            "channel": 39,
+            "connector": 2,
+            "x1": 2,
+            "x2": 1,
+            "x3": 6
+        },
+        "4": {
+            "channel": 4,
+            "connector": 4,
+            "x1": 1,
+            "x2": 2,
+            "x3": 2
+        },
+        "40": {
+            "channel": 40,
+            "connector": 3,
+            "x1": 3,
+            "x2": 1,
+            "x3": 1
+        },
+        "41": {
+            "channel": 41,
+            "connector": 1,
+            "x1": 1,
+            "x2": 1,
+            "x3": 2
+        },
+        "42": {
+            "channel": 42,
+            "connector": 1,
+            "x1": 1,
+            "x2": 1,
+            "x3": 4
+        },
+        "43": {
+            "channel": 43,
+            "connector": 1,
+            "x1": 1,
+            "x2": 1,
+            "x3": 6
+        },
+        "44": {
+            "channel": 44,
+            "connector": 2,
+            "x1": 2,
+            "x2": 1,
+            "x3": 1
+        },
+        "45": {
+            "channel": 45,
+            "connector": 2,
+            "x1": 2,
+            "x2": 1,
+            "x3": 3
+        },
+        "46": {
+            "channel": 46,
+            "connector": 2,
+            "x1": 2,
+            "x2": 1,
+            "x3": 5
+        },
+        "47": {
+            "channel": 47,
+            "connector": 2,
+            "x1": 2,
+            "x2": 1,
+            "x3": 7
+        },
+        "48": {
+            "channel": 48,
+            "connector": 3,
+            "x1": 3,
+            "x2": 1,
+            "x3": 2
+        },
+        "49": {
+            "channel": 49,
+            "connector": 7,
+            "x1": 1,
+            "x2": 3,
+            "x3": 7
+        },
+        "5": {
+            "channel": 5,
+            "connector": 4,
+            "x1": 1,
+            "x2": 2,
+            "x3": 4
+        },
+        "50": {
+            "channel": 50,
+            "connector": 8,
+            "x1": 2,
+            "x2": 3,
+            "x3": 2
+        },
+        "51": {
+            "channel": 51,
+            "connector": 8,
+            "x1": 2,
+            "x2": 3,
+            "x3": 4
+        },
+        "52": {
+            "channel": 52,
+            "connector": 8,
+            "x1": 2,
+            "x2": 3,
+            "x3": 6
+        },
+        "53": {
+            "channel": 53,
+            "connector": 9,
+            "x1": 3,
+            "x2": 3,
+            "x3": 1
+        },
+        "54": {
+            "channel": 54,
+            "connector": 9,
+            "x1": 3,
+            "x2": 3,
+            "x3": 3
+        },
+        "55": {
+            "channel": 55,
+            "connector": 9,
+            "x1": 3,
+            "x2": 3,
+            "x3": 5
+        },
+        "56": {
+            "channel": 56,
+            "connector": 9,
+            "x1": 3,
+            "x2": 3,
+            "x3": 7
+        },
+        "57": {
+            "channel": 57,
+            "connector": 8,
+            "x1": 2,
+            "x2": 3,
+            "x3": 1
+        },
+        "58": {
+            "channel": 58,
+            "connector": 8,
+            "x1": 2,
+            "x2": 3,
+            "x3": 3
+        },
+        "59": {
+            "channel": 59,
+            "connector": 8,
+            "x1": 2,
+            "x2": 3,
+            "x3": 5
+        },
+        "6": {
+            "channel": 6,
+            "connector": 4,
+            "x1": 1,
+            "x2": 2,
+            "x3": 6
+        },
+        "60": {
+            "channel": 60,
+            "connector": 8,
+            "x1": 2,
+            "x2": 3,
+            "x3": 7
+        },
+        "61": {
+            "channel": 61,
+            "connector": 9,
+            "x1": 3,
+            "x2": 3,
+            "x3": 2
+        },
+        "62": {
+            "channel": 62,
+            "connector": 9,
+            "x1": 3,
+            "x2": 3,
+            "x3": 4
+        },
+        "63": {
+            "channel": 63,
+            "connector": 9,
+            "x1": 3,
+            "x2": 3,
+            "x3": 6
+        },
+        "7": {
+            "channel": 7,
+            "connector": 5,
+            "x1": 2,
+            "x2": 2,
+            "x3": 1
+        },
+        "8": {
+            "channel": 8,
+            "connector": 5,
+            "x1": 2,
+            "x2": 2,
+            "x3": 3
+        },
+        "9": {
+            "channel": 9,
+            "connector": 3,
+            "x1": 3,
+            "x2": 1,
+            "x3": 4
+        }
+    }
+}

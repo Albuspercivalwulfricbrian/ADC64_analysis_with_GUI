@@ -49,8 +49,8 @@ class TrackInfo
         for (auto p : hits)
         {
             if (    
-                (p.time > 2630 && p.time < 2700) && //!Event selection cut on time
-                (p.zl_rms < 40) && //!Event selection cut on base line quality
+                (p.time > 820 && p.time < 920) && //!Event selection cut on time
+                (p.zl_rms < 20) && //!Event selection cut on base line quality
 
                 (p.charge > threshold)
                 ) 
@@ -58,21 +58,21 @@ class TrackInfo
         }
         if (hits_reduced.size()>0)    
         {
-            for (int i = 0; i < hits_reduced.size()-1; i++)
-            {
-                int flag = 0;
-                for (int j = i+1; j < hits_reduced.size(); j++)
-                {
-                    if ((abs(hits_reduced[j].X-hits_reduced[i].X)<=1) && (abs(hits_reduced[j].Y-hits_reduced[i].Y)<=1) && (abs(hits_reduced[j].Z-hits_reduced[i].Z)<=1)
-                     && (2*abs(hits_reduced[j].charge-hits_reduced[i].charge)/abs(hits_reduced[j].charge+hits_reduced[i].charge)<0.4)
-                     )
-                    {
-                        flag = 1;
-                        break;
-                    }    
-                }
-                if (flag == 0) {hits_reduced[i].charge = -1000;}
-            }
+            // for (int i = 0; i < hits_reduced.size()-1; i++)
+            // {
+            //     int flag = 0;
+            //     for (int j = i+1; j < hits_reduced.size(); j++)
+            //     {
+            //         if ((abs(hits_reduced[j].X-hits_reduced[i].X)<=1) && (abs(hits_reduced[j].Y-hits_reduced[i].Y)<=1) && (abs(hits_reduced[j].Z-hits_reduced[i].Z)<=1)
+            //          && (2*abs(hits_reduced[j].charge-hits_reduced[i].charge)/abs(hits_reduced[j].charge+hits_reduced[i].charge)<0.4)
+            //          )
+            //         {
+            //             flag = 1;
+            //             break;
+            //         }    
+            //     }
+            //     if (flag == 0) {hits_reduced[i].charge = -1000;}
+            // }
 
             hits_reduced.erase(
                 std::remove_if(

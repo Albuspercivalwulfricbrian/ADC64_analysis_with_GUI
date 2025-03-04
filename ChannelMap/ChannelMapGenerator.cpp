@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     string path = std::filesystem::path{argv[0]}.parent_path()/"";
     cout << path << endl;
     inFile.open(path+"ChannelMap.txt");
-    std::ofstream o(path+"ChannelMap.json");
+    std::ofstream o(path+"../../ChannelMap.json");
 
     string line;
     while(getline(inFile, line))
