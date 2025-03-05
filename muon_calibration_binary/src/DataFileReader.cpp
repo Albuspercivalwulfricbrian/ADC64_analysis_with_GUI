@@ -165,6 +165,8 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
         if (end <= 1) break;
       }
       RootDataTree->Fill();
+      if (uiTotalEvents>100000)   return uiTotalEvents;
+
     }
   }
   SaveRootFile();

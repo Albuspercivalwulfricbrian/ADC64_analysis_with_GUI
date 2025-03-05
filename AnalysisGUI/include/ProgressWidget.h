@@ -9,6 +9,7 @@
 #include <vector>
 #include <QLabel>
 #include <Progress.h>
+#include <QScrollArea>
 class ProgressWidget : public QDialog {
     Q_OBJECT
 
@@ -20,12 +21,12 @@ public:
         qDeleteAll(progressBars); progressBars.clear(); 
         // qDeleteAll(labels); labels.clear();   
         qDeleteAll(activeProcesses); activeProcesses.clear();
-
-
         QHBoxLayout* layout  = new QHBoxLayout(this);
         QVBoxLayout* layoutleft  = new QVBoxLayout(this);
+        layoutleft->setAlignment(Qt::AlignTop);
         QVBoxLayout* layoutright  = new QVBoxLayout(this);
         layoutright->addWidget(new QLabel("Finished:", this));
+        layoutright->setAlignment(Qt::AlignTop);
 
         for (const auto& progressPtr : progressList) 
         {

@@ -46,6 +46,7 @@ private:
     QSpinBox *channelSpinBox;
     QSpinBox *eventSpinBox;
     QSpinBox *FrequencySpinBox;
+    QSpinBox *ThreadsSpinBox;
     std::map<int, ConfigManager*> channels;
     QCPItemLine *lineLeft;
     QCPItemLine *lineRight;

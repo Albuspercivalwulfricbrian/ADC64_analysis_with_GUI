@@ -24,6 +24,8 @@ MainWindow::MainWindow(QWidget *parent)
     channelSpinBox=ui->channelSpinBox;
     eventSpinBox=ui->eventSpinBox;
     FrequencySpinBox=ui->FrequencySpinBox;
+    ThreadsSpinBox=ui->ThreadsSpinBox;
+    ThreadsSpinBox->setValue((int32_t)p.size());
     setupGraph();
     int64_t counter = 0;
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
@@ -485,6 +487,8 @@ void MainWindow::on_SetFileAnalysisButton_clicked()
 
 void MainWindow::processFiles(const QStringList &files)
 {
+    p.~thread_pool(); // Explicitly call the destructor (if necessary)
+    new (&p) ctpl::thread_pool((int32_t)ThreadsSpinBox->value()+1);
     vector<Progress*> progress_vector;
     vector<std::string> *processed_files = nullptr;
     for (const auto &file : files) {
@@ -496,7 +500,15 @@ void MainWindow::processFiles(const QStringList &files)
         {
             std::unique_ptr<ProgressWidget> progressWidget = std::make_unique<ProgressWidget>(progress_vector, this);
             // ProgressWidget* progressWidget = new ProgressWidget(progress_vector, changelayout, this);
-            progressWidget->show();
+
+
+            QScrollArea* scrollArea = new QScrollArea(this);
+            scrollArea->setMaximumHeight(400);
+
+            scrollArea->setWidgetResizable(true);
+            scrollArea->setWidget(&**&progressWidget);
+            scrollArea->show();
+            // progressWidget->show();
             while (true) 
             {
 
@@ -511,10 +523,20 @@ void MainWindow::processFiles(const QStringList &files)
                 if (*changelayout==true)
                 {
                     *changelayout=false;
-                    progressWidget->close(); // Close the existing widget
+                    scrollArea->close(); // Close the existing widget
                     progressWidget.reset();   // Resetting the unique pointer will delete the old instance
                     progressWidget = std::make_unique<ProgressWidget>(progress_vector, this);
-                    progressWidget->show();
+                    scrollArea->setWidget(&**&progressWidget);
+
+                    scrollArea->show();
+
+                    // *changelayout=false;
+                    // progressWidget->close(); // Close the existing widget
+                    // progressWidget.reset();   // Resetting the unique pointer will delete the old instance
+                    // progressWidget = std::make_unique<ProgressWidget>(progress_vector, this);
+                    // progressWidget->show();
+
+                    
                 }
                 progressWidget->updateProgress();
                 bool all_done = true;
@@ -523,7 +545,8 @@ void MainWindow::processFiles(const QStringList &files)
                 if (all_done) break; // Exit if all files are done
                 std::this_thread::sleep_for(std::chrono::seconds(1)); // Update every second
             }
-            progressWidget->close();
+            // progressWidget->close();
+            scrollArea->close();
         }
     );
 
