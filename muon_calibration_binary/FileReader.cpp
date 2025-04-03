@@ -15,7 +15,9 @@ int main(int argc, char **argv)
         DataFileReader DFR;
         DFR.setName(argv[1]); 
         DFR.CreateRootFile();
-        DFR.ConsequentialEventsReading(analysis_process);
+        // DFR.ConsequentialEventsReading(analysis_process);
+        vector<float> a = DFR.DrawAverageWaveform(47000,51000,10000,0);
+        for (auto e : a) cout << e << ", ";
         // DFR.SaveRootFile();  
 
 

@@ -51,7 +51,7 @@ class TrackInfo
         {
             // belongs.push_back(false);
             if (    
-                (p.time > 820 && p.time < 920) && //!Event selection cut on time
+                (p.time > 650 && p.time < 750) && //!Event selection cut on time
                 (p.zl_rms < 20) && //!Event selection cut on base line quality
 
                 (p.charge > threshold)

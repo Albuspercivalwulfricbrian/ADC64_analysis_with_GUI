@@ -90,11 +90,22 @@ int main(int argc, char** argv)
 
     for (int EvNum = 0; EvNum < total_entries; EvNum++)
     {
+        if (EvNum%1000 == 0)
+        {
+            std::cout<< u8"\033[2J\033[1;1H"; std::cout << (Float_t)EvNum/(Float_t)total_entries*100 << "%" << std::endl;
+            time_t time_left = (time(NULL)-start_time)*(float)(total_entries-EvNum)/(float)(EvNum);
+
+            std::cout << " time left: ";
+            if (time_left/3600 > 0) cout << time_left/3600 <<"h ";
+            if ((time_left%3600)/60 > 0 || time_left/3600 == 0) cout << (time_left%3600)/60 << "m ";
+            cout << (time_left%3600)%60<< "s " <<std::endl;
+        }
+
         trackinfo->Reset();
         trackreduced.Reset();
         source_tree->GetEntry(EvNum);
         int track_size = trackinfo->GetCurrentTrackSize();
-        trackinfo->SearchTrueTrack(1000);
+        trackinfo->SearchTrueTrack(700);
         int reduced_size = trackinfo->GetReduced().size();
         if (reduced_size!=0)
         {
@@ -107,7 +118,7 @@ int main(int argc, char** argv)
                 MTracker.SetAzimuthVector(1,0,0);
                 MTracker.SetTrackCalcMode(TrackCalculationMode);
                 MTracker.CalculateTrack();
-                if (MTracker.GetTrackZenithAngle() > 0.3 && MTracker.GetTrackZenithAngle() <1.2)
+                if (MTracker.GetTrackZenithAngle() > 0.1 && MTracker.GetTrackZenithAngle() < 1.6)
                 {
                     for (int i = 0; i< reduced_size; i++)
                     {
@@ -118,7 +129,7 @@ int main(int argc, char** argv)
                     MTracker.CalculateChargeStraightened();
                     auto kkk = MTracker.GetChargeStraightened();
                     MTracker.GetCalibratedCharge(trackinfo);
-                if (MTracker.GetTrackZenithAngle() > 0.3 && MTracker.GetTrackZenithAngle() < 1.2
+                if (MTracker.GetTrackZenithAngle() > 0.1 && MTracker.GetTrackZenithAngle() < 1.6
                  )
                 {                
                     for (int i = 0; i< reduced_size; i++)
@@ -157,7 +168,7 @@ int main(int argc, char** argv)
                 mypow1->SetParLimits(1,R1,R2);
                 Int_t maxY = histall3d[x][y][z]->GetMaximum();
                 if (histall13d[x][y][z]->GetMaximum() > maxY) maxY = histall13d[x][y][z]->GetMaximum();
-                histall3d[x][y][z]->GetYaxis()->SetRangeUser(0,maxY);
+                histall3d[x][y][z]->GetYaxis()->SetRangeUser(0,maxY*1.05);
                 histall3d[x][y][z]->Draw();
                 histall13d[x][y][z]->Draw("same");
                 histall13d[x][y][z]->Fit(mypow1,"Q","",FitMin,FitMax);

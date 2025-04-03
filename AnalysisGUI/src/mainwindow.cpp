@@ -6,6 +6,9 @@
 #include "DataFileReader.h"
 #include "thread"
 #include "FourierFilter.h"
+#include <QScrollArea>
+
+// #include "QSizeGrip"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow), p(8)
@@ -84,7 +87,8 @@ void MainWindow::setupGraph() {
     QPen pen(Qt::black, 2);
     customPlot->xAxis->setBasePen(pen);
     customPlot->yAxis->setBasePen(pen);    
-    QFont axisFont("Arial", 15); // Arial font, size 12
+    QFont axisFont("Arial", 20); // Arial font, size 12
+    axisFont.setBold(true);
     customPlot->xAxis->setLabelFont(axisFont);
     customPlot->xAxis->setLabelFont(axisFont);
 
@@ -93,7 +97,8 @@ void MainWindow::setupGraph() {
     customPlot->yAxis->setLabelFont(axisFont);
     customPlot->yAxis->setTickLabelFont(axisFont);
     customPlot->graph(0)->setData(x, y);
-    customPlot->xAxis->setLabel("Time (time steps)");
+    customPlot->graph(0)->setPen(QPen(Qt::blue,3));
+    customPlot->xAxis->setLabel("Time (μs)");
     customPlot->yAxis->setLabel("ADC Channels");
     customPlot->xAxis->setRange(0, 2048);
     customPlot->yAxis->setRange(-30000, 30000);
@@ -117,7 +122,7 @@ void MainWindow::UpdateGraph() {
     if (size > 1)
     {
         QVector<double> x(size);
-        for (int i = 0; i < size; ++i) x[i] = i; // x от 0 до 10
+        for (int i = 0; i < size; ++i) x[i] = i*16./1000.; // x от 0 до 10
 
         if (action_Show_Fourier_Transform->isChecked())
         {
@@ -507,6 +512,7 @@ void MainWindow::processFiles(const QStringList &files)
 
             scrollArea->setWidgetResizable(true);
             scrollArea->setWidget(&**&progressWidget);
+            // QSizeGrip * sizeGrip = new QSizeGrip(scrollArea);
             scrollArea->show();
             // progressWidget->show();
             while (true) 
