@@ -546,121 +546,6 @@ void MainWindow::on_SetFileAnalysisButton_clicked()
     fileDialog->show();
 }
 
-// void MainWindow::processFiles(const QStringList &files)
-// {
-//     p.~thread_pool(); // Explicitly call the destructor (if necessary)
-//     new (&p) ctpl::thread_pool((int32_t)ThreadsSpinBox->value() + 1);
-//     vector<Progress *> progress_vector;
-//     vector<std::string> *processed_files = nullptr;
-//     for (const auto &file : files)
-//     {
-//         progress_vector.push_back(new Progress(file.toStdString()));
-//     }
-//     bool *changelayout = new bool(false);
-//     // p.push(
-//     //     [&, progress_vector, processed_files, changelayout](int id)
-//     //     {
-//     //         // ProgressWidget* progressWidget = new ProgressWidget(progress_vector, this);
-//     //         auto *progressWidget = new ProgressWidget(progress_vector, nullptr, ProgressWidget::Mode::Modal);
-
-//     //         progressWidget->show();
-
-//     //         while (true)
-//     //         {
-
-//     //             // std::cout<< u8"\033[2J\033[1;1H";
-//     //             // std::cout << *changelayout << std::endl;
-//     //             // std::cout << "\rProgress:\n";
-//     //             // for (auto progress : progress_vector) {
-//     //             //     std::cout << "File: " << progress->fileName << " - "
-//     //             //             << progress->percentage * 100  << "%; is active: " <<progress->active <<
-//     //             //             "is processed: " <<progress->processed <<  "\n";
-//     //             // }
-//     //             if (*changelayout == true)
-//     //             {
-//     //                 *changelayout = false;
-//     //                 progressWidget->updateProgressList(progress_vector);
-//     //             }
-//     //             progressWidget->updateProgress();
-//     //             bool all_done = true;
-//     //             for (auto progress : progress_vector)
-//     //                 if (!progress->processed)
-//     //                 {
-//     //                     all_done = false;
-//     //                     break;
-//     //                 }
-
-//     //             if (all_done)
-//     //                 break;                                            // Exit if all files are done
-//     //             std::this_thread::sleep_for(std::chrono::seconds(1)); // Update every second
-//     //         }
-//     //         // progressWidget->close();
-//     //         // scrollArea->close();
-//     //     }
-
-//     // );
-
-//     p.push(
-//         [&, progress_vector, processed_files, changelayout](int id)
-//         {
-//             // Use QMetaObject to invoke widget creation in main thread
-//             QMetaObject::invokeMethod(qApp, [&]() {
-//                 auto* progressWidget = new ProgressWidget(progress_vector, nullptr, ProgressWidget::Mode::Modal);
-                
-//                 // Ensure proper resizable behavior
-//                 progressWidget->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
-//                 progressWidget->setAttribute(Qt::WA_DeleteOnClose);
-                
-//                 // Explicit size policies
-//                 progressWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-//                 progressWidget->layout()->setSizeConstraint(QLayout::SetMinimumSize);
-                
-//                 progressWidget->show();
-                
-//                 // Update loop in main thread
-//                 QTimer* updateTimer = new QTimer(progressWidget);
-//                 QObject::connect(updateTimer, &QTimer::timeout, [&, progressWidget]() {
-//                     if (*changelayout) {
-//                         *changelayout = false;
-//                         progressWidget->updateProgressList(progress_vector);
-//                     }
-//                     progressWidget->updateProgress();
-                    
-//                     bool all_done = true;
-//                     for (auto progress : progress_vector) {
-//                         if (!progress->processed) {
-//                             all_done = false;
-//                             break;
-//                         }
-//                     }
-                    
-//                     if (all_done) {
-//                         updateTimer->stop();
-//                         progressWidget->close();
-//                     }
-//                 });
-//                 updateTimer->start(1000); // Update every second
-//             });
-//         }
-//     );
-
-//     for (auto &analysis_process : progress_vector)
-//     {
-//         p.push([&, analysis_process, changelayout](int id)
-//                {
-//                    analysis_process->active = true;
-//                    DataFileReader DFR1;
-//                    DFR1.setName(analysis_process->fileName.c_str(), channels);
-//                    DFR1.CreateRootFile();
-//                    DFR1.ConsequentialEventsReading(analysis_process);
-//                    DFR1.SaveRootFile();
-//                    analysis_process->active = false;
-//                    analysis_process->processed = true;
-//                    *changelayout = true; });
-//     }
-// }
-
-
 void MainWindow::processFiles(const QStringList &files)
 {
     // Initialize progress data in main thread
@@ -710,14 +595,15 @@ void MainWindow::processFiles(const QStringList &files)
         p.push([=](int id) {
             QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
 
+            connect(progressWidget, &ProgressWidget::requestUpdate, this, [=](){
+                progressWidget->setProgressList(progress_vector);
+            });
             // Process file
             analysis_process->active = true;
             
             DataFileReader DFR1;
             DFR1.setName(analysis_process->fileName.c_str(), channels); 
             DFR1.CreateRootFile();
-            
-            // Simulate progress updates - replace with actual progress
             DFR1.ConsequentialEventsReading(analysis_process);
             DFR1.SaveRootFile();
             
