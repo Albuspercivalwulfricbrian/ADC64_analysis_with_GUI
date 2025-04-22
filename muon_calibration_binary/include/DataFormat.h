@@ -19,7 +19,6 @@ class DataFormat
   protected:
   static const int32_t total_channels = 128;
   char fileName[1024];
-  bool StopAnalysis = 0;
   uint32_t uiTotalEvents;
   TOTAL_HEADER TotalHeader;
   uint32_t uiEventWithMaxSize = 0;

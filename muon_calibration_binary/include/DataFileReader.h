@@ -21,7 +21,11 @@ class DataFileReader : public DataFormat
   TTree* RootDataTree = nullptr;
   std::map<int, ConfigManager*> config_manager;
   std::mutex write_lock;
+  bool StopAnalysis = 0;
+
   public:
+  void SetStopAnalysis(bool);
+
   ChannelEntry event_waveform;
   bool FileIsSet;
 

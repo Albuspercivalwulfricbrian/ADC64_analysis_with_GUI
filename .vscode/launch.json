@@ -8,11 +8,11 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            // "program": "${workspaceFolder}/build/AnalysisGUI/AnalysisGUI",
-            // "args": [],
+            "program": "${workspaceFolder}/build/AnalysisGUI/AnalysisGUI",
+            "args": [],
 
-            "program": "${workspaceFolder}/build/muon_calibration_binary/FileReader",
-            "args": ["/mnt/DATA/SiPM_low_energy_detector/SrI2_data_for_article/Co57_delitel_V4.data"],         
+            // "program": "${workspaceFolder}/build/muon_calibration_binary/FileReader",
+            // "args": ["/mnt/DATA/SiPM_low_energy_detector/SrI2_data_for_article/Co57_delitel_V4.data"],         
 
             // "program": "${workspaceFolder}/build/muon_calibration_binary/Calibrator",
             // "args": ["/mnt/DATA/DataBinary/calibrated_files/"],

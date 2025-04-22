@@ -544,6 +544,7 @@ void MainWindow::on_SetFileAnalysisButton_clicked()
 
     // Show the dialog
     fileDialog->show();
+    return;
 }
 
 void MainWindow::processFiles(const QStringList &files)
@@ -577,41 +578,47 @@ void MainWindow::processFiles(const QStringList &files)
     connect(progressWidget, &ProgressWidget::requestUpdate, this, [=](){
         progressWidget->setProgressList(progress_vector);
     });
+    std::atomic<bool>* StopAnalysis = new std::atomic<bool>(false);
 
-    p.push([=, progress_vector](int id){
+    p.push([=](int id){
 
-        while (true) {
+        while (StopAnalysis->load()==false && progressWidget) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             
             // Request UI update in main thread
-            QMetaObject::invokeMethod(progressWidget, [progressWidget]() {
+            if (progressWidget && progressWidget!=nullptr) QMetaObject::invokeMethod(progressWidget, [progressWidget]() {
                 progressWidget->updateProgress();
             }, Qt::QueuedConnection);
 
         }
     });
-    
     for (auto& analysis_process : progress_vector) {
         p.push([=](int id) {
-            QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
+            if (StopAnalysis->load()==false) 
+            {
+                QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
 
-            connect(progressWidget, &ProgressWidget::requestUpdate, this, [=](){
-                progressWidget->setProgressList(progress_vector);
-            });
-            // Process file
-            analysis_process->active = true;
-            
-            DataFileReader DFR1;
-            DFR1.setName(analysis_process->fileName.c_str(), channels); 
-            DFR1.CreateRootFile();
-            DFR1.ConsequentialEventsReading(analysis_process);
-            DFR1.SaveRootFile();
-            
-            analysis_process->active = false;
-            analysis_process->processed = true;
-            
-            // Final update
-            QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
+                connect(progressWidget, &ProgressWidget::requestUpdate, this, [=](){
+                    progressWidget->setProgressList(progress_vector);
+                });
+
+                // Process file
+                analysis_process->active = true;
+                
+                DataFileReader DFR1;
+                DFR1.setName(analysis_process->fileName.c_str(), channels); 
+                DFR1.CreateRootFile();
+                connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis](){DFR1.SetStopAnalysis(true);StopAnalysis->store(true);});
+                DFR1.ConsequentialEventsReading(analysis_process);
+                DFR1.SaveRootFile();
+                
+                analysis_process->active = false;
+                analysis_process->processed = true;
+
+                // Final update
+                QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);                
+            }
+
         });
     }
 
@@ -626,12 +633,15 @@ void MainWindow::processFiles(const QStringList &files)
             }
         }
         
-        if (all_done) {
+        if (all_done || StopAnalysis->load()==true) {
             updateTimer->stop();
             completionTimer->stop();
-            progressWidget->close();
+            // progressWidget->close();
             updateTimer->deleteLater();
             completionTimer->deleteLater();
+            // progressWidget->~ProgressWidget();
+            delete StopAnalysis; 
+            return;
         }
     });
     completionTimer->start(500);

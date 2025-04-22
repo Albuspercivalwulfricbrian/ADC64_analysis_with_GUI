@@ -12,7 +12,7 @@ std::vector<float> multiplyVectorElements(const std::vector<float>& inputVector,
 }
 void DataFileReader::DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time)
 {
-  std::cout<< u8"\033[2J\033[1;1H"; 
+  // std::cout<< u8"\033[2J\033[1;1H"; 
   std::cout << (float)EvNum/(float)total_entries*100 << "%" << std::endl;
   time_t time_left = (time(NULL)-start_time)*(float)(total_entries-EvNum)/(float)(EvNum);
   std::cout << "time left: ";
@@ -26,6 +26,10 @@ void DataFileReader::DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries
   if ((time_left%3600)/60 > 0 || time_left/3600 == 0) cout << (time_left%3600)/60 << "m ";
   cout << (time_left%3600)%60<< "s " <<std::endl;
 }
+void DataFileReader::SetStopAnalysis(bool option = true)
+{
+  StopAnalysis = option;
+}
 
 uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
 { 
@@ -38,7 +42,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
   fseek(fd,0,SEEK_END);
   sSizeOfFile = ftell(fd);
   fseek(fd,0,SEEK_SET);
-  while (!feof(fd))
+  while (!feof(fd) && !StopAnalysis)
   {
     fread(&(TotalHeader.syncword),WORD_SIZE,1,fd);
     if ((TotalHeader.syncword) == SYNC_WORD || (TotalHeader.syncword) == SYNC_WORD_ADC64)
@@ -175,7 +179,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
         if (end <= 1) break;
       }
       RootDataTree->Fill();
-      if (uiTotalEvents>100000)   return uiTotalEvents;
+      if (uiTotalEvents>1000000)   return uiTotalEvents;
 
     }
   }
