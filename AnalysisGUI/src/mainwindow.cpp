@@ -556,10 +556,12 @@ void MainWindow::processFiles(const QStringList &files)
     }
 
     // Create and show progress widget in main thread
-    ProgressWidget* progressWidget = new ProgressWidget(progress_vector, this);
-    progressWidget->setWindowModality(Qt::ApplicationModal);
+    // ProgressWidget* progressWidget = new ProgressWidget(progress_vector, this);
+    // progressWidget->setAttribute(Qt::WA_DeleteOnClose);
+    QPointer<ProgressWidget> progressWidget = new ProgressWidget(progress_vector, this);
     progressWidget->setAttribute(Qt::WA_DeleteOnClose);
-    
+        progressWidget->setWindowModality(Qt::ApplicationModal);
+
     // Set proper window flags for resizing
     progressWidget->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint | 
                                  Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
@@ -582,11 +584,11 @@ void MainWindow::processFiles(const QStringList &files)
 
     p.push([=](int id){
 
-        while (StopAnalysis->load()==false && progressWidget) {
+        while (StopAnalysis->load()==false) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             
             // Request UI update in main thread
-            if (progressWidget && progressWidget!=nullptr) QMetaObject::invokeMethod(progressWidget, [progressWidget]() {
+            if (progressWidget) QMetaObject::invokeMethod(progressWidget, [progressWidget]() {
                 progressWidget->updateProgress();
             }, Qt::QueuedConnection);
 
@@ -594,8 +596,8 @@ void MainWindow::processFiles(const QStringList &files)
     });
     for (auto& analysis_process : progress_vector) {
         p.push([=](int id) {
-            if (StopAnalysis->load()==false) 
-            {
+            if (StopAnalysis->load() || !progressWidget) return; 
+
                 QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
 
                 connect(progressWidget, &ProgressWidget::requestUpdate, this, [=](){
@@ -617,7 +619,7 @@ void MainWindow::processFiles(const QStringList &files)
 
                 // Final update
                 QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);                
-            }
+
 
         });
     }
