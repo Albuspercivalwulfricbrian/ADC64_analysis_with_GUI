@@ -101,7 +101,8 @@ void MainWindow::setupGraph()
     customPlot->yAxis->setTickLabelFont(axisFont);
     customPlot->graph(0)->setData(x, y);
     customPlot->graph(0)->setPen(QPen(Qt::blue, 3));
-    customPlot->xAxis->setLabel("Time (μs)");
+    // customPlot->xAxis->setLabel("Time (μs)");
+    customPlot->xAxis->setLabel("Time (time steps)");
     customPlot->yAxis->setLabel("ADC Channels");
     customPlot->xAxis->setRange(0, 2048);
     customPlot->yAxis->setRange(-30000, 30000);
@@ -126,7 +127,9 @@ void MainWindow::UpdateGraph()
     {
         QVector<double> x(size);
         for (int i = 0; i < size; ++i)
-            x[i] = i * 16. / 1000.; // x от 0 до 10
+            x[i] = i 
+            // * 16. / 1000.
+            ; // x от 0 до 10
 
         if (action_Show_Fourier_Transform->isChecked())
         {
