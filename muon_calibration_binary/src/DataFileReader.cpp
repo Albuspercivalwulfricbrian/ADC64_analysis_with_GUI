@@ -59,7 +59,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
 
       if (TotalHeader.syncword != SYNC_WORD)
           return -1;
-      const uint32_t BS = (TotalHeader.EvHeader.length/4); // size of event block excluding event header
+      const uint32_t BS = (TotalHeader.EvHeader.length/4)-1; // size of event block excluding event header
 
       uint32_t uiBuffer[BS];
       for (int p=0; p<BS; p++) uiBuffer[p] = 0;
@@ -219,7 +219,7 @@ vector<float> DataFileReader::DrawAverageWaveform(int32_t lower_bound, int32_t h
 
       if (TotalHeader.syncword != SYNC_WORD)
           return awf;
-      const uint32_t BS = (TotalHeader.EvHeader.length/4); // size of event block excluding event header
+      const uint32_t BS = (TotalHeader.EvHeader.length/4)-1; // size of event block excluding event header
 
       uint32_t uiBuffer[BS];
       for (int p=0; p<BS; p++) uiBuffer[p] = 0;
