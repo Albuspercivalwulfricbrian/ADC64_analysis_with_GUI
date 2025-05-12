@@ -179,7 +179,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
         if (end <= 1) break;
       }
       RootDataTree->Fill();
-      if (uiTotalEvents>1000000)   return uiTotalEvents;
+      // if (uiTotalEvents>1000000)   return uiTotalEvents;
 
     }
   }
