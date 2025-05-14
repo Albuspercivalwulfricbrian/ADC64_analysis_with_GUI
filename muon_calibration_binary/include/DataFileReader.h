@@ -22,7 +22,10 @@ class DataFileReader : public DataFormat
   std::map<int, ConfigManager*> config_manager;
   std::mutex write_lock;
   bool StopAnalysis = 0;
-
+  std::map<uint32_t,int16_t> adcmap
+  { {51232681, 0},
+    {101830393,1}
+  };
   public:
   void SetStopAnalysis(bool);
 

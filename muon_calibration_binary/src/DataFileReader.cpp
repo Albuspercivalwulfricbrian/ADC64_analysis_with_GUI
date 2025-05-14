@@ -59,7 +59,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
 
       if (TotalHeader.syncword != SYNC_WORD)
           return -1;
-      const uint32_t BS = (TotalHeader.EvHeader.length/4)-1; // size of event block excluding event header
+      const uint32_t BS = (TotalHeader.EvHeader.length/4); // size of event block excluding event header
 
       uint32_t uiBuffer[BS];
       for (int p=0; p<BS; p++) uiBuffer[p] = 0;
@@ -102,7 +102,8 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
               break;
             case 1:
               uint16_t ch = TotalHeader.ChHeader.ch;
-              if (TotalHeader.DeviceHeader.sn == 101830393) ch+=64;
+              if (auto adcinstance = adcmap.find(TotalHeader.DeviceHeader.sn); adcinstance!=adcmap.end()) ch+=64*adcinstance->second;
+              // if (TotalHeader.DeviceHeader.sn == 101830393) ch+=64;
               event_waveform.wf.clear(); event_waveform.ADCID = TotalHeader.DeviceHeader.sn;
               const uint16_t SN = (TotalHeader.ChHeader.length-2)*2;  // Number of samples
               TotalHeader.SubHeader.wf_tslo = uiBuffer[offset];
@@ -219,7 +220,7 @@ vector<float> DataFileReader::DrawAverageWaveform(int32_t lower_bound, int32_t h
 
       if (TotalHeader.syncword != SYNC_WORD)
           return awf;
-      const uint32_t BS = (TotalHeader.EvHeader.length/4)-1; // size of event block excluding event header
+      const uint32_t BS = (TotalHeader.EvHeader.length/4); // size of event block excluding event header
 
       uint32_t uiBuffer[BS];
       for (int p=0; p<BS; p++) uiBuffer[p] = 0;
