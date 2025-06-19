@@ -127,9 +127,9 @@ void MainWindow::UpdateGraph()
     {
         QVector<double> x(size);
         for (int i = 0; i < size; ++i)
-            x[i] = i 
-            // * 16. / 1000.
-            ; // x от 0 до 10
+            x[i] = i
+                // * 16. / 1000.
+                ; // x от 0 до 10
 
         if (action_Show_Fourier_Transform->isChecked())
         {
@@ -553,8 +553,9 @@ void MainWindow::on_SetFileAnalysisButton_clicked()
 void MainWindow::processFiles(const QStringList &files)
 {
     // Initialize progress data in main thread
-    std::vector<Progress*> progress_vector;
-    for (const auto &file : files) {
+    std::vector<Progress *> progress_vector;
+    for (const auto &file : files)
+    {
         progress_vector.push_back(new Progress(file.toStdString()));
     }
 
@@ -563,29 +564,29 @@ void MainWindow::processFiles(const QStringList &files)
     // progressWidget->setAttribute(Qt::WA_DeleteOnClose);
     QPointer<ProgressWidget> progressWidget = new ProgressWidget(progress_vector, this);
     progressWidget->setAttribute(Qt::WA_DeleteOnClose);
-        progressWidget->setWindowModality(Qt::ApplicationModal);
+    progressWidget->setWindowModality(Qt::ApplicationModal);
 
     // Set proper window flags for resizing
-    progressWidget->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint | 
-                                 Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
+    progressWidget->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint |
+                                   Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
     progressWidget->show();
 
     // Create thread pool
     p.~thread_pool();
-    new (&p) ctpl::thread_pool((int32_t)ThreadsSpinBox->value()+1);
+    new (&p) ctpl::thread_pool((int32_t)ThreadsSpinBox->value() + 1);
 
     // Create update timer in main thread
-    QTimer* updateTimer = new QTimer(this);
+    QTimer *updateTimer = new QTimer(this);
     connect(updateTimer, &QTimer::timeout, progressWidget, &ProgressWidget::updateProgress);
     updateTimer->start(200); // Update every 200ms for smooth progress
 
     // Connect progress updates
-    connect(progressWidget, &ProgressWidget::requestUpdate, this, [=](){
-        progressWidget->setProgressList(progress_vector);
-    });
-    std::atomic<bool>* StopAnalysis = new std::atomic<bool>(false);
+    connect(progressWidget, &ProgressWidget::requestUpdate, this, [=]()
+            { progressWidget->setProgressList(progress_vector); });
+    std::atomic<bool> *StopAnalysis = new std::atomic<bool>(false);
 
-    p.push([=](int id){
+    p.push([=](int id)
+           {
 
         while (StopAnalysis->load()==false) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -595,41 +596,42 @@ void MainWindow::processFiles(const QStringList &files)
                 progressWidget->updateProgress();
             }, Qt::QueuedConnection);
 
-        }
-    });
-    for (auto& analysis_process : progress_vector) {
-        p.push([=](int id) {
-            if (StopAnalysis->load() || !progressWidget) return; 
+        } });
+    for (auto &analysis_process : progress_vector)
+    {
+        p.push([=](int id)
+               {
+                   if (StopAnalysis->load() || !progressWidget)
+                       return;
 
-                QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
+                   QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
 
-                connect(progressWidget, &ProgressWidget::requestUpdate, this, [=](){
-                    progressWidget->setProgressList(progress_vector);
-                });
+                   connect(progressWidget, &ProgressWidget::requestUpdate, this, [=]()
+                           { progressWidget->setProgressList(progress_vector); });
 
-                // Process file
-                analysis_process->active = true;
-                
-                DataFileReader DFR1;
-                DFR1.setName(analysis_process->fileName.c_str(), channels); 
-                DFR1.CreateRootFile();
-                connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis](){DFR1.SetStopAnalysis(true);StopAnalysis->store(true);});
-                DFR1.ConsequentialEventsReading(analysis_process);
-                DFR1.SaveRootFile();
-                
-                analysis_process->active = false;
-                analysis_process->processed = true;
+                   // Process file
+                   analysis_process->active = true;
 
-                // Final update
-                QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);                
+                   DataFileReader DFR1;
+                   DFR1.setName(analysis_process->fileName.c_str(), channels);
+                   DFR1.CreateRootFile();
+                   connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis]()
+                           {DFR1.SetStopAnalysis(true);StopAnalysis->store(true); });
+                   DFR1.ConsequentialEventsReading(analysis_process);
+                   DFR1.SaveRootFile();
 
+                   analysis_process->active = false;
+                   analysis_process->processed = true;
 
-        });
+                   // Final update
+                   QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
+               });
     }
 
     // Handle completion
-    QTimer* completionTimer = new QTimer(this);
-    connect(completionTimer, &QTimer::timeout, this, [=]() {
+    QTimer *completionTimer = new QTimer(this);
+    connect(completionTimer, &QTimer::timeout, this, [=]()
+            {
         bool all_done = true;
         for (auto progress : progress_vector) {
             if (!progress->processed) {
@@ -647,7 +649,6 @@ void MainWindow::processFiles(const QStringList &files)
             // progressWidget->~ProgressWidget();
             delete StopAnalysis; 
             return;
-        }
-    });
+        } });
     completionTimer->start(500);
 }
