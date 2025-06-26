@@ -615,14 +615,14 @@ void MainWindow::processFiles(const QStringList &files)
                    DataFileReader DFR1;
                    DFR1.setName(analysis_process->fileName.c_str(), channels);
                    DFR1.CreateRootFile();
-                   connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis]()
+                   auto connection = connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis]()
                            {DFR1.SetStopAnalysis(true);StopAnalysis->store(true); });
                    DFR1.ConsequentialEventsReading(analysis_process);
                    DFR1.SaveRootFile();
 
                    analysis_process->active = false;
                    analysis_process->processed = true;
-
+                   disconnect(connection);
                    // Final update
                    QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
                });

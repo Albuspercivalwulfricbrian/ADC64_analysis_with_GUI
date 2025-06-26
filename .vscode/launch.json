@@ -10,12 +10,6 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/AnalysisGUI/AnalysisGUI",
             "args": [],
-
-            // "program": "${workspaceFolder}/build/muon_calibration_binary/FileReader",
-            // "args": ["/mnt/DATA/SiPM_low_energy_detector/SrI2_data_for_article/Co57_delitel_V4.data"],         
-
-            // "program": "${workspaceFolder}/build/muon_calibration_binary/Calibrator",
-            // "args": ["/mnt/DATA/DataBinary/calibrated_files/"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
             "environment": [],
@@ -34,7 +28,7 @@
                 }
             ],
             "preLaunchTask": "build",
-            "visualizerFile": "/home/strizhak/.config/Code/User/workspaceStorage/3bc299c0a3a5f6b0ddcb48a26a527071/tonka3000.qtvsctools/qt.natvis.xml"
+            "visualizerFile": "/home/doc/.config/Code/User/workspaceStorage/21005e5e550a060306fba8bac4e69139/tonka3000.qtvsctools/qt.natvis.xml"
         }
     ]
 }
