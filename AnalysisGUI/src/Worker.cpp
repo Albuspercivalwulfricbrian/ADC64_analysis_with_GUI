@@ -103,7 +103,8 @@ void Worker::ReadEvent(int64_t i, int16_t extChannel)
         case 1:
           uint16_t ch = TotalHeader.ChHeader.ch;
           // event_waveform.wf.clear();           
-          if (TotalHeader.DeviceHeader.sn == 101830393) ch+=64;//If many ADCs IDs should be added +n*64
+          // if (TotalHeader.DeviceHeader.sn == 101830393) ch+=64;//If many ADCs IDs should be added +n*64
+          if (auto adcinstance = adcmap.find(TotalHeader.DeviceHeader.sn); adcinstance!=adcmap.end()) ch+=64*adcinstance->second;
           
  
           if (ch==extChannel) event_waveform.ADCID = TotalHeader.DeviceHeader.sn;

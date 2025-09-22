@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     // connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
     // connect(customPlot, &QCustomPlot::keyPressEvent, this, &MainWindow::keyPressEvent);
-    for (int i = 0; i < 128; i++)
+    for (int i = 0; i < (new DataFormat)->adcmap.size()*64; i++)
         channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0);
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
@@ -350,7 +350,7 @@ void MainWindow::on_SetChannelBoundaries_clicked()
 
 void MainWindow::on_SetAllChannelsBoundaries_clicked()
 {
-    for (int i = 0; i < 128; i++)
+    for (int i = 0; i < (new DataFormat)->adcmap.size()*64; i++)
     {
         channels[i]->leftBoundary = xLeftBoundary;
         channels[i]->rightBoundary = xRightBoundary;

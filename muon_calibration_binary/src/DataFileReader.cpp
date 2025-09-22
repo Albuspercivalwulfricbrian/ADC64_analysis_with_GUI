@@ -262,7 +262,9 @@ vector<float> DataFileReader::DrawAverageWaveform(int32_t lower_bound, int32_t h
               break;
             case 1:
               uint16_t ch = TotalHeader.ChHeader.ch;
-              if (TotalHeader.DeviceHeader.sn == 101830393) ch+=64;
+              // if (TotalHeader.DeviceHeader.sn == 101830393) ch+=64;
+              if (auto adcinstance = adcmap.find(TotalHeader.DeviceHeader.sn); adcinstance!=adcmap.end()) ch+=64*adcinstance->second;
+
               event_waveform.wf.clear(); event_waveform.ADCID = TotalHeader.DeviceHeader.sn;
               const uint16_t SN = (TotalHeader.ChHeader.length-2)*2;  // Number of samples
               TotalHeader.SubHeader.wf_tslo = uiBuffer[offset];
