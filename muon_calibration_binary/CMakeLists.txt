@@ -40,3 +40,6 @@ target_link_libraries(CreateTrackTree CustomClassDictionary ROOT::RIO ROOT::Core
 
 add_executable(Calibrator Calibrator.C ${HEADERS_H} ${HEADERS_HPP} ${SOURCES})
 target_link_libraries(Calibrator PUBLIC CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
+
+add_executable(GReader GReader.C ${HEADERS_H} ${HEADERS_HPP} )
+# target_link_libraries(GReader PUBLIC CustomClassDictionary ROOT::RIO ROOT::Core ROOT::Tree ROOT::Net ROOT::Hist ROOT::Graf ROOT::Gpad ROOT::Physics)
