@@ -10,21 +10,21 @@ using json = nlohmann::json;
 
 struct ChannelData
 {
-    int ch;
-    int iadc;
-    int connector;
-    int adc_sn;
-    std::tuple<int, int, int> num_geo;
+    int32_t ch;
+    int32_t iadc;
+    int32_t connector;
+    int32_t adc_sn;
+    std::tuple<int32_t, int32_t, int32_t> num_geo;
     std::tuple<double, double, double> pos_geo;
 };
 
 class FHCalMapper
 {
 private:
-    std::map<int, std::map<int, std::shared_ptr<ChannelData>>> by_adc;
-    std::map<std::tuple<int, int, int>, std::shared_ptr<ChannelData>> by_geo;
+    std::map<int32_t, std::map<int32_t, std::shared_ptr<ChannelData>>> by_adc;
+    std::map<std::tuple<int32_t, int32_t, int32_t>, std::shared_ptr<ChannelData>> by_geo;
     std::map<std::tuple<double, double, double>, std::shared_ptr<ChannelData>> by_pos;
-    std::map<int, std::vector<int>> adc_connectors;
+    std::map<int32_t, std::vector<int32_t>> adc_connectors;
 
 public:
     FHCalMapper(const std::string &json_file_path)
@@ -32,7 +32,7 @@ public:
         load_json(json_file_path);
     }
 
-    std::shared_ptr<ChannelData> getChannelInfo(int adc_sn, int channel) const
+    std::shared_ptr<ChannelData> getChannelInfo(int32_t adc_sn, int32_t channel) const
     {
         auto adc_it = by_adc.find(adc_sn);
         if (adc_it == by_adc.end())
@@ -49,7 +49,7 @@ public:
         return ch_it->second;
     }
 
-    // std::shared_ptr<ChannelData> getByAdcConnectorChannel(int adc_sn, int connector, int channel) const
+    // std::shared_ptr<ChannelData> getByAdcConnectorChannel(int32_t adc_sn, int32_t connector, int32_t channel) const
     // {
     //     auto adc_it = by_adc.find(adc_sn);
     //     if (adc_it == by_adc.end())
@@ -67,7 +67,7 @@ public:
     //     return nullptr;
     // }
 
-    std::shared_ptr<ChannelData> getByGeo(int x, int y, int z) const
+    std::shared_ptr<ChannelData> getByGeo(int32_t x, int32_t y, int32_t z) const
     {
         auto it = by_geo.find(std::make_tuple(x, y, z));
         if (it == by_geo.end())
@@ -87,7 +87,7 @@ public:
         return it->second;
     }
 
-    std::vector<std::shared_ptr<ChannelData>> filterADCchannels(int adc_sn) const
+    std::vector<std::shared_ptr<ChannelData>> filterADCchannels(int32_t adc_sn) const
     {
         std::vector<std::shared_ptr<ChannelData>> result;
         auto it = by_adc.find(adc_sn);
@@ -103,7 +103,7 @@ public:
         return result;
     }
 
-    std::vector<std::shared_ptr<ChannelData>> filterADCConnectorchannels(int adc_sn, int connector) const
+    std::vector<std::shared_ptr<ChannelData>> filterADCConnectorchannels(int32_t adc_sn, int32_t connector) const
     {
         std::vector<std::shared_ptr<ChannelData>> result;
         auto it = by_adc.find(adc_sn);
@@ -122,7 +122,7 @@ public:
         return result;
     }
 
-    std::vector<int> getConnectors(int adc_sn) const
+    std::vector<int32_t> getConnectors(int32_t adc_sn) const
     {
         auto it = adc_connectors.find(adc_sn);
         if (it == adc_connectors.end())
@@ -132,9 +132,9 @@ public:
         return it->second;
     }
 
-    std::vector<int> getADCSerialList() const
+    std::vector<int32_t> getADCSerialList() const
     {
-        std::vector<int> result;
+        std::vector<int32_t> result;
         for (const auto &pair : by_adc)
         {
             result.push_back(pair.first);
