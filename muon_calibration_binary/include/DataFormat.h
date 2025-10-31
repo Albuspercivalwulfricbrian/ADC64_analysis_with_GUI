@@ -40,6 +40,7 @@ public:
   //     {0x0f383f49, 3},
 
   // };
+  Int_t shit = 32;
   static const int32_t total_channels; // = 5 * 64;
 
   ChannelEntry event_waveform;
