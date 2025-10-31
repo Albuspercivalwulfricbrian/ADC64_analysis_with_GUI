@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 
                 hitinfo.time = short_channel_info[ch]->time;
                 hitinfo.channel = ch + 1;
-                auto posgeo = mapper.getChannelInfo(short_channel_info[ch]->ADC_ID, ch - 64 * df->adcmap[short_channel_info[ch]->ADC_ID])->num_geo;
+                auto posgeo = mapper.getChannelInfo(short_channel_info[ch]->ADC_ID, ch - 64 * df->adcmap.at(short_channel_info[ch]->ADC_ID))->num_geo;
                 hitinfo.X = (Int_t)get<0>(posgeo);
                 hitinfo.Y = (Int_t)get<1>(posgeo);
                 hitinfo.Z = (Int_t)get<2>(posgeo);

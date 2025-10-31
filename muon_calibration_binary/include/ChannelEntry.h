@@ -17,14 +17,14 @@ struct IntegralInfo
 
 struct short_energy_ChannelEntry
 {
-    float charge;
-    float time;
-    float ADCTimeStamp;
-    uint32_t amp;
-    float zl;
-    float zl_rms;
+    float charge = 0;
+    float time = 0;
+    float ADCTimeStamp = 0;
+    uint32_t amp = 0;
+    float zl = 0;
+    float zl_rms = 0;
     IntegralInfo II;
-    uint32_t ADC_ID;
+    uint32_t ADC_ID = 0;
     void Initialize();
 };
 
@@ -37,15 +37,16 @@ struct diff_short_energy_ChannelEntry
     void Initialize();
 };
 
-class ChannelEntry {
+class ChannelEntry
+{
 
-    public:
+public:
     int32_t ADCID = 0;
     int32_t channel = 0;
     int32_t wf_size;
     vector<int32_t> wf;
 
-    private:
+private:
     vector<int32_t> dwf;
 
     int32_t fZlLeft = 0;
@@ -56,14 +57,15 @@ class ChannelEntry {
     int32_t peak_position = 0;
     int32_t fGATE_BEG = 1000000;
     int32_t fGATE_END = -1000000;
-    public:
+
+public:
     void GetWfSize();
     // static TString GetChName(int32_t channel_num);
     void Initialize();
     void SplineWf();
     void CalculateDiffWf();
     void AssumeSmartScope();
-    void SetBoarders(int32_t,int32_t);
+    void SetBoarders(int32_t, int32_t);
     void FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time);
     void Set_Zero_Level(int);
     void Set_Zero_Level_Area(int32_t i);
@@ -79,8 +81,6 @@ class ChannelEntry {
     IntegralInfo GetIntegralInfo();
     void FillWf(int32_t *Ewf);
     void InvertSignal();
-
 };
-
 
 #endif CHANNEL_ENTRY_H

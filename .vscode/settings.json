@@ -78,6 +78,7 @@
         "valarray": "cpp",
         "variant": "cpp",
         "gr.C": "cpp",
-        "GReader.C": "cpp"
+        "GReader.C": "cpp",
+        "DAQ.C": "cpp"
     }
 }

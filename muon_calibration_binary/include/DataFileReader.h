@@ -13,27 +13,17 @@
 
 class DataFileReader : public DataFormat
 {
-  private:
+private:
   char configName[1024];
-  std::array<short_energy_ChannelEntry*, total_channels> short_channel_info;
+  std::vector<short_energy_ChannelEntry *> short_channel_info;
   time_t start_time;
-  TFile* RootDataFile = nullptr;
-  TTree* RootDataTree = nullptr;
-  std::map<int, ConfigManager*> config_manager;
+  TFile *RootDataFile = nullptr;
+  TTree *RootDataTree = nullptr;
+  std::map<int, ConfigManager *> config_manager;
   std::mutex write_lock;
   bool StopAnalysis = 0;
-  // std::map<uint32_t,int16_t> adcmap
-  // { 
-  //   // {51232681, 0},
-  //   // {101830393,1},
-  //   {0x0cd97915,1},
-  //   {0x0f229ac3,0},
-  //   {0x0f229ad5,4},
-  //   {0x0f383f3a,2},
-  //   {0x0f383f49,3},
 
-  // };
-  public:
+public:
   void SetStopAnalysis(bool);
 
   ChannelEntry event_waveform;
@@ -53,18 +43,18 @@ class DataFileReader : public DataFormat
   void CreateRootFile();
   void SaveRootFile()
   {
-    if (RootDataFile!=nullptr)
+    if (RootDataFile != nullptr)
     {
       // if (RootDataTree!=nullptr) {RootDataFile->cd(); RootDataTree->Write();}
-      RootDataFile->Write(0,TObject::kOverwrite);
-      RootDataFile->Close();    
-     } 
+      RootDataFile->Write(0, TObject::kOverwrite);
+      RootDataFile->Close();
+    }
   }
-  void setName(const char * a) override;
-  void setName(const char * a, const char * b);
-  void setName(const char * a, std::map<int, ConfigManager*> ext_config);
+  void setName(const char *a) override;
+  void setName(const char *a, const char *b);
+  void setName(const char *a, std::map<int, ConfigManager *> ext_config);
   void DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time);
   uint32_t ConsequentialEventsReading(Progress *progress);
-  vector<float> DrawAverageWaveform(int32_t,int32_t, int32_t, int32_t);
+  vector<float> DrawAverageWaveform(int32_t, int32_t, int32_t, int32_t);
 };
 #endif DATAFILEREADER_H

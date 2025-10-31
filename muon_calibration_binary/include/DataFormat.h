@@ -29,17 +29,19 @@ protected:
   // static const int32_t total_channels = 5*64;//= 128;
 
 public:
-  std::map<uint32_t, int16_t> adcmap{
-      // {51232681, 0},
-      // {101830393,1},
-      {0x0cd97915, 1},
-      {0x0f229ac3, 0},
-      {0x0f229ad5, 4},
-      {0x0f383f3a, 2},
-      {0x0f383f49, 3},
+  static const std::map<uint32_t, int16_t> adcmap;
+  // {
+  //     // {51232681, 0},
+  //     // {101830393,1},
+  //     {0x0cd97915, 1},
+  //     {0x0f229ac3, 0},
+  //     {0x0f229ad5, 4},
+  //     {0x0f383f3a, 2},
+  //     {0x0f383f49, 3},
 
-  };
-  static const int32_t total_channels = 5 * 64;
+  // };
+  static const int32_t total_channels; // = 5 * 64;
+
   ChannelEntry event_waveform;
   bool FileIsSet;
 
