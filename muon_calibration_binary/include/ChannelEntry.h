@@ -10,7 +10,7 @@ const int MAX_N_SAMPLES = 2048;
 struct IntegralInfo
 {
     int32_t signal_length = 0;
-    int32_t npeaks = 0;
+    // int32_t npeaks = 0;
     int32_t end_amplitude = 0;
     void Initialize();
 };
@@ -26,6 +26,30 @@ struct short_energy_ChannelEntry
     IntegralInfo II;
     uint32_t ADC_ID = 0;
     void Initialize();
+};
+
+struct SinglePeakInfo
+{
+    float charge = 0;
+    float time = 0;
+    uint32_t amp = 0;
+    IntegralInfo II;
+    void Initialize();
+    SinglePeakInfo() { Initialize(); }
+};
+
+struct PeaksInfo
+{
+    uint32_t ADC_ID = 0;
+    float ADCTimeStamp = 0;
+    float zl = 0;
+    float zl_rms = 0;
+    std::vector<SinglePeakInfo> peaks = {};
+
+    void Initialize();
+    void ResetVector();
+    int GetCurrentSize();
+    void AddPeak(const SinglePeakInfo &peak);
 };
 
 struct diff_short_energy_ChannelEntry
@@ -65,6 +89,7 @@ public:
     void SplineWf();
     void CalculateDiffWf();
     void AssumeSmartScope();
+    void DeleteCurrentPeak();
     void SetBoarders(int32_t, int32_t);
     void FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time);
     void Set_Zero_Level(int);
