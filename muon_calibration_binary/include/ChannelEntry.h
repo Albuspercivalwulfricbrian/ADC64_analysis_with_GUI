@@ -50,6 +50,7 @@ struct PeaksInfo
     void ResetVector();
     int GetCurrentSize();
     void AddPeak(const SinglePeakInfo &peak);
+    PeaksInfo() { Initialize(); }
 };
 
 struct diff_short_energy_ChannelEntry

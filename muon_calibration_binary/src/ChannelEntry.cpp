@@ -38,7 +38,6 @@ void PeaksInfo::Initialize()
     zl = 0;
     zl_rms = 0;
     peaks.clear();
-    // peaks.reserve(10);
 }
 
 void PeaksInfo::ResetVector()

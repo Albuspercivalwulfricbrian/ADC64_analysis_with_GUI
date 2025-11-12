@@ -55,9 +55,6 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
     {
       for (int ch = 0; ch < total_channels; ch++)
         short_channel_info[ch]->Initialize();
-      // for (int ch = 0; ch < total_channels; ch++)
-      //   // short_channel_info.push_back(new short_energy_ChannelEntry());
-      //   short_channel_info.push_back(new PeaksInfo());
 
       uiTotalEvents++;
       fread(&TotalHeader.EvHeader, sizeof(TotalHeader.EvHeader), 1, fd);
@@ -477,7 +474,9 @@ void DataFileReader::CreateRootFile()
     short_channel_info.push_back(new PeaksInfo());
     short_channel_info[ch]->Initialize();
     if (config_manager[ch])
-      RootDataTree->Branch((TString)(config_manager[ch]->name), &short_channel_info[ch]);
+      RootDataTree->Branch((TString)(config_manager[ch]->name), short_channel_info[ch]);
+    // RootDataTree->Branch((TString)(config_manager[ch]->name), "PeaksInfo", &short_channel_info[ch]);
   }
+  RootDataTree->Fill();
   start_time = std::time(nullptr);
 }
