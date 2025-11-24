@@ -13,10 +13,13 @@
 #include <QAction>
 #include <ctpl_stl.h>
 #include <ProgressWidget.h>
-
+#include "HistogramWindow.h"
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
+namespace Ui
+{
+    class MainWindow;
+}
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
@@ -30,6 +33,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    HistogramWindow *m_histogramWindow;
 
     int32_t passfilter = 0;
     int64_t currEvent = 1;
@@ -37,8 +41,8 @@ private:
     double currentX = 0;
     int32_t xLeftBoundary = -1000;
     int32_t xRightBoundary = 3000;
-    QLabel* coordinateLabel = new QLabel();
-    QLabel* FileNameLabel;
+    QLabel *coordinateLabel = new QLabel();
+    QLabel *FileNameLabel;
     Worker DFR;
     QLineEdit *LeftBoundaryEdit;
     QLineEdit *RightBoundaryEdit;
@@ -47,7 +51,7 @@ private:
     QSpinBox *eventSpinBox;
     QSpinBox *FrequencySpinBox;
     QSpinBox *ThreadsSpinBox;
-    std::map<int, ConfigManager*> channels;
+    std::map<int, ConfigManager *> channels;
     QCPItemLine *lineLeft;
     QCPItemLine *lineRight;
     QCPLayer *customLayer;
@@ -63,8 +67,13 @@ private:
     QAction *action_Show_Filtered;
     QAction *actionSavePng;
     QAction *actionSavePdf;
-    QAction *actionSaveJpeg;  
+    QAction *actionSaveJpeg;
 
+    QAction *action_Show_Histogram;
+
+    // Add to private slots
+    // void on_action_Show_Histogram_triggered();
+    // void onCurrentEventChanged();
     void setupGraph();
     void UpdateGraph();
     void ReDrawBoundaries();
@@ -72,7 +81,6 @@ private:
     void processFiles(const QStringList &files);
 
     ctpl::thread_pool p;
-
 
 private slots:
 
@@ -91,7 +99,7 @@ private slots:
     void on_SaveConfigButton_clicked();
     void on_SetChannelBoundaries_clicked();
     void on_SetAllChannelsBoundaries_clicked();
-    void on_setBranchName_clicked(); 
+    void on_setBranchName_clicked();
     void on_action_Show_Fourier_Transform_changed();
     void on_action_Show_Filtered_changed();
     // void savePlot();
@@ -101,11 +109,13 @@ private slots:
     void onTimeout();
     void windowEnable();
     void windowDisable();
+
+    void on_action_Show_Histogram_triggered();
+    void onCurrentEventChanged();
+
 protected:
     // void mousePressEvent(QMouseEvent *event) override;
 signals:
     void progressUpdated(int value);
-
-
 };
 #endif // MAINWINDOW_H

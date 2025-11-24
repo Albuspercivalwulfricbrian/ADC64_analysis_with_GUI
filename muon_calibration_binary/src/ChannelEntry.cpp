@@ -53,6 +53,30 @@ void PeaksInfo::AddPeak(const SinglePeakInfo &peak)
     peaks.push_back(peak);
 }
 
+uint32_t PeaksInfo::amp()
+{
+    if (peaks.size() > 0)
+        return peaks[0].amp;
+    else
+        return 0;
+}
+
+float PeaksInfo::time()
+{
+    if (peaks.size() > 0)
+        return peaks[0].time;
+    else
+        return 0;
+}
+
+float PeaksInfo::charge()
+{
+    float charge = 0;
+    for (auto el : peaks)
+        charge += el.charge;
+    return charge;
+}
+
 void diff_short_energy_ChannelEntry::Initialize()
 {
     min_diff = 0;

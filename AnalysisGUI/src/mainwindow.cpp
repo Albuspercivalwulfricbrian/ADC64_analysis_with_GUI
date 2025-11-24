@@ -8,7 +8,6 @@
 #include "FourierFilter.h"
 #include <QScrollArea>
 
-// #include "QSizeGrip"
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), p(8)
 {
@@ -33,7 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     // connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
     // connect(customPlot, &QCustomPlot::keyPressEvent, this, &MainWindow::keyPressEvent);
-    for (int i = 0; i < (new DataFormat)->adcmap.size()*64; i++)
+    for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
         channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0);
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
@@ -66,11 +65,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
     connect(actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
     connect(actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
-
     connect(LeftBoundaryEdit, &QLineEdit::textChanged, [=](QString obj)
             { xLeftBoundary = obj.toInt(); ReDrawBoundaries(); });
     connect(RightBoundaryEdit, &QLineEdit::textChanged, [=](QString obj)
             { xRightBoundary = obj.toInt(); ReDrawBoundaries(); });
+
+    action_Show_Histogram = ui->action_Show_Histogram;
+    connect(action_Show_Histogram, &QAction::triggered, this, &MainWindow::on_action_Show_Histogram_triggered);
+
+    m_histogramWindow = nullptr;
 }
 
 void MainWindow::setupGraph()
@@ -295,6 +298,7 @@ void MainWindow::on_NextEventButton_clicked()
                     NonEmpty = 1;
                     eventSpinBox->setValue(currEvent);
                     // UpdateGraph();
+                    onCurrentEventChanged();
                 }
             }
             else
@@ -350,7 +354,7 @@ void MainWindow::on_SetChannelBoundaries_clicked()
 
 void MainWindow::on_SetAllChannelsBoundaries_clicked()
 {
-    for (int i = 0; i < (new DataFormat)->adcmap.size()*64; i++)
+    for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
     {
         channels[i]->leftBoundary = xLeftBoundary;
         channels[i]->rightBoundary = xRightBoundary;
@@ -601,31 +605,28 @@ void MainWindow::processFiles(const QStringList &files)
     {
         p.push([=](int id)
                {
-                   if (StopAnalysis->load() || !progressWidget)
-                       return;
+                    if (StopAnalysis->load() || !progressWidget)
+                        return;
 
-                   QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
+                    QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
 
-                   connect(progressWidget, &ProgressWidget::requestUpdate, this, [=]()
-                           { progressWidget->setProgressList(progress_vector); });
+                    connect(progressWidget, &ProgressWidget::requestUpdate, this, [=]()
+                            { progressWidget->setProgressList(progress_vector); });
 
-                   // Process file
-                   analysis_process->active = true;
-
-                   DataFileReader DFR1;
-                   DFR1.setName(analysis_process->fileName.c_str(), channels);
-                   DFR1.CreateRootFile();
-                   auto connection = connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis]()
-                           {DFR1.SetStopAnalysis(true);StopAnalysis->store(true); });
-                   DFR1.ConsequentialEventsReading(analysis_process);
-                   DFR1.SaveRootFile();
-
-                   analysis_process->active = false;
-                   analysis_process->processed = true;
-                   disconnect(connection);
-                   // Final update
-                   QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection);
-               });
+                    // Process file
+                    analysis_process->active = true;
+                    DataFileReader DFR1;
+                    DFR1.setName(analysis_process->fileName.c_str(), channels);
+                    DFR1.CreateRootFile();
+                    auto connection = connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis]()
+                            {DFR1.SetStopAnalysis(true);StopAnalysis->store(true); });
+                    DFR1.ConsequentialEventsReading(analysis_process);
+                    DFR1.SaveRootFile();
+                    analysis_process->active = false;
+                    analysis_process->processed = true;
+                    disconnect(connection);
+                    // Final update
+                    QMetaObject::invokeMethod(progressWidget, &ProgressWidget::requestUpdate, Qt::QueuedConnection); });
     }
 
     // Handle completion
@@ -651,4 +652,41 @@ void MainWindow::processFiles(const QStringList &files)
             return;
         } });
     completionTimer->start(500);
+}
+
+void MainWindow::onCurrentEventChanged()
+{
+    if (m_histogramWindow && m_histogramWindow->isVisible())
+    {
+        // Get current event time from your waveform data
+        // Replace with your actual time method
+        float eventTime = 0.0f;
+        if (DFR.event_waveform.wf.size() > 0)
+        {
+            // Example: use the waveform size or some calculated time
+            eventTime = static_cast<float>(DFR.event_waveform.wf.size());
+        }
+        m_histogramWindow->setCurrentEventTime(eventTime);
+    }
+}
+
+void MainWindow::on_action_Show_Histogram_triggered()
+{
+    if (!m_histogramWindow)
+    {
+        m_histogramWindow = new HistogramWindow(this);
+        m_histogramWindow->setAnalysisThreadPool(&p);
+    }
+
+    // if (DFR.FileIsSet)
+    // {
+    //     // You'll need to implement getRootFilePath() in your DataFileReader class
+    //     // For now, using a placeholder - adjust according to your actual file naming
+    //     QString rootFilePath = QString::fromStdString(DFR.fileName) + ".root";
+    //     m_histogramWindow->loadRootFile(rootFilePath, currChannel);
+    // }
+
+    m_histogramWindow->show();
+    m_histogramWindow->raise();
+    m_histogramWindow->activateWindow();
 }

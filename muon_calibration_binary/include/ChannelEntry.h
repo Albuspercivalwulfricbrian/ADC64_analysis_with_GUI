@@ -51,6 +51,9 @@ struct PeaksInfo
     int GetCurrentSize();
     void AddPeak(const SinglePeakInfo &peak);
     PeaksInfo() { Initialize(); }
+    uint32_t amp();
+    float time();
+    float charge();
 };
 
 struct diff_short_energy_ChannelEntry
@@ -73,7 +76,6 @@ public:
 
 private:
     vector<int32_t> dwf;
-
     int32_t fZlLeft = 0;
     int32_t fZlRight = 200;
     float zl = 0;

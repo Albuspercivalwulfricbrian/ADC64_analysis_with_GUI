@@ -117,7 +117,7 @@
            </font>
           </property>
           <property name="maximum">
-           <number>2048</number>
+           <number>400</number>
           </property>
          </widget>
         </item>
@@ -549,6 +549,7 @@
     <addaction name="action_Use_Smart_Boarders"/>
     <addaction name="action_Signal_is_Negative"/>
     <addaction name="action_Use_Fourier_Filtering"/>
+    <addaction name="action_Show_Histogram"/>
    </widget>
    <widget class="QMenu" name="menuGraphics">
     <property name="title">
@@ -694,6 +695,20 @@
     <font>
      <pointsize>12</pointsize>
     </font>
+   </property>
+  </action>
+  <action name="action_Show_Histogram">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Show Histogram</string>
    </property>
   </action>
  </widget>

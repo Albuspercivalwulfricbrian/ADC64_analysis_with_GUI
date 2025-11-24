@@ -27,7 +27,6 @@ int main(int argc, char **argv)
     TString source_path = (TString)argv[1];
     TString run_name = (TString)argv[2];
     FHCalMapper mapper("/home/strizhak/Downloads/fhcal_geo.json");
-
     // const Int_t total_channels = 320;
     const Int_t total_channels = mapper.getADCSerialList().size() * 64;
     // CreateMap();
@@ -35,21 +34,18 @@ int main(int argc, char **argv)
     TTree *source_tree = (TTree *)source_file->Get("adc64_data");
     // std::map<short_energy_ChannelEntry *, total_channels> short_channel_info;
     std::map<Int_t, short_energy_ChannelEntry *> short_channel_info;
-
     for (Int_t ch = 0; ch < total_channels; ch++)
     {
         short_channel_info[ch] = new short_energy_ChannelEntry();
         short_channel_info[ch]->Initialize();
         source_tree->SetBranchAddress((TString::Format("channel_%i", ch + 1)).Data(), &short_channel_info[ch]);
     }
-
     TrackInfo trackinfo;
     TFile *combined_root = new TFile(source_path + "tr_tracks.root", "RECREATE");
     TTree *tracktree = new TTree("Tracks", "Tracks");
     Int_t total_entries = source_tree->GetEntries();
     tracktree->Branch("TrackInfo", "TrackInfo", &trackinfo);
     time_t start_time = time(NULL);
-
     DataFormat *df = new DataFormat();
     for (int i = 0; i < source_tree->GetEntries(); i++)
     {
@@ -64,14 +60,12 @@ int main(int argc, char **argv)
                 hitinfo.II = short_channel_info[ch]->II;
                 hitinfo.charge = short_channel_info[ch]->charge;
                 hitinfo.amp = short_channel_info[ch]->amp;
-
                 hitinfo.time = short_channel_info[ch]->time;
                 hitinfo.channel = ch + 1;
                 auto posgeo = mapper.getChannelInfo(short_channel_info[ch]->ADC_ID, ch - 64 * df->adcmap.at(short_channel_info[ch]->ADC_ID))->num_geo;
                 hitinfo.X = (Int_t)get<0>(posgeo);
                 hitinfo.Y = (Int_t)get<1>(posgeo);
                 hitinfo.Z = (Int_t)get<2>(posgeo);
-
                 hitinfo.zl_rms = short_channel_info[ch]->zl_rms;
                 trackinfo.AddHit(hitinfo);
             }
@@ -84,7 +78,6 @@ int main(int argc, char **argv)
             std::cout << u8"\033[2J\033[1;1H";
             std::cout << (Float_t)i / (Float_t)total_entries * 100 << "%" << std::endl;
             time_t time_left = (time(NULL) - start_time) * (float)(total_entries - i) / (float)(i);
-
             std::cout << " time left: ";
             if (time_left / 3600 > 0)
                 cout << time_left / 3600 << "h ";

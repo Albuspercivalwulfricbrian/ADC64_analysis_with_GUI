@@ -3,13 +3,11 @@
 std::vector<float> multiplyVectorElements(const std::vector<float> &inputVector, float multiplier)
 {
   std::vector<float> resultVector = inputVector; // Create a copy of the input vector
-
   // Multiply each element by the multiplier
   for (float &element : resultVector)
   {
     element *= multiplier;
   }
-
   return resultVector; // Return the modified vector
 }
 void DataFileReader::DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time)
@@ -55,7 +53,6 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
     {
       for (int ch = 0; ch < total_channels; ch++)
         short_channel_info[ch]->Initialize();
-
       uiTotalEvents++;
       fread(&TotalHeader.EvHeader, sizeof(TotalHeader.EvHeader), 1, fd);
       if (uiMaxSize < TotalHeader.EvHeader.length)
@@ -67,7 +64,6 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
       if (TotalHeader.syncword != SYNC_WORD)
         return -1;
       const uint32_t BS = (TotalHeader.EvHeader.length / 4) - 1; // size of event block excluding event header
-
       uint32_t uiBuffer[BS];
       for (int p = 0; p < BS; p++)
         uiBuffer[p] = 0;
@@ -90,12 +86,9 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
           TotalHeader.ChHeader.ch = (uiBuffer[offset] & 0xFF000000) >> 24;
           TotalHeader.ChHeader.length = (uiBuffer[offset] & 0x00FFFFFC) >> 2;
           TotalHeader.ChHeader.type = (uiBuffer[offset] & 0x3);
-
           if (TotalHeader.ChHeader.length > 2048 && end > 3)
             break;
-
           offset++; // skip mstream header
-
           switch (TotalHeader.ChHeader.type)
           {
           case 0:
@@ -108,7 +101,6 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
             offset++;
             TotalHeader.TimeHeader.chup = uiBuffer[offset];
             offset++;
-
             break;
           case 1:
             uint16_t ch = TotalHeader.ChHeader.ch;
@@ -137,8 +129,8 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
               wave = ((uiBuffer[ind] & 0xFFFF) * polarity + iSignalOffset);
               event_waveform.wf.push_back(wave);
             }
-            progress->percentage = (float)(ftell(fd)) / sSizeOfFile;
 
+            progress->percentage = (float)(ftell(fd)) / sSizeOfFile;
             event_waveform.wf_size = event_waveform.wf.size();
             ////////////////
             if (!config_manager[ch]->SignalNegative)
