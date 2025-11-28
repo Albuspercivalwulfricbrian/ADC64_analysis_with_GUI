@@ -3,15 +3,19 @@
 
 #include <QMainWindow>
 #include <QWidget>
-#include "qcustomplot.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QSpinBox>
 #include <QPushButton>
-#include <QLineEdit>
+#include <QComboBox>
+#include <QListWidget>
+#include <QListWidgetItem>
 #include <QCheckBox>
 #include <QThread>
 #include <atomic>
+#include <QFileDialog>
+#include <QFileInfo>
+#include "HistogramPlot.h"
 
 // Forward declaration
 namespace ctpl
@@ -32,39 +36,54 @@ public:
     void setAnalysisThreadPool(ctpl::thread_pool *pool);
 
 public slots:
-    void updateHistogram();
+    void updateHistograms();
     void onChannelChanged(int channel);
-    void onRangeChanged();
-    void onLogScaleToggled(bool checked);
+    void onHistogramSelectionChanged();
+    void onOpenRootFile();
 
 private:
     void setupUI();
-    void setupHistogram();
     void processHistogramData();
+    void updateHistogramVisibility();
 
 private:
-    QCustomPlot *m_customPlot;
+    // Histogram plots
+    HistogramPlot *m_amplitudePlot;
+    HistogramPlot *m_chargePlot;
+    HistogramPlot *m_timePlot;
+
+    // Layout and widgets
     QVBoxLayout *m_mainLayout;
     QWidget *m_centralWidget;
 
-    QCPItemStraightLine *m_eventLine;
+    // Controls
     QLabel *m_eventTimeLabel;
     QSpinBox *m_channelSpinBox;
-    QLineEdit *m_minAmpEdit;
-    QLineEdit *m_maxAmpEdit;
-    QLineEdit *m_binsEdit;
     QPushButton *m_updateButton;
-    QCheckBox *m_logScaleCheck;
+    QComboBox *m_histogramSelectionCombo;
+    QListWidget *m_histogramListWidget;
+
+    // Menu action
+    QAction *m_openRootFileAction;
+
+    // Checkbox items
+    QListWidgetItem *m_amplitudeItem;
+    QListWidgetItem *m_chargeItem;
+    QListWidgetItem *m_timeItem;
+
+    // File path display
+    QLabel *m_filePathLabel;
 
     QString m_currentRootFile;
     int m_currentChannel;
+
+    // Data storage
     std::vector<float> m_amplitudeData;
-    std::vector<float> m_eventTimes;
+    std::vector<float> m_chargeData;
+    std::vector<float> m_timeData;
 
     std::atomic<bool> m_dataLoaded;
     ctpl::thread_pool *m_threadPool;
-
-    QPen m_eventLinePen;
 };
 
 #endif // HISTOGRAMWINDOW_H
