@@ -40,6 +40,7 @@ public slots:
     void onChannelChanged(int channel);
     void onHistogramSelectionChanged();
     void onOpenRootFile();
+    void updateHistogramValues(uint32_t amplitude, float charge, float time_index);
 
 private:
     void setupUI();
@@ -78,7 +79,7 @@ private:
     int m_currentChannel;
 
     // Data storage
-    std::vector<float> m_amplitudeData;
+    std::vector<uint32_t> m_amplitudeData;
     std::vector<float> m_chargeData;
     std::vector<float> m_timeData;
 

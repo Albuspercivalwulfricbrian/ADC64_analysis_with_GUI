@@ -7,6 +7,7 @@
 #include "thread"
 #include "FourierFilter.h"
 #include <QScrollArea>
+#include "HistogramWindow.h" // Add missing include
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), p(8)
@@ -185,6 +186,59 @@ void MainWindow::UpdateGraph()
         customPlot->yAxis->rescale();
         customPlot->xAxis->rescale();
         customPlot->replot();
+
+        // Calculate waveform parameters if histogram window is visible
+        if (m_histogramWindow && m_histogramWindow->isVisible() && DFR.event_waveform.wf.size() > 0)
+        {
+            PeaksInfo *sci;
+            sci->Initialize();
+            if (channels[currChannel])
+            {
+                DFR.event_waveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+            }
+            else
+            {
+                DFR.event_waveform.Set_Zero_Level_Area(60);
+            }
+            sci->zl = DFR.event_waveform.CalculateZlwithNoisePeaks(130);
+            sci->zl_rms = DFR.event_waveform.Get_Zero_Level_RMS();
+
+            if (channels[currChannel])
+            {
+                DFR.event_waveform.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+            }
+            else
+            {
+                DFR.event_waveform.SetBoarders(50, 100);
+            }
+
+            sci->ADC_ID = DFR.event_waveform.ADCID;
+            int count = 0;
+
+            // while (true)
+            {
+                SinglePeakInfo peakInfo;
+
+                DFR.event_waveform.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+
+                int pp = DFR.event_waveform.Get_time();
+                // event_waveform.SetBoarders(pp-12,pp+25);
+                peakInfo.amp = DFR.event_waveform.Get_Amplitude();
+                if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
+                    DFR.event_waveform.AssumeSmartScope();
+                peakInfo.time = DFR.event_waveform.Get_time_gauss();
+
+                peakInfo.charge = DFR.event_waveform.Get_Charge();
+                peakInfo.II = DFR.event_waveform.GetIntegralInfo();
+                // if (peakInfo.amp < 500 && count > 0)
+                //     break;
+                if (peakInfo.amp > 0)
+                    sci->AddPeak(peakInfo);
+                //     count++;
+                //     event_waveform.DeleteCurrentPeak();
+            }
+            m_histogramWindow->updateHistogramValues(sci->amp(), sci->charge(), sci->time());
+        }
     }
 }
 void MainWindow::onMouseMove(QMouseEvent *event)
@@ -232,6 +286,13 @@ void MainWindow::on_channelSpinBox_valueChanged(int)
     action_UseSmartScope->setChecked(channels[currChannel]->UseSmartScope);
     action_UseSpline->setChecked(channels[currChannel]->UseSpline);
     action_Signal_is_Negative->setChecked(channels[currChannel]->SignalNegative);
+
+    // Update histogram window channel if it exists and is visible
+    if (m_histogramWindow && m_histogramWindow->isVisible())
+    {
+        m_histogramWindow->onChannelChanged(currChannel);
+    }
+
     // ReDrawBoundaries();
 }
 
@@ -677,6 +738,9 @@ void MainWindow::on_action_Show_Histogram_triggered()
         m_histogramWindow = new HistogramWindow(this);
         m_histogramWindow->setAnalysisThreadPool(&p);
     }
+
+    // Set the current channel from main window to histogram window
+    m_histogramWindow->onChannelChanged(currChannel);
 
     // if (DFR.FileIsSet)
     // {

@@ -32,7 +32,7 @@ HistogramWindow::HistogramWindow(QWidget *parent)
 
     // Connect signals
     connect(m_updateButton, &QPushButton::clicked, this, &HistogramWindow::updateHistograms);
-    connect(m_channelSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, &HistogramWindow::onChannelChanged);
+    // Note: No connection for m_channelSpinBox valueChanged since it's now read-only
     connect(m_histogramListWidget, &QListWidget::itemChanged, this, &HistogramWindow::onHistogramSelectionChanged);
 
     // Connect menu action to slot
@@ -60,6 +60,9 @@ void HistogramWindow::setupUI()
     QLabel *channelLabel = new QLabel("Channel:", this);
     m_channelSpinBox->setRange(0, 511);
     m_channelSpinBox->setValue(0);
+    // Make the channel spinbox read-only - it should only be controlled by the main window
+    m_channelSpinBox->setReadOnly(true);
+    m_channelSpinBox->setEnabled(false);
 
     // Histogram selection combo box
     m_histogramSelectionCombo->setFixedWidth(200);
@@ -137,6 +140,39 @@ void HistogramWindow::updateHistogramVisibility()
     }
 }
 
+void HistogramWindow::updateHistogramValues(uint32_t amplitude, float charge, float time_index)
+{
+    // Add amplitude value to data vector
+    m_amplitudeData.push_back(static_cast<float>(amplitude));
+
+    // Add charge value to data vector
+    m_chargeData.push_back(static_cast<float>(charge));
+
+    // Add time value to data vector
+    m_timeData.push_back(static_cast<float>(time_index));
+
+    // Keep only last 1000 events for performance
+    const size_t max_events = 1000;
+    if (m_amplitudeData.size() > max_events)
+    {
+        m_amplitudeData.erase(m_amplitudeData.begin(), m_amplitudeData.end() - max_events);
+    }
+    if (m_chargeData.size() > max_events)
+    {
+        m_chargeData.erase(m_chargeData.begin(), m_chargeData.end() - max_events);
+    }
+    if (m_timeData.size() > max_events)
+    {
+        m_timeData.erase(m_timeData.begin(), m_timeData.end() - max_events);
+    }
+
+    // Update plots if visible
+    if (isVisible())
+    {
+        updateHistograms();
+    }
+}
+
 void HistogramWindow::setCurrentEventTime(float time)
 {
     m_eventTimeLabel->setText(QString("Current Event Time: %1").arg(time, 0, 'f', 2));
@@ -177,7 +213,10 @@ void HistogramWindow::loadRootFile(const QString &filePath, int channel)
 {
     m_currentRootFile = filePath;
     m_currentChannel = channel;
+    // Update the spinbox value directly without triggering signals
+    m_channelSpinBox->blockSignals(true);
     m_channelSpinBox->setValue(channel);
+    m_channelSpinBox->blockSignals(false);
     m_dataLoaded = false;
 
     // Update file path label
@@ -266,27 +305,16 @@ void HistogramWindow::processHistogramData()
 
 void HistogramWindow::updateHistograms()
 {
-    if (!m_dataLoaded)
-        return;
-
-    // Update plots with their respective data
-    if (m_amplitudeItem->checkState() == Qt::Checked)
-    {
-        m_amplitudePlot->setData(m_amplitudeData);
-    }
-    if (m_chargeItem->checkState() == Qt::Checked)
-    {
-        m_chargePlot->setData(m_chargeData);
-    }
-    if (m_timeItem->checkState() == Qt::Checked)
-    {
-        m_timePlot->setData(m_timeData);
-    }
 }
 
 void HistogramWindow::onChannelChanged(int channel)
 {
     m_currentChannel = channel;
+    // Update the spinbox value directly without triggering signals
+    m_channelSpinBox->blockSignals(true);
+    m_channelSpinBox->setValue(channel);
+    m_channelSpinBox->blockSignals(false);
+
     if (!m_currentRootFile.isEmpty())
     {
         loadRootFile(m_currentRootFile, channel);

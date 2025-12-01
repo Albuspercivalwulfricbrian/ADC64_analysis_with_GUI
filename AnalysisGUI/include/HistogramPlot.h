@@ -25,13 +25,15 @@ public:
     // Range and bin configuration
     void setRange(float min, float max);
     void setBins(int bins);
-    void setLogScale(bool logScale);
+    void setlogYScale(bool logYScale);
+    void setLogXScale(bool logXScale);
 
     // Getters
     float getMinRange() const { return m_minEdit->text().toFloat(); }
     float getMaxRange() const { return m_maxEdit->text().toFloat(); }
     int getBins() const { return m_binsEdit->text().toInt(); }
-    bool getLogScale() const { return m_logScaleCheck->isChecked(); }
+    bool getlogYScale() const { return m_logYScaleCheck->isChecked(); }
+    bool getLogXScale() const { return m_logXScaleCheck->isChecked(); }
 
     // Plot access
     QCustomPlot *plot() { return m_customPlot; }
@@ -43,11 +45,13 @@ public:
 public slots:
     void updatePlot();
     void onRangeChanged();
-    void onLogScaleToggled(bool checked);
+    void onlogYScaleToggled(bool checked);
+    void onLogXScaleToggled(bool checked);
 
 signals:
     void rangeChanged();
-    void logScaleToggled(bool);
+    void logYScaleToggled(bool);
+    void logXScaleToggled(bool);
 
 private:
     void setupUI(const QString &title, const QString &xAxisLabel);
@@ -67,7 +71,8 @@ private:
     QLineEdit *m_minEdit;
     QLineEdit *m_maxEdit;
     QLineEdit *m_binsEdit;
-    QCheckBox *m_logScaleCheck;
+    QCheckBox *m_logYScaleCheck;
+    QCheckBox *m_logXScaleCheck;
 
     // Event line
     QCPItemStraightLine *m_eventLine;

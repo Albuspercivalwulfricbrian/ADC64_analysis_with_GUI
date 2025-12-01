@@ -2,7 +2,7 @@
 // #include <TTree.h>
 #include "ChannelEntry.h"
 #include <cstdint>
-
+#include "iostream"
 using namespace std;
 
 void IntegralInfo::Initialize()
@@ -72,8 +72,9 @@ float PeaksInfo::time()
 float PeaksInfo::charge()
 {
     float charge = 0;
-    for (auto el : peaks)
-        charge += el.charge;
+    if (peaks.size() > 0)
+        for (auto el : peaks)
+            charge += el.charge;
     return charge;
 }
 
@@ -100,15 +101,15 @@ void ChannelEntry::SplineWf() //! Smoothing waveform
 {
     vector<float> wf1;
     const int32_t SplineWidth = 2;
-    for (int32_t i = 0; i < wf_size; i++)
+    for (int32_t i = 0; i < wf.size(); i++)
     {
         float point = 0;
         int32_t il = i - SplineWidth;
         int32_t ir = i + SplineWidth;
         if (il < 0)
             il = 0;
-        if (ir > wf_size - 1)
-            ir = wf_size - 1;
+        if (ir > wf.size() - 1)
+            ir = wf.size() - 1;
         float counter = 0;
         for (int32_t in = il; in <= ir; in++)
         {
@@ -118,7 +119,7 @@ void ChannelEntry::SplineWf() //! Smoothing waveform
         point /= counter;
         wf1.push_back(point);
     }
-    for (int32_t i = 0; i < wf_size; i++)
+    for (int32_t i = 0; i < wf.size(); i++)
         wf[i] = wf1[i];
 }
 
@@ -150,14 +151,14 @@ void ChannelEntry::CalculateDiffWf() //! differentiate waveform
 {
     const float Diff_window = 4;
     dwf.clear();
-    for (int32_t i = 0; i < wf_size; i++)
+    for (int32_t i = 0; i < wf.size(); i++)
     {
         int32_t il = i - Diff_window;
         int32_t ir = i + Diff_window;
         if (il < 0)
             il = 0;
-        if (ir > wf_size - 1)
-            ir = wf_size - 1;
+        if (ir > wf.size() - 1)
+            ir = wf.size() - 1;
         dwf.push_back((int32_t)((float)(wf[ir] - wf[il]) / (float)(ir - il)));
     }
 }
@@ -199,7 +200,7 @@ void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
     while (1)
     {
         fGATE_END++;
-        if (fGATE_END >= wf_size)
+        if (fGATE_END >= wf.size())
         {
             fGATE_END--;
             break;
@@ -252,7 +253,7 @@ void ChannelEntry::Set_Zero_Level(int EZL)
     zl = EZL;
 }
 
-int32_t ChannelEntry::Get_Zero_Level()
+float ChannelEntry::Get_Zero_Level()
 {
     const int32_t interv_num = 1;
     int zero_lvl = 0;
@@ -339,7 +340,7 @@ int32_t ChannelEntry::Get_time() //! this time is the number of peak point of wa
 {
     amp = 0;
     peak_position = 0;
-    if (wf_size == 0)
+    if (wf.size() == 0)
     {
         // amp = 0;
         // peak_position = 0;
@@ -358,7 +359,7 @@ int32_t ChannelEntry::Get_time() //! this time is the number of peak point of wa
 }
 float ChannelEntry::Get_time_gauss() //! average time of event waveform
 {
-    if (wf_size == 0)
+    if (wf.size() == 0)
         return 0;
     float peak_search = 0.;
     float ampl_sum = 0;
@@ -380,14 +381,14 @@ uint32_t ChannelEntry::Get_Amplitude()
     return (uint32_t)amp;
 }
 
-void ChannelEntry::FillWf(int32_t *Ewf)
-{
-    for (int i = 0; i < 1024; i++)
-    {
-        wf[i] = Ewf[i];
-        wf_size++;
-    }
-}
+// void ChannelEntry::FillWf(int32_t *Ewf)
+// {
+//     for (int i = 0; i < 1024; i++)
+//     {
+//         wf[i] = Ewf[i];
+//         wf_size++;
+//     }
+// }
 
 void ChannelEntry::InvertSignal()
 {

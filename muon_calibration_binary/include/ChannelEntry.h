@@ -100,14 +100,14 @@ public:
     int32_t CountCoincidencePeaks(int32_t, int32_t);
     int32_t PointAmpl(int32_t);
     float CalculateZlwithNoisePeaks(int);
-    int32_t Get_Zero_Level();
+    float Get_Zero_Level();
     float Get_Zero_Level_RMS();
     float Get_Charge();
     int32_t Get_time();
     float Get_time_gauss();
     uint32_t Get_Amplitude();
     IntegralInfo GetIntegralInfo();
-    void FillWf(int32_t *Ewf);
+    // void FillWf(int32_t *Ewf);
     void InvertSignal();
 };
 

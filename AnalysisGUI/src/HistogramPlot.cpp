@@ -1,6 +1,7 @@
 #include "HistogramPlot.h"
 #include <cmath>
 #include <algorithm>
+#include <cmath>
 
 HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QWidget *parent)
     : QWidget(parent),
@@ -14,7 +15,8 @@ HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QW
       m_minEdit(new QLineEdit("0", this)),
       m_maxEdit(new QLineEdit("100", this)),
       m_binsEdit(new QLineEdit("100", this)),
-      m_logScaleCheck(new QCheckBox("Log Scale", this)),
+      m_logYScaleCheck(new QCheckBox("Log Y Scale", this)),
+      m_logXScaleCheck(new QCheckBox("Log X Scale", this)),
       m_eventLine(new QCPItemStraightLine(m_customPlot)),
       m_xAxisLabel(xAxisLabel)
 {
@@ -25,7 +27,8 @@ HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QW
     connect(m_minEdit, &QLineEdit::editingFinished, this, &HistogramPlot::onRangeChanged);
     connect(m_maxEdit, &QLineEdit::editingFinished, this, &HistogramPlot::onRangeChanged);
     connect(m_binsEdit, &QLineEdit::editingFinished, this, &HistogramPlot::onRangeChanged);
-    connect(m_logScaleCheck, &QCheckBox::toggled, this, &HistogramPlot::onLogScaleToggled);
+    connect(m_logYScaleCheck, &QCheckBox::toggled, this, &HistogramPlot::onlogYScaleToggled);
+    connect(m_logXScaleCheck, &QCheckBox::toggled, this, &HistogramPlot::onLogXScaleToggled);
 }
 
 HistogramPlot::~HistogramPlot()
@@ -45,7 +48,8 @@ void HistogramPlot::setupUI(const QString &title, const QString &xAxisLabel)
     controlLayout->addWidget(m_maxEdit);
     controlLayout->addWidget(m_binsLabel);
     controlLayout->addWidget(m_binsEdit);
-    controlLayout->addWidget(m_logScaleCheck);
+    controlLayout->addWidget(m_logYScaleCheck);
+    controlLayout->addWidget(m_logXScaleCheck);
     controlLayout->addStretch(); // Push everything to the left
 
     // Set fixed sizes for line edits
@@ -114,10 +118,16 @@ void HistogramPlot::setBins(int bins)
     updatePlot();
 }
 
-void HistogramPlot::setLogScale(bool logScale)
+void HistogramPlot::setlogYScale(bool logYScale)
 {
-    m_logScaleCheck->setChecked(logScale);
-    onLogScaleToggled(logScale);
+    m_logYScaleCheck->setChecked(logYScale);
+    onlogYScaleToggled(logYScale);
+}
+
+void HistogramPlot::setLogXScale(bool logXScale)
+{
+    m_logXScaleCheck->setChecked(logXScale);
+    onLogXScaleToggled(logXScale);
 }
 
 void HistogramPlot::setEventLineVisible(bool visible)
@@ -160,20 +170,39 @@ void HistogramPlot::updatePlot()
     calculateHistogram(x, y);
 
     // Create bar chart
-    double binWidth = (maxVal - minVal) / bins;
     QCPBars *bars = new QCPBars(m_customPlot->xAxis, m_customPlot->yAxis);
     bars->setData(x, y);
     bars->setPen(QPen(Qt::blue));
     bars->setBrush(QBrush(QColor(0, 0, 255, 100)));
-    bars->setWidth(binWidth * 0.8);
 
     // Set axis ranges
     double maxCount = *std::max_element(y.constBegin(), y.constEnd());
     if (maxCount == 0)
         maxCount = 1;
 
-    m_customPlot->xAxis->setRange(minVal, maxVal);
     m_customPlot->yAxis->setRange(0, maxCount * 1.1);
+
+    // Handle x-axis scaling
+    if (m_logXScaleCheck->isChecked())
+    {
+        // For log scale, use logarithmic bin spacing
+        bars->setWidthType(QCPBars::wtAbsolute);
+        double logMin = log10(minVal);
+        double logMax = log10(maxVal);
+        double logRange = logMax - logMin;
+        bars->setWidth(logRange / bins * 0.8); // 80% of bin width
+        m_customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
+        m_customPlot->xAxis->setRange(minVal, maxVal);
+    }
+    else
+    {
+        // For linear scale, use linear bin spacing
+        double binWidth = (maxVal - minVal) / bins;
+        bars->setWidthType(QCPBars::wtAbsolute);
+        bars->setWidth(binWidth * 0.8); // 80% of bin width
+        m_customPlot->xAxis->setScaleType(QCPAxis::stLinear);
+        m_customPlot->xAxis->setRange(minVal, maxVal);
+    }
 
     m_customPlot->replot();
 }
@@ -189,25 +218,55 @@ void HistogramPlot::calculateHistogram(QVector<double> &x, QVector<double> &y)
 
     x.resize(bins);
     y.resize(bins);
-    double binWidth = (maxVal - minVal) / bins;
-
-    // Initialize bins
-    for (int i = 0; i < bins; ++i)
-    {
-        x[i] = minVal + (i + 0.5) * binWidth;
-        y[i] = 0;
-    }
 
     // Fill histogram
     for (float value : m_data)
     {
         if (value >= minVal && value <= maxVal)
         {
-            int bin = static_cast<int>((value - minVal) / binWidth);
-            if (bin >= 0 && bin < bins)
+            if (m_logXScaleCheck->isChecked())
             {
-                y[bin]++;
+                // For log scale, use logarithmic binning
+                double logMin = log10(minVal);
+                double logMax = log10(maxVal);
+                double logRange = logMax - logMin;
+                double logValue = log10(value);
+                int bin = static_cast<int>((logValue - logMin) / logRange * bins);
+                if (bin >= 0 && bin < bins)
+                {
+                    y[bin]++;
+                }
             }
+            else
+            {
+                // For linear scale, use linear binning
+                double binWidth = (maxVal - minVal) / bins;
+                int bin = static_cast<int>((value - minVal) / binWidth);
+                if (bin >= 0 && bin < bins)
+                {
+                    y[bin]++;
+                }
+            }
+        }
+    }
+
+    // Calculate bin centers for display
+    for (int i = 0; i < bins; ++i)
+    {
+        if (m_logXScaleCheck->isChecked())
+        {
+            // For log scale, use geometric centers
+            double logMin = log10(minVal);
+            double logMax = log10(maxVal);
+            double logRange = logMax - logMin;
+            double logBinCenter = logMin + (i + 0.5) * logRange / bins;
+            x[i] = pow(10.0, logBinCenter);
+        }
+        else
+        {
+            // For linear scale, use arithmetic centers
+            double binWidth = (maxVal - minVal) / bins;
+            x[i] = minVal + (i + 0.5) * binWidth;
         }
     }
 }
@@ -218,7 +277,7 @@ void HistogramPlot::onRangeChanged()
     emit rangeChanged();
 }
 
-void HistogramPlot::onLogScaleToggled(bool checked)
+void HistogramPlot::onlogYScaleToggled(bool checked)
 {
     if (checked)
     {
@@ -229,5 +288,19 @@ void HistogramPlot::onLogScaleToggled(bool checked)
         m_customPlot->yAxis->setScaleType(QCPAxis::stLinear);
     }
     m_customPlot->replot();
-    emit logScaleToggled(checked);
+    emit logYScaleToggled(checked);
+}
+
+void HistogramPlot::onLogXScaleToggled(bool checked)
+{
+    if (checked)
+    {
+        m_customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
+    }
+    else
+    {
+        m_customPlot->xAxis->setScaleType(QCPAxis::stLinear);
+    }
+    m_customPlot->replot();
+    emit logXScaleToggled(checked);
 }
