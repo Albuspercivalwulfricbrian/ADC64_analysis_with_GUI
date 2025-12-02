@@ -57,6 +57,5 @@ public:
   void setName(const char *a, std::map<int, ConfigManager *> ext_config);
   void DisplayTimeToCalculate(int32_t EvNum, int32_t total_entries, time_t start_time);
   uint32_t ConsequentialEventsReading(Progress *progress);
-  vector<float> DrawAverageWaveform(int32_t, int32_t, int32_t, int32_t) { return std::vector<float>(0); };
 };
 #endif DATAFILEREADER_H

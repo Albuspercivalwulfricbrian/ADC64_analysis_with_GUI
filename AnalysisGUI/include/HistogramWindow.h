@@ -16,7 +16,10 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include "HistogramPlot.h"
-
+#include "ChannelEntry.h"
+#include <TTree.h>
+#include <TFile.h>
+#include <TROOT.h>
 // Forward declaration
 namespace ctpl
 {
@@ -31,8 +34,7 @@ public:
     explicit HistogramWindow(QWidget *parent = nullptr);
     ~HistogramWindow();
 
-    void setCurrentEventTime(float time);
-    void loadRootFile(const QString &filePath, int channel);
+    void loadRootFile(const QString &filePath);
     void setAnalysisThreadPool(ctpl::thread_pool *pool);
 
 public slots:
@@ -40,7 +42,7 @@ public slots:
     void onChannelChanged(int channel);
     void onHistogramSelectionChanged();
     void onOpenRootFile();
-    void updateHistogramValues(uint32_t amplitude, float charge, float time_index);
+    void setEventValues(uint32_t amplitude, float charge, float time);
 
 private:
     void setupUI();
@@ -79,10 +81,16 @@ private:
     int m_currentChannel;
 
     // Data storage
+    TFile *RootDataFile = nullptr;
+    TTree *RootDataTree = nullptr;
+    short_energy_ChannelEntry *sci = nullptr;
+    PeaksInfo *sciv = nullptr;
     std::vector<uint32_t> m_amplitudeData;
     std::vector<float> m_chargeData;
     std::vector<float> m_timeData;
-
+    uint32_t event_amplitude = 0;
+    float event_charge = 0;
+    float event_time = 0;
     std::atomic<bool> m_dataLoaded;
     ctpl::thread_pool *m_threadPool;
 };

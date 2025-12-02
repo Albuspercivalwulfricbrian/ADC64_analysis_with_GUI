@@ -190,8 +190,7 @@ void MainWindow::UpdateGraph()
         // Calculate waveform parameters if histogram window is visible
         if (m_histogramWindow && m_histogramWindow->isVisible() && DFR.event_waveform.wf.size() > 0)
         {
-            PeaksInfo *sci;
-            sci->Initialize();
+            PeaksInfo *sci = new PeaksInfo();
             if (channels[currChannel])
             {
                 DFR.event_waveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
@@ -237,7 +236,9 @@ void MainWindow::UpdateGraph()
                 //     count++;
                 //     event_waveform.DeleteCurrentPeak();
             }
-            m_histogramWindow->updateHistogramValues(sci->amp(), sci->charge(), sci->time());
+            cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
+            m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time());
+            delete sci;
         }
     }
 }
@@ -727,7 +728,6 @@ void MainWindow::onCurrentEventChanged()
             // Example: use the waveform size or some calculated time
             eventTime = static_cast<float>(DFR.event_waveform.wf.size());
         }
-        m_histogramWindow->setCurrentEventTime(eventTime);
     }
 }
 

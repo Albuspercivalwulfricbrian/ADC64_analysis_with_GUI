@@ -17,7 +17,7 @@ HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QW
       m_binsEdit(new QLineEdit("100", this)),
       m_logYScaleCheck(new QCheckBox("Log Y Scale", this)),
       m_logXScaleCheck(new QCheckBox("Log X Scale", this)),
-      m_eventLine(new QCPItemStraightLine(m_customPlot)),
+      m_eventLine(new QCPItemLine(m_customPlot)),
       m_xAxisLabel(xAxisLabel)
 {
     setupUI(title, xAxisLabel);
@@ -80,14 +80,21 @@ void HistogramPlot::setupPlot(const QString &xAxisLabel)
     m_customPlot->yAxis->setLabel("Counts");
     m_customPlot->xAxis->setRange(0, 100);
     m_customPlot->yAxis->setRange(0, 100);
-    m_customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
-
-    // Setup event line
-    m_eventLinePen.setColor(QColor(255, 165, 0)); // Orange color
-    m_eventLinePen.setWidth(2);
-    m_eventLinePen.setStyle(Qt::DashLine);
-    m_eventLine->setPen(m_eventLinePen);
+    m_customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables);
+    m_customPlot->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
+    m_customPlot->axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
+    m_customPlot->axisRect()->setRangeZoomAxes(m_customPlot->xAxis, m_customPlot->yAxis);
+    m_customPlot->setSelectionRectMode(QCP::srmZoom);
+    m_customPlot->setSelectionRectMode(QCP::srmZoom);
+    m_customPlot->addLayer("CustomLayer", m_customPlot->layer("main"), QCustomPlot::LayerInsertMode::limAbove);
+    // Setup event line to match MainWindow's style
+    m_eventLine->setLayer("CustomLayer");
+    QPen eventLinePen(QColor(255, 165, 0), 4); // Orange color, width 4 like MainWindow
+    m_eventLine->setPen(eventLinePen);
     m_eventLine->setVisible(false);
+    // Initialize line positions
+    m_eventLine->start->setCoords(0, m_customPlot->yAxis->range().lower);
+    m_eventLine->end->setCoords(0, m_customPlot->yAxis->range().upper);
 
     m_customPlot->replot();
 }
@@ -136,12 +143,13 @@ void HistogramPlot::setEventLineVisible(bool visible)
     m_customPlot->replot();
 }
 
-void HistogramPlot::setEventLinePosition(float position)
+void HistogramPlot::setEventValue(float value)
 {
+    m_eventValue = value;
     if (m_eventLine->visible())
     {
-        m_eventLine->point1->setCoords(position, 0);
-        m_eventLine->point2->setCoords(position, m_customPlot->yAxis->range().upper);
+        m_eventLine->start->setCoords(m_eventValue, m_customPlot->yAxis->range().lower);
+        m_eventLine->end->setCoords(m_eventValue, m_customPlot->yAxis->range().upper);
         m_customPlot->replot();
     }
 }

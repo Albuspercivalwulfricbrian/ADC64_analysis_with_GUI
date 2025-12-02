@@ -4,7 +4,6 @@
 #include <thread>
 #include <random>
 #include "ctpl_stl.h"
-
 HistogramWindow::HistogramWindow(QWidget *parent)
     : QMainWindow(parent),
       m_amplitudePlot(new HistogramPlot("Amplitude Histogram", "Amplitude (ADC Channels)", this)),
@@ -140,83 +139,37 @@ void HistogramWindow::updateHistogramVisibility()
     }
 }
 
-void HistogramWindow::updateHistogramValues(uint32_t amplitude, float charge, float time_index)
+void HistogramWindow::setEventValues(uint32_t amplitude, float charge, float time)
 {
-    // Add amplitude value to data vector
-    m_amplitudeData.push_back(static_cast<float>(amplitude));
+    event_amplitude = amplitude;
+    event_charge = charge;
+    event_time = time;
 
-    // Add charge value to data vector
-    m_chargeData.push_back(static_cast<float>(charge));
-
-    // Add time value to data vector
-    m_timeData.push_back(static_cast<float>(time_index));
-
-    // Keep only last 1000 events for performance
-    const size_t max_events = 1000;
-    if (m_amplitudeData.size() > max_events)
+    if (m_amplitudePlot->isVisible())
     {
-        m_amplitudeData.erase(m_amplitudeData.begin(), m_amplitudeData.end() - max_events);
+        m_amplitudePlot->setEventLineVisible(true);
+        m_amplitudePlot->setEventValue(amplitude);
     }
-    if (m_chargeData.size() > max_events)
+    if (m_chargePlot->isVisible())
     {
-        m_chargeData.erase(m_chargeData.begin(), m_chargeData.end() - max_events);
+        m_chargePlot->setEventLineVisible(true);
+        m_chargePlot->setEventValue(charge);
     }
-    if (m_timeData.size() > max_events)
+    if (m_timePlot->isVisible())
     {
-        m_timeData.erase(m_timeData.begin(), m_timeData.end() - max_events);
-    }
-
-    // Update plots if visible
-    if (isVisible())
-    {
-        updateHistograms();
+        m_timePlot->setEventLineVisible(true);
+        m_timePlot->setEventValue(time);
     }
 }
 
-void HistogramWindow::setCurrentEventTime(float time)
-{
-    m_eventTimeLabel->setText(QString("Current Event Time: %1").arg(time, 0, 'f', 2));
-
-    if (m_dataLoaded)
-    {
-        // Update event lines for all plots
-        if (!m_amplitudeData.empty())
-        {
-            float minAmp = m_amplitudePlot->getMinRange();
-            float maxAmp = m_amplitudePlot->getMaxRange();
-            float normalizedTime = fmod(time, 1000.0f) / 1000.0f;
-            float linePos = minAmp + normalizedTime * (maxAmp - minAmp);
-            m_amplitudePlot->setEventLinePosition(linePos);
-        }
-
-        if (!m_chargeData.empty())
-        {
-            float minCharge = m_chargePlot->getMinRange();
-            float maxCharge = m_chargePlot->getMaxRange();
-            float normalizedTime = fmod(time, 1000.0f) / 1000.0f;
-            float linePos = minCharge + normalizedTime * (maxCharge - minCharge);
-            m_chargePlot->setEventLinePosition(linePos);
-        }
-
-        if (!m_timeData.empty())
-        {
-            float minTime = m_timePlot->getMinRange();
-            float maxTime = m_timePlot->getMaxRange();
-            float normalizedTime = fmod(time, 1000.0f) / 1000.0f;
-            float linePos = minTime + normalizedTime * (maxTime - minTime);
-            m_timePlot->setEventLinePosition(linePos);
-        }
-    }
-}
-
-void HistogramWindow::loadRootFile(const QString &filePath, int channel)
+void HistogramWindow::loadRootFile(const QString &filePath)
 {
     m_currentRootFile = filePath;
-    m_currentChannel = channel;
-    // Update the spinbox value directly without triggering signals
-    m_channelSpinBox->blockSignals(true);
-    m_channelSpinBox->setValue(channel);
-    m_channelSpinBox->blockSignals(false);
+    // m_currentChannel = channel;
+    // // Update the spinbox value directly without triggering signals
+    // m_channelSpinBox->blockSignals(true);
+    // m_channelSpinBox->setValue(channel);
+    // m_channelSpinBox->blockSignals(false);
     m_dataLoaded = false;
 
     // Update file path label
@@ -224,6 +177,12 @@ void HistogramWindow::loadRootFile(const QString &filePath, int channel)
     {
         QFileInfo fileInfo(filePath);
         m_filePathLabel->setText("File: " + fileInfo.fileName());
+        RootDataFile = TFile::Open((TString)(filePath.toUtf8().constData()));
+        RootDataTree = (TTree *)RootDataFile->Get("adc64_data");
+        std::map<Int_t, short_energy_ChannelEntry *> short_channel_info;
+
+        sci = new short_energy_ChannelEntry();
+        sci->Initialize();
     }
     else
     {
@@ -262,35 +221,43 @@ void HistogramWindow::processHistogramData()
         m_chargeData.clear();
         m_timeData.clear();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        RootDataTree->SetBranchAddress((TString::Format("channel_%i", m_currentChannel + 1)).Data(), &sci);
 
-        std::random_device rd;
-        std::mt19937 gen(rd());
-
-        // Generate amplitude data
-        std::normal_distribution<> ampDist(30000, 10000);
-        for (int i = 0; i < 10000; ++i)
+        for (int i = 0; i < RootDataTree->GetEntries(); i++)
         {
-            float amp = std::max(0.0f, static_cast<float>(ampDist(gen)));
-            if (amp <= 60000)
-                m_amplitudeData.push_back(amp);
+            RootDataTree->GetEntry(i);
+            m_amplitudeData.push_back(sci->amp);
+            m_chargeData.push_back(sci->charge);
+            m_timeData.push_back(sci->time);
         }
+        // std::random_device rd;
+        // std::mt19937 gen(rd());
 
-        // Generate charge data
-        std::normal_distribution<> chargeDist(500, 200);
-        for (int i = 0; i < 10000; ++i)
-        {
-            float charge = std::max(0.0f, static_cast<float>(chargeDist(gen)));
-            m_chargeData.push_back(charge);
-        }
+        // // Generate amplitude data
+        // std::normal_distribution<> ampDist(30000, 10000);
+        // for (int i = 0; i < 10000; ++i)
+        // {
+        //     float amp = std::max(0.0f, static_cast<float>(ampDist(gen)));
+        //     if (amp <= 60000)
+        //         m_amplitudeData.push_back(amp);
+        // }
 
-        // Generate time data
-        std::uniform_real_distribution<> timeDist(0, 1000);
-        for (int i = 0; i < 10000; ++i)
-        {
-            float time = static_cast<float>(timeDist(gen));
-            m_timeData.push_back(time);
-        }
+        // // Generate charge data
+        // std::normal_distribution<> chargeDist(500, 200);
+        // for (int i = 0; i < 10000; ++i)
+        // {
+        //     float charge = std::max(0.0f, static_cast<float>(chargeDist(gen)));
+        //     m_chargeData.push_back(charge);
+        // }
+
+        // // Generate time data
+        // std::uniform_real_distribution<> timeDist(0, 1000);
+        // for (int i = 0; i < 10000; ++i)
+        // {
+        //     float time = static_cast<float>(timeDist(gen));
+        //     m_timeData.push_back(time);
+        // }
 
         m_dataLoaded = true;
 
@@ -305,6 +272,37 @@ void HistogramWindow::processHistogramData()
 
 void HistogramWindow::updateHistograms()
 {
+    if (!m_dataLoaded)
+        return;
+
+    // Update amplitude histogram if visible
+    if (m_amplitudePlot->isVisible() && !m_amplitudeData.empty())
+    {
+        std::vector<float> ampData(m_amplitudeData.begin(), m_amplitudeData.end());
+        m_amplitudePlot->setData(ampData);
+        m_amplitudePlot->setEventLineVisible(true);
+        m_amplitudePlot->setEventValue(event_amplitude);
+        m_amplitudePlot->updatePlot();
+    }
+
+    // Update charge histogram if visible
+    if (m_chargePlot->isVisible() && !m_chargeData.empty())
+    {
+        std::vector<float> chargeData(m_chargeData.begin(), m_chargeData.end());
+        m_chargePlot->setData(chargeData);
+        m_chargePlot->setEventLineVisible(true);
+        m_chargePlot->setEventValue(event_charge);
+        m_chargePlot->updatePlot();
+    }
+
+    // Update time histogram if visible
+    if (m_timePlot->isVisible() && !m_timeData.empty())
+    {
+        m_timePlot->setData(m_timeData);
+        m_timePlot->setEventLineVisible(true);
+        m_timePlot->setEventValue(event_time);
+        m_timePlot->updatePlot();
+    }
 }
 
 void HistogramWindow::onChannelChanged(int channel)
@@ -317,7 +315,11 @@ void HistogramWindow::onChannelChanged(int channel)
 
     if (!m_currentRootFile.isEmpty())
     {
-        loadRootFile(m_currentRootFile, channel);
+        loadRootFile(m_currentRootFile);
+    }
+    else
+    {
+        processHistogramData();
     }
 }
 
@@ -340,6 +342,6 @@ void HistogramWindow::onOpenRootFile()
 
     if (!filePath.isEmpty())
     {
-        loadRootFile(filePath, m_currentChannel);
+        loadRootFile(filePath);
     }
 }

@@ -39,8 +39,8 @@ public:
     QCustomPlot *plot() { return m_customPlot; }
 
     // Event line management
+    void setEventValue(float value);
     void setEventLineVisible(bool visible);
-    void setEventLinePosition(float position);
 
 public slots:
     void updatePlot();
@@ -75,8 +75,10 @@ private:
     QCheckBox *m_logXScaleCheck;
 
     // Event line
-    QCPItemStraightLine *m_eventLine;
+    float m_eventValue;
+    QCPItemLine *m_eventLine;
     QPen m_eventLinePen;
+    float m_eventPosition; // Renamed for clarity
 
     // Data
     std::vector<float> m_data;
