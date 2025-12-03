@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include <thread>
 #include <random>
+#include "ProgressDialog.h"
 #include "ctpl_stl.h"
 HistogramWindow::HistogramWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -26,8 +27,8 @@ HistogramWindow::HistogramWindow(QWidget *parent)
 
     // Set initial ranges
     m_amplitudePlot->setRange(0, 60000);
-    m_chargePlot->setRange(0, 1000);
-    m_timePlot->setRange(0, 1000);
+    m_chargePlot->setRange(0, 10000000);
+    m_timePlot->setRange(0, 10000);
 
     // Connect signals
     connect(m_updateButton, &QPushButton::clicked, this, &HistogramWindow::updateHistograms);
@@ -221,16 +222,29 @@ void HistogramWindow::processHistogramData()
         m_chargeData.clear();
         m_timeData.clear();
 
-        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        const int totalEntries = RootDataTree->GetEntries();
+        ProgressDialog *progressDialog = new ProgressDialog(this);
+        progressDialog->setWindowTitle("Processing ROOT File");
+        progressDialog->setWindowModality(Qt::ApplicationModal);
+        progressDialog->show();
+
         RootDataTree->SetBranchAddress((TString::Format("channel_%i", m_currentChannel + 1)).Data(), &sci);
 
-        for (int i = 0; i < RootDataTree->GetEntries(); i++)
+        for (int i = 0; i < totalEntries; i++)
         {
             RootDataTree->GetEntry(i);
             m_amplitudeData.push_back(sci->amp);
             m_chargeData.push_back(sci->charge);
             m_timeData.push_back(sci->time);
+
+            // Update progress scaled to 0-1000 range
+            const int scaledProgress = static_cast<int>((i + 1) * 1000.0 / totalEntries);
+            QMetaObject::invokeMethod(progressDialog, [progressDialog, scaledProgress]()
+                                      { progressDialog->updateProgress(scaledProgress); }, Qt::QueuedConnection);
         }
+
+        progressDialog->close();
+        progressDialog->deleteLater();
         // std::random_device rd;
         // std::mt19937 gen(rd());
 

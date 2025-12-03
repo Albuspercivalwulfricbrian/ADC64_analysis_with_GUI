@@ -14,7 +14,7 @@ HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QW
       m_binsLabel(new QLabel("Bins:", this)),
       m_minEdit(new QLineEdit("0", this)),
       m_maxEdit(new QLineEdit("100", this)),
-      m_binsEdit(new QLineEdit("100", this)),
+      m_binsEdit(new QLineEdit("300", this)),
       m_logYScaleCheck(new QCheckBox("Log Y Scale", this)),
       m_logXScaleCheck(new QCheckBox("Log X Scale", this)),
       m_eventLine(new QCPItemLine(m_customPlot)),
@@ -193,21 +193,21 @@ void HistogramPlot::updatePlot()
     // Handle x-axis scaling
     if (m_logXScaleCheck->isChecked())
     {
-        // For log scale, use logarithmic bin spacing
-        bars->setWidthType(QCPBars::wtAbsolute);
+        // For log scale - width will automatically scale with plot
+        bars->setWidthType(QCPBars::wtPlotCoords);
         double logMin = log10(minVal);
         double logMax = log10(maxVal);
         double logRange = logMax - logMin;
-        bars->setWidth(logRange / bins * 0.8); // 80% of bin width
+        bars->setWidth(logRange / bins); // Bin width in plot coordinates
         m_customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
         m_customPlot->xAxis->setRange(minVal, maxVal);
     }
     else
     {
-        // For linear scale, use linear bin spacing
+        // For linear scale - width will automatically scale with plot
         double binWidth = (maxVal - minVal) / bins;
-        bars->setWidthType(QCPBars::wtAbsolute);
-        bars->setWidth(binWidth * 0.8); // 80% of bin width
+        bars->setWidthType(QCPBars::wtPlotCoords);
+        bars->setWidth(binWidth); // Bin width in plot coordinates
         m_customPlot->xAxis->setScaleType(QCPAxis::stLinear);
         m_customPlot->xAxis->setRange(minVal, maxVal);
     }

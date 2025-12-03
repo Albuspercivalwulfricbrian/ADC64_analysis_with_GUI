@@ -12,79 +12,89 @@
 #include <Progress.h>
 #include "thread"
 #include "QCloseEvent"
-class ProgressWidget : public QWidget {
+class ProgressWidget : public QWidget
+{
     Q_OBJECT
 
 public:
-    enum class Mode {
-        Embedded,  // For use in scroll areas
-        Modal      // For standalone modal use
+    enum class Mode
+    {
+        Embedded, // For use in scroll areas
+        Modal     // For standalone modal use
     };
 
-    ProgressWidget(const std::vector<Progress*>& progressList, 
-                  QWidget* parent = nullptr,
-                  Mode mode = Mode::Embedded)
+    ProgressWidget(const std::vector<Progress *> &progressList,
+                   QWidget *parent = nullptr,
+                   Mode mode = Mode::Embedded)
         : QWidget(parent, mode == Mode::Modal ? Qt::Dialog : Qt::Widget),
-          currentProgressList(progressList) 
+          currentProgressList(progressList)
     {
-        if (mode == Mode::Modal) {
+        if (mode == Mode::Modal)
+        {
             setWindowModality(Qt::ApplicationModal);
             setWindowTitle("Progress Analysis");
         }
         initializeUI();
-        setWindowFlags(Qt::Window | 
-            Qt::WindowTitleHint |
-            Qt::WindowMinMaxButtonsHint |
-            Qt::WindowCloseButtonHint);
+        setWindowFlags(Qt::Window |
+                       Qt::WindowTitleHint |
+                       Qt::WindowMinMaxButtonsHint |
+                       Qt::WindowCloseButtonHint);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     }
 
-    void setProgressList(const std::vector<Progress*>& progressList) {
+    void setProgressList(const std::vector<Progress *> &progressList)
+    {
         currentProgressList = progressList;
         rebuildUI();
     }
 
-    // const std::vector<Progress*>& getCurrentProgressList() const { 
-    //     return currentProgressList; 
+    // const std::vector<Progress*>& getCurrentProgressList() const {
+    //     return currentProgressList;
     // }
-    void showAsModal() {
+    void showAsModal()
+    {
         setWindowFlags(Qt::Dialog);
         setWindowModality(Qt::ApplicationModal);
         setWindowTitle("Progress Analysis");
         show();
     }
 
-    void updateProgressList(const std::vector<Progress*>& newProgressList) {
+    void updateProgressList(const std::vector<Progress *> &newProgressList)
+    {
         currentProgressList = newProgressList;
         rebuildUI();
     }
 
-    void updateProgress() {
+    void updateProgress()
+    {
         // for (size_t index = 0; index < progressBars.size(); ++index) {
         //     progressBars[index]->setValue(static_cast<int>(100 * activeProcesses[index]->percentage));
         // }
-        for (size_t i = 0; i < progressBars.size(); i++) {
-            if (i < activeProcesses.size()) {
+        for (size_t i = 0; i < progressBars.size(); i++)
+        {
+            if (i < activeProcesses.size())
+            {
                 progressBars[i]->setValue(static_cast<int>(activeProcesses[i]->percentage * 100));
             }
         }
-
     }
 
-    signals:
+signals:
     void requestUpdate();
     void aboutToClose();
-    private:
-    std::vector<QProgressBar*> progressBars;
-    std::vector<Progress*> activeProcesses;
-    std::vector<Progress*> currentProgressList;
-    QSplitter* splitter = nullptr;
-    QScrollArea* leftScrollArea = nullptr;
-    QScrollArea* rightScrollArea = nullptr;
-    QWidget* leftContent = nullptr;
-    QWidget* rightContent = nullptr;
 
-    void initializeUI() {
+private:
+    std::vector<QProgressBar *> progressBars;
+    std::vector<Progress *> activeProcesses;
+    std::vector<Progress *> currentProgressList;
+    QSplitter *splitter = nullptr;
+    QScrollArea *leftScrollArea = nullptr;
+    QScrollArea *rightScrollArea = nullptr;
+    QWidget *leftContent = nullptr;
+    QWidget *rightContent = nullptr;
+
+    void initializeUI()
+    {
         // Main splitter
         splitter = new QSplitter(this);
         splitter->setOrientation(Qt::Horizontal);
@@ -94,7 +104,7 @@ public:
         // Create scroll areas
         leftScrollArea = new QScrollArea(this);
         rightScrollArea = new QScrollArea(this);
-        
+
         leftScrollArea->setWidgetResizable(true);
         rightScrollArea->setWidgetResizable(true);
 
@@ -107,7 +117,7 @@ public:
         splitter->setSizes(sizes);
 
         // Main layout
-        QVBoxLayout* mainLayout = new QVBoxLayout(this);
+        QVBoxLayout *mainLayout = new QVBoxLayout(this);
         mainLayout->addWidget(splitter);
         setLayout(mainLayout);
 
@@ -118,7 +128,8 @@ public:
         rebuildUI();
     }
 
-    void clearUI() {
+    void clearUI()
+    {
         qDeleteAll(progressBars);
         progressBars.clear();
         activeProcesses.clear();
@@ -129,54 +140,54 @@ public:
         rightContent = nullptr;
     }
 
-
-
     void rebuildUI()
     {
         clearUI();
-        
-        QWidget* leftContent = new QWidget;
-        QVBoxLayout* leftLayout = new QVBoxLayout(leftContent);
-        
-        QWidget* rightContent = new QWidget;
-        QVBoxLayout* rightLayout = new QVBoxLayout(rightContent);
+
+        QWidget *leftContent = new QWidget;
+        QVBoxLayout *leftLayout = new QVBoxLayout(leftContent);
+
+        QWidget *rightContent = new QWidget;
+        QVBoxLayout *rightLayout = new QVBoxLayout(rightContent);
         rightLayout->addWidget(new QLabel("Finished:", this));
-    
-        for (const auto& progressPtr : currentProgressList) {
-            if (progressPtr->active) {
-                QLabel* label = new QLabel(QString::fromStdString(progressPtr->fileName), this);
+
+        for (const auto &progressPtr : currentProgressList)
+        {
+            if (progressPtr->active)
+            {
+                QLabel *label = new QLabel(QString::fromStdString(progressPtr->fileName), this);
                 leftLayout->addWidget(label);
-                
-                QProgressBar* progressBar = new QProgressBar(this);
+
+                QProgressBar *progressBar = new QProgressBar(this);
                 progressBar->setRange(0, 100);
                 progressBar->setValue(static_cast<int>(progressPtr->percentage * 100));
                 leftLayout->addWidget(progressBar);
-                
+
                 progressBars.push_back(progressBar);
                 activeProcesses.push_back(progressPtr);
             }
-            else if (progressPtr->processed) {
-                QLabel* label = new QLabel(QString::fromStdString(progressPtr->fileName), this);
+            else if (progressPtr->processed)
+            {
+                QLabel *label = new QLabel(QString::fromStdString(progressPtr->fileName), this);
                 rightLayout->addWidget(label);
             }
         }
-        
+
         leftLayout->addStretch();
         rightLayout->addStretch();
-        
+
         leftScrollArea->setWidget(leftContent);
         rightScrollArea->setWidget(rightContent);
     }
 
-    protected:
-    void closeEvent(QCloseEvent *event) override {
+protected:
+    void closeEvent(QCloseEvent *event) override
+    {
         emit aboutToClose();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         event->accept();
         QWidget::closeEvent(event);
     }
-
-
 };
 
 #endif // PROGRESSWIDGET_H
