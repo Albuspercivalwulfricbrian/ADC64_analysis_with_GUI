@@ -186,6 +186,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
 
             // short_channel_info[ch]->charge = event_waveform.Get_Charge();
             // short_channel_info[ch]->II = event_waveform.GetIntegralInfo();
+
             short_channel_info[ch]->ADC_ID = event_waveform.ADCID;
             int count = 0;
             while (true)

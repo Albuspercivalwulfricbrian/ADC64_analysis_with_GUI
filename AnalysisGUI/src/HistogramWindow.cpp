@@ -217,6 +217,15 @@ void HistogramWindow::processHistogramData()
 
     try
     {
+
+        if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "PeaksInfo")
+        {
+            sciv->Initialize();
+        }
+        else if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "short_energy_ChannelEntry")
+        {
+            sci->Initialize();
+        }
         // Clear previous data
         m_amplitudeData.clear();
         m_chargeData.clear();
@@ -228,14 +237,30 @@ void HistogramWindow::processHistogramData()
         progressDialog->setWindowModality(Qt::ApplicationModal);
         progressDialog->show();
 
-        RootDataTree->SetBranchAddress((TString::Format("channel_%i", m_currentChannel + 1)).Data(), &sci);
+        if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "PeaksInfo")
+        {
+            RootDataTree->SetBranchAddress((TString::Format("channel_%i", m_currentChannel + 1)).Data(), &sciv);
+        }
+        else if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "short_energy_ChannelEntry")
+        {
+            RootDataTree->SetBranchAddress((TString::Format("channel_%i", m_currentChannel + 1)).Data(), &sci);
+        }
 
         for (int i = 0; i < totalEntries; i++)
         {
             RootDataTree->GetEntry(i);
-            m_amplitudeData.push_back(sci->amp);
-            m_chargeData.push_back(sci->charge);
-            m_timeData.push_back(sci->time);
+            if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "PeaksInfo")
+            {
+                m_amplitudeData.push_back(sciv->amp());
+                m_chargeData.push_back(sciv->charge());
+                m_timeData.push_back(sciv->time());
+            }
+            else if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "short_energy_ChannelEntry")
+            {
+                m_amplitudeData.push_back(sci->amp);
+                m_chargeData.push_back(sci->charge);
+                m_timeData.push_back(sci->time);
+            }
 
             // Update progress scaled to 0-1000 range
             const int scaledProgress = static_cast<int>((i + 1) * 1000.0 / totalEntries);
@@ -328,10 +353,10 @@ void HistogramWindow::onChannelChanged(int channel)
     m_channelSpinBox->blockSignals(false);
 
     if (!m_currentRootFile.isEmpty())
-    {
-        loadRootFile(m_currentRootFile);
-    }
-    else
+    // {
+    //     loadRootFile(m_currentRootFile);
+    // }
+    // else
     {
         processHistogramData();
     }
