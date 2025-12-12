@@ -15,8 +15,8 @@ class DataFileReader : public DataFormat
 {
 private:
   char configName[1024];
-  // std::vector<short_energy_ChannelEntry *> short_channel_info;
-  std::vector<PeaksInfo *> short_channel_info;
+  std::vector<short_energy_ChannelEntry *> chInfo;
+  std::vector<PeaksInfo *> chInfo_peaks;
   time_t start_time;
   TFile *RootDataFile = nullptr;
   TTree *RootDataTree = nullptr;
@@ -24,12 +24,9 @@ private:
   std::mutex write_lock;
   bool StopAnalysis = 0;
   Int_t peak_candidate = 500;
+  string WriteMode = "Single";
 
 public:
-  void SetStopAnalysis(bool);
-
-  ChannelEntry event_waveform;
-  bool FileIsSet;
 
   DataFileReader()
   {
@@ -42,16 +39,13 @@ public:
     delete fd;
   };
 
+  ChannelEntry event_waveform;
+  bool FileIsSet;
+
+  void SetStopAnalysis(bool);
+  void SetWriteMode(string);
   void CreateRootFile();
-  void SaveRootFile()
-  {
-    if (RootDataFile != nullptr)
-    {
-      // if (RootDataTree!=nullptr) {RootDataFile->cd(); RootDataTree->Write();}
-      RootDataFile->Write(0, TObject::kOverwrite);
-      RootDataFile->Close();
-    }
-  }
+  void SaveRootFile();
   void setName(const char *a) override;
   void setName(const char *a, const char *b);
   void setName(const char *a, std::map<int, ConfigManager *> ext_config);

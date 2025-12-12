@@ -5,7 +5,7 @@
 #include <QDialog>
 #include <QProgressBar>
 #include <QVBoxLayout>
-
+#include <iostream>
 class ProgressDialog : public QDialog {
     Q_OBJECT
 

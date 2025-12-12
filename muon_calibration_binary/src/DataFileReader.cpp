@@ -51,8 +51,9 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
     fread(&(TotalHeader.syncword), WORD_SIZE, 1, fd);
     if ((TotalHeader.syncword) == SYNC_WORD || (TotalHeader.syncword) == SYNC_WORD_ADC64)
     {
-      for (int ch = 0; ch < total_channels; ch++)
-        short_channel_info[ch]->Initialize();
+      if (WriteMode=="Multiple") for (int ch = 0; ch < total_channels; ch++) chInfo_peaks[ch]->Initialize();
+      else if (WriteMode=="Single") for (int ch = 0; ch < total_channels; ch++) chInfo[ch]->Initialize();
+
       uiTotalEvents++;
       fread(&TotalHeader.EvHeader, sizeof(TotalHeader.EvHeader), 1, fd);
       if (uiMaxSize < TotalHeader.EvHeader.length)
@@ -103,6 +104,8 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
             offset++;
             break;
           case 1:
+            float zl = 0; 
+            float zl_rms = 0;
             uint16_t ch = TotalHeader.ChHeader.ch;
             if (auto adcinstance = adcmap.find(TotalHeader.DeviceHeader.sn); adcinstance != adcmap.end())
               ch += 64 * adcinstance->second;
@@ -118,7 +121,6 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
             int16_t wave = 0;
             int32_t polarity = 1;
             int32_t iSignalOffset = 0;
-            short_channel_info[ch]->ADCTimeStamp = (float)TotalHeader.SubHeader.wf_tslo + (float)(TotalHeader.SubHeader.wf_tsup / 1000000000.0);
             event_waveform.channel = ch;
 
             for (int s = 0; s < (SN / 2); s++)
@@ -143,7 +145,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
             {
               event_waveform.Set_Zero_Level_Area(60);
             }
-            short_channel_info[ch]->zl = event_waveform.CalculateZlwithNoisePeaks(130);
+            zl = event_waveform.CalculateZlwithNoisePeaks(130);
 
             if (config_manager[ch]->UseFourierFiltering && config_manager[ch]->FrequencyCutoff != 0)
             {
@@ -160,12 +162,12 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
                 vector<int32_t> y0 = FF.getFilteredSignal();
                 event_waveform.wf.clear();
                 event_waveform.wf = y0;
-                short_channel_info[ch]->zl = event_waveform.CalculateZlwithNoisePeaks(130);
+                zl = event_waveform.CalculateZlwithNoisePeaks(130);
               }
             }
             else if (config_manager[ch] && config_manager[ch]->UseSpline == 1)
               event_waveform.SplineWf();
-            short_channel_info[ch]->zl_rms = event_waveform.Get_Zero_Level_RMS();
+            zl_rms = event_waveform.Get_Zero_Level_RMS();
 
             if (config_manager[ch])
             {
@@ -176,38 +178,53 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
               event_waveform.SetBoarders(50, 100);
             }
 
-            // int pp = event_waveform.Get_time();
-            // // event_waveform.SetBoarders(pp-12,pp+25);
-            // short_channel_info[ch]->amp = event_waveform.Get_Amplitude();
-            // if (config_manager[ch] && config_manager[ch]->UseSmartScope == 1)
-            //   event_waveform.AssumeSmartScope();
-            // short_channel_info[ch]->time = event_waveform.Get_time_gauss();
-            // short_channel_info[ch]->ADC_ID = event_waveform.ADCID;
-
-            // short_channel_info[ch]->charge = event_waveform.Get_Charge();
-            // short_channel_info[ch]->II = event_waveform.GetIntegralInfo();
-
-            short_channel_info[ch]->ADC_ID = event_waveform.ADCID;
-            int count = 0;
-            while (true)
+            if (WriteMode == "Single")
             {
-              SinglePeakInfo peakInfo;
-              event_waveform.SetBoarders(config_manager[ch]->leftBoundary, config_manager[ch]->rightBoundary);
+
+              chInfo[ch]->zl = zl;
+              chInfo[ch]->zl_rms = zl_rms;
+              chInfo[ch]->ADCTimeStamp = (float)TotalHeader.SubHeader.wf_tslo + (float)(TotalHeader.SubHeader.wf_tsup / 1000000000.0);
+              chInfo[ch]->ADC_ID = event_waveform.ADCID;
               int pp = event_waveform.Get_time();
               // event_waveform.SetBoarders(pp-12,pp+25);
-              peakInfo.amp = event_waveform.Get_Amplitude();
+              chInfo[ch]->amp = event_waveform.Get_Amplitude();
               if (config_manager[ch] && config_manager[ch]->UseSmartScope == 1)
                 event_waveform.AssumeSmartScope();
-              peakInfo.time = event_waveform.Get_time_gauss();
+              chInfo[ch]->time = event_waveform.Get_time_gauss();
+              chInfo[ch]->ADC_ID = event_waveform.ADCID;
 
-              peakInfo.charge = event_waveform.Get_Charge();
-              peakInfo.II = event_waveform.GetIntegralInfo();
-              if (peakInfo.amp < 500 && count > 0)
-                break;
-              short_channel_info[ch]->AddPeak(peakInfo);
-              count++;
-              event_waveform.DeleteCurrentPeak();
+              chInfo[ch]->charge = event_waveform.Get_Charge();
+              chInfo[ch]->II = event_waveform.GetIntegralInfo();              
             }
+            else if (WriteMode == "Multiple")
+            {
+              chInfo_peaks[ch]->zl = zl;
+              chInfo_peaks[ch]->zl_rms = zl_rms;
+              chInfo_peaks[ch]->ADCTimeStamp = (float)TotalHeader.SubHeader.wf_tslo + (float)(TotalHeader.SubHeader.wf_tsup / 1000000000.0);
+              chInfo_peaks[ch]->ADC_ID = event_waveform.ADCID;
+              int count = 0;
+              while (true)
+              {
+                SinglePeakInfo peakInfo;
+                event_waveform.SetBoarders(config_manager[ch]->leftBoundary, config_manager[ch]->rightBoundary);
+                int pp = event_waveform.Get_time();
+                // event_waveform.SetBoarders(pp-12,pp+25);
+                peakInfo.amp = event_waveform.Get_Amplitude();
+                if (config_manager[ch] && config_manager[ch]->UseSmartScope == 1)
+                  event_waveform.AssumeSmartScope();
+                peakInfo.time = event_waveform.Get_time_gauss();
+
+                peakInfo.charge = event_waveform.Get_Charge();
+                peakInfo.II = event_waveform.GetIntegralInfo();
+                if (peakInfo.amp < 500 && count > 0)
+                  break;
+                chInfo_peaks[ch]->AddPeak(peakInfo);
+                count++;
+                event_waveform.DeleteCurrentPeak();
+              }
+            }
+
+
 
             offset += (SN / 2);
             break;
@@ -225,7 +242,7 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
     }
   }
   SaveRootFile();
-  short_channel_info.clear();
+  chInfo_peaks.clear();
   std::cout << "File " << fileName << " analysis finished" << endl;
   return uiTotalEvents;
 }
@@ -257,6 +274,12 @@ void DataFileReader::setName(const char *a, std::map<int, ConfigManager *> ext_c
 
   config_manager = ext_config;
 }
+
+void DataFileReader::SetWriteMode(string eWriteMode)
+{
+  WriteMode = eWriteMode;
+}
+
 void DataFileReader::CreateRootFile()
 {
   auto dirName = std::filesystem::path(fileName).parent_path().string();
@@ -275,16 +298,36 @@ void DataFileReader::CreateRootFile()
   // RootDataTree->SetAutoFlush(-1000000);
   RootDataTree->SetAutoFlush(100000);
 
+
+
   for (int ch = 0; ch < total_channels; ch++)
   {
-    // short_channel_info[ch] = new short_energy_ChannelEntry();
-    // short_channel_info = {};
-    short_channel_info.push_back(new PeaksInfo());
-    short_channel_info[ch]->Initialize();
-    if (config_manager[ch])
-      RootDataTree->Branch((TString)(config_manager[ch]->name), short_channel_info[ch]);
-    // RootDataTree->Branch((TString)(config_manager[ch]->name), "PeaksInfo", &short_channel_info[ch]);
+
+    if (WriteMode == "Single")
+    {
+
+      chInfo.push_back(new short_energy_ChannelEntry());
+      // chInfo[ch]->Initialize();
+    if (config_manager[ch]) RootDataTree->Branch((TString)(config_manager[ch]->name), chInfo[ch]);
+
+    }   
+    if (WriteMode == "Multiple")
+    {
+      chInfo_peaks.push_back(new PeaksInfo());
+      // chInfo_peaks[ch]->Initialize();
+      if (config_manager[ch]) RootDataTree->Branch((TString)(config_manager[ch]->name), chInfo_peaks[ch]);
+    }     
   }
   RootDataTree->Fill();
   start_time = std::time(nullptr);
 }
+
+  void DataFileReader::SaveRootFile()
+  {
+    if (RootDataFile != nullptr)
+    {
+      // if (RootDataTree!=nullptr) {RootDataFile->cd(); RootDataTree->Write();}
+      RootDataFile->Write(0, TObject::kOverwrite);
+      RootDataFile->Close();
+    }
+  }

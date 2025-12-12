@@ -20,6 +20,9 @@
 #include <TTree.h>
 #include <TFile.h>
 #include <TROOT.h>
+#include <QTimer>
+#include "ProgressDialog.h"
+
 // Forward declaration
 namespace ctpl
 {
@@ -37,24 +40,36 @@ public:
     void loadRootFile(const QString &filePath);
     void setAnalysisThreadPool(ctpl::thread_pool *pool);
 
+signals:
+    void progressUpdated(int value);
+
 public slots:
     void updateHistograms();
     void onChannelChanged(int channel);
     void onHistogramSelectionChanged();
     void onOpenRootFile();
     void setEventValues(uint32_t amplitude, float charge, float time);
+    void onTimeout();
+
+private slots:
+    void createProgressDialog();
+    void closeProgressDialog();
+    void setupProgressTimer();
 
 private:
     void setupUI();
     void processHistogramData();
     void updateHistogramVisibility();
+    void ensureProgressDialogVisible();
 
 private:
     // Histogram plots
     HistogramPlot *m_amplitudePlot;
     HistogramPlot *m_chargePlot;
     HistogramPlot *m_timePlot;
-
+    ProgressDialog* m_progressDialog = nullptr;
+    QTimer* m_progressTimer = nullptr;
+    
     // Layout and widgets
     QVBoxLayout *m_mainLayout;
     QWidget *m_centralWidget;
@@ -83,15 +98,15 @@ private:
     // Data storage
     TFile *RootDataFile = nullptr;
     TTree *RootDataTree = nullptr;
-    short_energy_ChannelEntry *sci = nullptr;
-    PeaksInfo *sciv = nullptr;
     std::vector<uint32_t> m_amplitudeData;
     std::vector<float> m_chargeData;
     std::vector<float> m_timeData;
     uint32_t event_amplitude = 0;
     float event_charge = 0;
     float event_time = 0;
-    std::atomic<bool> m_dataLoaded;
+    std::atomic<bool> m_dataLoaded;    
+    float rootLoadedpercentage = 0;
+
     ctpl::thread_pool *m_threadPool;
 };
 

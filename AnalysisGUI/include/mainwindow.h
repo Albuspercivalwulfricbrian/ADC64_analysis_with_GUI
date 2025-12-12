@@ -1,5 +1,6 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
+#include <string>
 
 #include <QMainWindow>
 #include "qcustomplot.h"
@@ -14,6 +15,7 @@
 #include <ctpl_stl.h>
 #include <ProgressWidget.h>
 #include "HistogramWindow.h"
+#include <QPointer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -30,10 +32,11 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    std::string WriteMode;
 
 private:
     Ui::MainWindow *ui;
-    HistogramWindow *m_histogramWindow;
+    QPointer<HistogramWindow> m_histogramWindow;
 
     int32_t passfilter = 0;
     int64_t currEvent = 1;
@@ -102,6 +105,7 @@ private slots:
     void on_setBranchName_clicked();
     void on_action_Show_Fourier_Transform_changed();
     void on_action_Show_Filtered_changed();
+    void on_MultiplePeaksCheckBox_stateChanged(int state);
     // void savePlot();
     void savePlotAsPng();
     void savePlotAsJpeg();

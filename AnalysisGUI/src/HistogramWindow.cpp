@@ -1,10 +1,13 @@
 #include "HistogramWindow.h"
 #include <QHBoxLayout>
 #include <QMessageBox>
+#include <QCoreApplication>
 #include <thread>
 #include <random>
 #include "ProgressDialog.h"
 #include "ctpl_stl.h"
+#include "UltraFastHistogramReader.h"
+
 HistogramWindow::HistogramWindow(QWidget *parent)
     : QMainWindow(parent),
       m_amplitudePlot(new HistogramPlot("Amplitude Histogram", "Amplitude (ADC Channels)", this)),
@@ -13,15 +16,19 @@ HistogramWindow::HistogramWindow(QWidget *parent)
       m_mainLayout(new QVBoxLayout()),
       m_centralWidget(new QWidget(this)),
       m_eventTimeLabel(new QLabel("Current Event Time: N/A", this)),
-      m_filePathLabel(new QLabel("No ROOT file selected", this)),
       m_channelSpinBox(new QSpinBox(this)),
       m_updateButton(new QPushButton("Update Histograms", this)),
       m_histogramSelectionCombo(new QComboBox(this)),
       m_histogramListWidget(new QListWidget(this)),
       m_openRootFileAction(new QAction("Open ROOT File", this)),
+      m_filePathLabel(new QLabel("No ROOT file selected", this)),
+      m_currentRootFile(""),
       m_currentChannel(0),
       m_dataLoaded(false),
-      m_threadPool(nullptr)
+      m_threadPool(nullptr),
+      m_progressDialog(nullptr),
+      m_progressTimer(nullptr),
+      rootLoadedpercentage(0.0f)
 {
     setupUI();
 
@@ -32,7 +39,6 @@ HistogramWindow::HistogramWindow(QWidget *parent)
 
     // Connect signals
     connect(m_updateButton, &QPushButton::clicked, this, &HistogramWindow::updateHistograms);
-    // Note: No connection for m_channelSpinBox valueChanged since it's now read-only
     connect(m_histogramListWidget, &QListWidget::itemChanged, this, &HistogramWindow::onHistogramSelectionChanged);
 
     // Connect menu action to slot
@@ -47,6 +53,71 @@ HistogramWindow::HistogramWindow(QWidget *parent)
 
 HistogramWindow::~HistogramWindow()
 {
+    // Clean up progress dialog and timer
+    closeProgressDialog();
+    
+    if (RootDataFile) {
+        RootDataFile->Close();
+        delete RootDataFile;
+        RootDataFile = nullptr;
+    }
+
+    RootDataTree = nullptr;
+    
+    // Clear data vectors
+    m_amplitudeData.clear();
+    m_chargeData.clear();
+    m_timeData.clear();
+}
+
+void HistogramWindow::createProgressDialog()
+{
+    if (m_progressDialog) {
+        // Clean up existing dialog first
+        closeProgressDialog();
+    }
+    
+    m_progressDialog = new ProgressDialog(this);
+    m_progressDialog->setWindowTitle(QString("Processing ROOT File - Channel %1").arg(m_currentChannel));
+    m_progressDialog->setWindowModality(Qt::ApplicationModal);
+    
+    // Connect progress updates
+    connect(this, &HistogramWindow::progressUpdated, m_progressDialog, 
+            &ProgressDialog::updateProgress, Qt::QueuedConnection);
+    
+    // Ensure it stays on top
+    m_progressDialog->setWindowFlags(m_progressDialog->windowFlags() | Qt::WindowStaysOnTopHint);
+}
+
+void HistogramWindow::closeProgressDialog()
+{
+    if (m_progressDialog) {
+        m_progressDialog->close();
+        m_progressDialog->deleteLater();
+        m_progressDialog = nullptr;
+    }
+    
+    if (m_progressTimer) {
+        m_progressTimer->stop();
+        m_progressTimer->deleteLater();
+        m_progressTimer = nullptr;
+    }
+}
+
+void HistogramWindow::setupProgressTimer()
+{
+    m_progressTimer = new QTimer(this);
+    connect(m_progressTimer, &QTimer::timeout, this, &HistogramWindow::onTimeout);
+    m_progressTimer->start(100); // Update every 100ms
+}
+
+void HistogramWindow::ensureProgressDialogVisible()
+{
+    if (m_progressDialog && !m_progressDialog->isVisible()) {
+        m_progressDialog->show();
+        m_progressDialog->raise();
+        m_progressDialog->activateWindow();
+    }
 }
 
 void HistogramWindow::setupUI()
@@ -165,13 +236,25 @@ void HistogramWindow::setEventValues(uint32_t amplitude, float charge, float tim
 
 void HistogramWindow::loadRootFile(const QString &filePath)
 {
+    // Clean up previous ROOT objects
+    if (RootDataFile) {
+        RootDataFile->Close();
+        delete RootDataFile;
+        RootDataFile = nullptr;
+    }
+
+    RootDataTree = nullptr;
+
     m_currentRootFile = filePath;
-    // m_currentChannel = channel;
-    // // Update the spinbox value directly without triggering signals
-    // m_channelSpinBox->blockSignals(true);
-    // m_channelSpinBox->setValue(channel);
-    // m_channelSpinBox->blockSignals(false);
     m_dataLoaded = false;
+
+    // Clear existing data
+    m_amplitudeData.clear();
+    m_chargeData.clear();
+    m_timeData.clear();
+
+    // Clean up any existing progress dialog/timer
+    closeProgressDialog();
 
     // Update file path label
     if (!filePath.isEmpty())
@@ -179,11 +262,16 @@ void HistogramWindow::loadRootFile(const QString &filePath)
         QFileInfo fileInfo(filePath);
         m_filePathLabel->setText("File: " + fileInfo.fileName());
         RootDataFile = TFile::Open((TString)(filePath.toUtf8().constData()));
-        RootDataTree = (TTree *)RootDataFile->Get("adc64_data");
-        std::map<Int_t, short_energy_ChannelEntry *> short_channel_info;
+        if (RootDataFile && !RootDataFile->IsZombie()) {
+            RootDataTree = dynamic_cast<TTree*>(RootDataFile->Get("adc64_data"));
+        }
 
-        sci = new short_energy_ChannelEntry();
-        sci->Initialize();
+        if (!RootDataTree) {
+            QMessageBox::warning(this, "Error", "Failed to load ROOT tree from file");
+            // Reset file path since load failed
+            m_currentRootFile.clear();
+            return;
+        }
     }
     else
     {
@@ -208,104 +296,163 @@ void HistogramWindow::setAnalysisThreadPool(ctpl::thread_pool *pool)
 
 void HistogramWindow::processHistogramData()
 {
-    if (m_currentRootFile.isEmpty())
+    if (m_currentRootFile.isEmpty() || !RootDataTree)
     {
         QMetaObject::invokeMethod(this, [this]()
-                                  { QMessageBox::warning(this, "Error", "No ROOT file specified"); });
+                                  { 
+                                      closeProgressDialog();
+                                      QMessageBox::warning(this, "Error", "No ROOT file specified"); 
+                                  });
         return;
     }
 
+    // Reset progress percentage
+    rootLoadedpercentage = 0.0f;
+
+    // Create and show progress dialog FIRST, before starting the worker
+    QMetaObject::invokeMethod(this, [this]() {
+        // Clean up any existing dialog first
+        closeProgressDialog();
+        
+        // Create and show new progress dialog
+        m_progressDialog = new ProgressDialog(this);
+        m_progressDialog->setWindowTitle(QString("Processing ROOT File - Channel %1").arg(m_currentChannel));
+        m_progressDialog->setWindowModality(Qt::ApplicationModal);
+        m_progressDialog->setWindowFlags(m_progressDialog->windowFlags() | Qt::WindowStaysOnTopHint);
+        
+        // Show dialog
+        m_progressDialog->show();
+        m_progressDialog->raise();
+        m_progressDialog->activateWindow();
+        
+        // Force immediate paint
+        m_progressDialog->updateProgress(0);
+        m_progressDialog->repaint();
+        
+        // Process events to ensure dialog is visible
+        QApplication::processEvents();
+        
+    }, Qt::BlockingQueuedConnection);
+
+    // Now setup the timer and connections in main thread
+    QMetaObject::invokeMethod(this, [this]() {
+        m_progressTimer = new QTimer(this);
+        connect(m_progressTimer, &QTimer::timeout, this, &HistogramWindow::onTimeout);
+        m_progressTimer->start(50); // Update every 50ms for smoother progress
+        
+        // Connect progress signal AFTER dialog is created
+        connect(this, &HistogramWindow::progressUpdated, m_progressDialog, 
+                &ProgressDialog::updateProgress, Qt::QueuedConnection);
+        
+        // Send initial update
+        emit progressUpdated(0);
+        
+    }, Qt::BlockingQueuedConnection);
+
     try
     {
-
-        if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "PeaksInfo")
-        {
-            sciv->Initialize();
-        }
-        else if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "short_energy_ChannelEntry")
-        {
-            sci->Initialize();
-        }
-        // Clear previous data
+        // Clear data vectors
         m_amplitudeData.clear();
         m_chargeData.clear();
         m_timeData.clear();
 
-        const int totalEntries = RootDataTree->GetEntries();
-        ProgressDialog *progressDialog = new ProgressDialog(this);
-        progressDialog->setWindowTitle("Processing ROOT File");
-        progressDialog->setWindowModality(Qt::ApplicationModal);
-        progressDialog->show();
+        // Create UltraFastHistogramReader
+        UltraFastHistogramReader reader(RootDataTree, m_currentChannel);
+        
+        // Store the last progress value to avoid too many updates
+        float lastReportedProgress = 0.0f;
+        
+        // Use the mixed version that handles uint32_t for amplitude
+        reader.readDataAllAtOnceMixed(m_amplitudeData, m_chargeData, m_timeData,
+            [this, &lastReportedProgress](float progress) {
+                // Only update if progress changed by at least 0.5%
+                if (progress - lastReportedProgress >= 0.005f || progress >= 1.0f) {
+                    rootLoadedpercentage = progress;
+                    lastReportedProgress = progress;
+                    
+                    // Emit signal to update progress dialog
+                    emit progressUpdated(static_cast<int>(1000 * progress));
+                }
+            });
 
-        if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "PeaksInfo")
-        {
-            RootDataTree->SetBranchAddress((TString::Format("channel_%i", m_currentChannel + 1)).Data(), &sciv);
-        }
-        else if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "short_energy_ChannelEntry")
-        {
-            RootDataTree->SetBranchAddress((TString::Format("channel_%i", m_currentChannel + 1)).Data(), &sci);
-        }
-
-        for (int i = 0; i < totalEntries; i++)
-        {
-            RootDataTree->GetEntry(i);
-            if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "PeaksInfo")
-            {
-                m_amplitudeData.push_back(sciv->amp());
-                m_chargeData.push_back(sciv->charge());
-                m_timeData.push_back(sciv->time());
-            }
-            else if (RootDataTree->GetBranch(TString::Format("channel_%i", m_currentChannel + 1))->GetClassName() == (TString) "short_energy_ChannelEntry")
-            {
-                m_amplitudeData.push_back(sci->amp);
-                m_chargeData.push_back(sci->charge);
-                m_timeData.push_back(sci->time);
-            }
-
-            // Update progress scaled to 0-1000 range
-            const int scaledProgress = static_cast<int>((i + 1) * 1000.0 / totalEntries);
-            QMetaObject::invokeMethod(progressDialog, [progressDialog, scaledProgress]()
-                                      { progressDialog->updateProgress(scaledProgress); }, Qt::QueuedConnection);
-        }
-
-        progressDialog->close();
-        progressDialog->deleteLater();
-        // std::random_device rd;
-        // std::mt19937 gen(rd());
-
-        // // Generate amplitude data
-        // std::normal_distribution<> ampDist(30000, 10000);
-        // for (int i = 0; i < 10000; ++i)
-        // {
-        //     float amp = std::max(0.0f, static_cast<float>(ampDist(gen)));
-        //     if (amp <= 60000)
-        //         m_amplitudeData.push_back(amp);
-        // }
-
-        // // Generate charge data
-        // std::normal_distribution<> chargeDist(500, 200);
-        // for (int i = 0; i < 10000; ++i)
-        // {
-        //     float charge = std::max(0.0f, static_cast<float>(chargeDist(gen)));
-        //     m_chargeData.push_back(charge);
-        // }
-
-        // // Generate time data
-        // std::uniform_real_distribution<> timeDist(0, 1000);
-        // for (int i = 0; i < 10000; ++i)
-        // {
-        //     float time = static_cast<float>(timeDist(gen));
-        //     m_timeData.push_back(time);
-        // }
-
+        // Processing completed successfully
         m_dataLoaded = true;
 
+        // Send final update to ensure 100% is shown
+        emit progressUpdated(1000);
+        
+        // Small delay to ensure final update is shown
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        // Clean up progress dialog in main thread
+        QMetaObject::invokeMethod(this, [this]() {
+            if (m_progressTimer) {
+                m_progressTimer->stop();
+                m_progressTimer->deleteLater();
+                m_progressTimer = nullptr;
+            }
+            
+            if (m_progressDialog) {
+                // Update to 100% one more time
+                m_progressDialog->updateProgress(1000);
+                m_progressDialog->repaint();
+                QApplication::processEvents();
+                
+                // Close after a brief delay so user can see 100%
+                QTimer::singleShot(200, m_progressDialog, [this]() {
+                    m_progressDialog->close();
+                    m_progressDialog->deleteLater();
+                    m_progressDialog = nullptr;
+                });
+            }
+        }, Qt::QueuedConnection);
+
+        // Update histograms in main thread
         QMetaObject::invokeMethod(this, &HistogramWindow::updateHistograms, Qt::QueuedConnection);
     }
     catch (const std::exception &e)
     {
+        // Clean up on error
         QMetaObject::invokeMethod(this, [this, e]()
-                                  { QMessageBox::critical(this, "Error", QString("Failed to process ROOT file: %1").arg(e.what())); });
+                                  { 
+                                      if (m_progressTimer) {
+                                          m_progressTimer->stop();
+                                          m_progressTimer->deleteLater();
+                                          m_progressTimer = nullptr;
+                                      }
+                                      
+                                      if (m_progressDialog) {
+                                          m_progressDialog->close();
+                                          m_progressDialog->deleteLater();
+                                          m_progressDialog = nullptr;
+                                      }
+                                      
+                                      QMessageBox::critical(this, "Error", 
+                                          QString("Failed to process ROOT file: %1").arg(e.what())); 
+                                  });
+    }
+}
+
+void HistogramWindow::onTimeout()
+{
+    // This slot runs in the main thread
+    if (rootLoadedpercentage < 1.0f) {
+        // Use the stored progress value
+        int progressValue = static_cast<int>(1000 * rootLoadedpercentage);
+        
+        // Update the dialog directly (since we're in the main thread)
+        if (m_progressDialog) {
+            m_progressDialog->updateProgress(progressValue);
+            
+            // Force repaint for immediate update
+            m_progressDialog->repaint();
+            
+            // Process a few events to keep GUI responsive
+            QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        }
+        
+        // Also emit the signal for any other connections
+        emit progressUpdated(progressValue);
     }
 }
 
@@ -346,19 +493,37 @@ void HistogramWindow::updateHistograms()
 
 void HistogramWindow::onChannelChanged(int channel)
 {
+    // Only process if channel actually changed
+    if (m_currentChannel == channel && m_dataLoaded) {
+        return;
+    }
+    
     m_currentChannel = channel;
     // Update the spinbox value directly without triggering signals
     m_channelSpinBox->blockSignals(true);
     m_channelSpinBox->setValue(channel);
     m_channelSpinBox->blockSignals(false);
 
-    if (!m_currentRootFile.isEmpty())
-    // {
-    //     loadRootFile(m_currentRootFile);
-    // }
-    // else
-    {
-        processHistogramData();
+    // Reset data when changing channels
+    if (!m_currentRootFile.isEmpty() && RootDataTree)
+    {     
+        // Reset data loaded flag to force reprocessing
+        m_dataLoaded = false;
+        
+        // Clear existing data
+        m_amplitudeData.clear();
+        m_chargeData.clear();
+        m_timeData.clear();
+        
+        // Reprocess for new channel
+        if (m_threadPool)
+        {
+            m_threadPool->push([this](int id) { processHistogramData(); });
+        }
+        else
+        {
+            processHistogramData();
+        }
     }
 }
 

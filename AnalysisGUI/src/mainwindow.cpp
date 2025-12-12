@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include <QCheckBox>
 #include "./ui_mainwindow.h"
 #include "qcustomplot.h"
 #include <qnamespace.h>
@@ -28,7 +29,9 @@ MainWindow::MainWindow(QWidget *parent)
     FrequencySpinBox = ui->FrequencySpinBox;
     ThreadsSpinBox = ui->ThreadsSpinBox;
     ThreadsSpinBox->setValue((int32_t)p.size());
+    WriteMode = "Single"; // Initialize WriteMode
     setupGraph();
+    connect(ui->MultiplePeaksCheckBox, &QCheckBox::stateChanged, this, &MainWindow::on_MultiplePeaksCheckBox_stateChanged);
     int64_t counter = 0;
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     // connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
@@ -214,7 +217,7 @@ void MainWindow::UpdateGraph()
             sci->ADC_ID = DFR.event_waveform.ADCID;
             int count = 0;
 
-            // while (true)
+            while (true)
             {
                 SinglePeakInfo peakInfo;
 
@@ -229,12 +232,13 @@ void MainWindow::UpdateGraph()
 
                 peakInfo.charge = DFR.event_waveform.Get_Charge();
                 peakInfo.II = DFR.event_waveform.GetIntegralInfo();
-                // if (peakInfo.amp < 500 && count > 0)
-                //     break;
-                if (peakInfo.amp > 0)
-                    sci->AddPeak(peakInfo);
-                //     count++;
-                //     event_waveform.DeleteCurrentPeak();
+                if (peakInfo.amp < 500 && count > 0)
+                    break;
+                // if (peakInfo.amp != 0)
+                sci->AddPeak(peakInfo);
+                if (WriteMode == "Single") break;
+                count++;
+                DFR.event_waveform.DeleteCurrentPeak();
             }
             cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
             m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time());
@@ -289,7 +293,7 @@ void MainWindow::on_channelSpinBox_valueChanged(int)
     action_Signal_is_Negative->setChecked(channels[currChannel]->SignalNegative);
 
     // Update histogram window channel if it exists and is visible
-    if (m_histogramWindow && m_histogramWindow->isVisible())
+    if (m_histogramWindow && !m_histogramWindow.isNull() && m_histogramWindow->isVisible())
     {
         m_histogramWindow->onChannelChanged(currChannel);
     }
@@ -679,6 +683,7 @@ void MainWindow::processFiles(const QStringList &files)
                     analysis_process->active = true;
                     DataFileReader DFR1;
                     DFR1.setName(analysis_process->fileName.c_str(), channels);
+                    DFR1.SetWriteMode(WriteMode);
                     DFR1.CreateRootFile();
                     auto connection = connect(progressWidget, &ProgressWidget::aboutToClose, [&DFR1, &StopAnalysis]()
                             {DFR1.SetStopAnalysis(true);StopAnalysis->store(true); });
@@ -731,9 +736,14 @@ void MainWindow::onCurrentEventChanged()
     }
 }
 
+void MainWindow::on_MultiplePeaksCheckBox_stateChanged(int state)
+{
+    WriteMode = (state == Qt::Checked) ? "Multiple" : "Single";
+}
+
 void MainWindow::on_action_Show_Histogram_triggered()
 {
-    if (!m_histogramWindow)
+    if (m_histogramWindow.isNull())
     {
         m_histogramWindow = new HistogramWindow(this);
         m_histogramWindow->setAnalysisThreadPool(&p);

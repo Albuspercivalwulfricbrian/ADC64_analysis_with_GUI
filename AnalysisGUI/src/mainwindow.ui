@@ -488,6 +488,18 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="MultiplePeaksCheckBox">
+          <property name="text">
+           <string>Use multiple peaks</string>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>14</pointsize>
+           </font>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="SetFileAnalysisButton">
           <property name="font">
            <font>
