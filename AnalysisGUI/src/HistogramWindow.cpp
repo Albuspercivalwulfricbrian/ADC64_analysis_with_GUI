@@ -42,11 +42,11 @@ HistogramWindow::HistogramWindow(QWidget *parent)
     m_timePlot->setRange(0, 10000);
 
     // Set initial ranges for 2D histogram
-    m_amplitudeVsChargePlot->setXRange(0, 60000);    // Amplitude range
-    m_amplitudeVsChargePlot->setYRange(0, 10000000); // Charge range
-    m_amplitudeVsChargePlot->setXBins(100);
-    m_amplitudeVsChargePlot->setYBins(100);
-    m_amplitudeVsChargePlot->setLogZScale(true); // Log scale often helps see patterns
+    m_amplitudeVsChargePlot->setXRange(0, 60000);
+    m_amplitudeVsChargePlot->setYRange(0, 10000000);
+    m_amplitudeVsChargePlot->setXBins(300);
+    m_amplitudeVsChargePlot->setYBins(300);
+    m_amplitudeVsChargePlot->setLogZScale(true);
 
     // Connect signals
     connect(m_updateButton, &QPushButton::clicked, this, &HistogramWindow::updateHistograms);
@@ -57,7 +57,7 @@ HistogramWindow::HistogramWindow(QWidget *parent)
     connect(m_openRootFileAction, &QAction::triggered, this, &HistogramWindow::onOpenRootFile);
 
     setWindowTitle("Histogram Analysis");
-    resize(1000, 1200); // Increased size for 2D histogram
+    resize(1000, 1200);
 
     // Add menu action
     menuBar()->addAction(m_openRootFileAction);
@@ -247,7 +247,7 @@ void HistogramWindow::setEventValues(uint32_t amplitude, float charge, float tim
     if (m_amplitudePlot->isVisible())
     {
         m_amplitudePlot->setEventLineVisible(true);
-        m_amplitudePlot->setEventValue(amplitude);
+        m_amplitudePlot->setEventValue(static_cast<float>(amplitude)); // Convert to float
     }
     if (m_chargePlot->isVisible())
     {
@@ -260,11 +260,10 @@ void HistogramWindow::setEventValues(uint32_t amplitude, float charge, float tim
         m_timePlot->setEventValue(time);
     }
 
-    // ADD THIS FOR 2D PLOT CROSSHAIR:
     if (m_amplitudeVsChargePlot->isVisible())
     {
         m_amplitudeVsChargePlot->setEventMarkerVisible(true);
-        m_amplitudeVsChargePlot->setEventValue(static_cast<float>(amplitude), charge);
+        m_amplitudeVsChargePlot->setEventValue(static_cast<float>(amplitude), charge); // Convert to float
     }
 }
 
@@ -305,7 +304,6 @@ void HistogramWindow::loadRootFile(const QString &filePath)
         if (!RootDataTree)
         {
             QMessageBox::warning(this, "Error", "Failed to load ROOT tree from file");
-            // Reset file path since load failed
             m_currentRootFile.clear();
             return;
         }
@@ -345,42 +343,29 @@ void HistogramWindow::processHistogramData()
     // Reset progress percentage
     rootLoadedpercentage = 0.0f;
 
-    // Create and show progress dialog FIRST, before starting the worker
+    // Create and show progress dialog
     QMetaObject::invokeMethod(this, [this]()
                               {
-                                  // Clean up any existing dialog first
                                   closeProgressDialog();
-
-                                  // Create and show new progress dialog
                                   m_progressDialog = new ProgressDialog(this);
                                   m_progressDialog->setWindowTitle(QString("Processing ROOT File - Channel %1").arg(m_currentChannel));
                                   m_progressDialog->setWindowModality(Qt::ApplicationModal);
                                   m_progressDialog->setWindowFlags(m_progressDialog->windowFlags() | Qt::WindowStaysOnTopHint);
-
-                                  // Show dialog
                                   m_progressDialog->show();
                                   m_progressDialog->raise();
                                   m_progressDialog->activateWindow();
-
-                                  // Force immediate paint
                                   m_progressDialog->updateProgress(0);
                                   m_progressDialog->repaint();
-
-                                  // Process events to ensure dialog is visible
                                   QApplication::processEvents(); }, Qt::BlockingQueuedConnection);
 
-    // Now setup the timer and connections in main thread
+    // Setup timer and connections
     QMetaObject::invokeMethod(this, [this]()
                               {
                                   m_progressTimer = new QTimer(this);
                                   connect(m_progressTimer, &QTimer::timeout, this, &HistogramWindow::onTimeout);
-                                  m_progressTimer->start(50); // Update every 50ms for smoother progress
-
-                                  // Connect progress signal AFTER dialog is created
+                                  m_progressTimer->start(50);
                                   connect(this, &HistogramWindow::progressUpdated, m_progressDialog,
                                           &ProgressDialog::updateProgress, Qt::QueuedConnection);
-
-                                  // Send initial update
                                   emit progressUpdated(0); }, Qt::BlockingQueuedConnection);
 
     try
@@ -393,34 +378,29 @@ void HistogramWindow::processHistogramData()
         // Create UltraFastHistogramReader
         UltraFastHistogramReader reader(RootDataTree, m_currentChannel);
 
-        // Store the last progress value to avoid too many updates
+        // Store the last progress value
         float lastReportedProgress = 0.0f;
 
-        // Use the mixed version that handles uint32_t for amplitude
-        reader.readDataAllAtOnceMixed(m_amplitudeData, m_chargeData, m_timeData,
-                                      [this, &lastReportedProgress](float progress)
-                                      {
-                                          // Only update if progress changed by at least 0.5%
-                                          if (progress - lastReportedProgress >= 0.005f || progress >= 1.0f)
-                                          {
-                                              rootLoadedpercentage = progress;
-                                              lastReportedProgress = progress;
-
-                                              // Emit signal to update progress dialog
-                                              emit progressUpdated(static_cast<int>(1000 * progress));
-                                          }
-                                      });
+        // Use the main readData function (all floats)
+        reader.readData(m_amplitudeData, m_chargeData, m_timeData,
+                        [this, &lastReportedProgress](float progress)
+                        {
+                            if (progress - lastReportedProgress >= 0.005f || progress >= 1.0f)
+                            {
+                                rootLoadedpercentage = progress;
+                                lastReportedProgress = progress;
+                                emit progressUpdated(static_cast<int>(1000 * progress));
+                            }
+                        });
 
         // Processing completed successfully
         m_dataLoaded = true;
 
-        // Send final update to ensure 100% is shown
+        // Send final update
         emit progressUpdated(1000);
-
-        // Small delay to ensure final update is shown
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        // Clean up progress dialog in main thread
+        // Clean up progress dialog
         QMetaObject::invokeMethod(this, [this]()
                                   {
             if (m_progressTimer) {
@@ -430,12 +410,10 @@ void HistogramWindow::processHistogramData()
             }
             
             if (m_progressDialog) {
-                // Update to 100% one more time
                 m_progressDialog->updateProgress(1000);
                 m_progressDialog->repaint();
                 QApplication::processEvents();
                 
-                // Close after a brief delay so user can see 100%
                 QTimer::singleShot(200, m_progressDialog, [this]() {
                     m_progressDialog->close();
                     m_progressDialog->deleteLater();
@@ -443,10 +421,9 @@ void HistogramWindow::processHistogramData()
                 });
             } }, Qt::QueuedConnection);
 
-        // Update histograms in main thread
+        // Update histograms
         QMetaObject::invokeMethod(this, &HistogramWindow::updateHistograms, Qt::QueuedConnection);
 
-        // Also update 2D histogram if it's visible
         if (m_amplitudeVsChargeItem->checkState() == Qt::Checked)
         {
             QMetaObject::invokeMethod(this, &HistogramWindow::update2DHistogram, Qt::QueuedConnection);
@@ -454,7 +431,6 @@ void HistogramWindow::processHistogramData()
     }
     catch (const std::exception &e)
     {
-        // Clean up on error
         QMetaObject::invokeMethod(this, [this, e]()
                                   { 
                                       if (m_progressTimer) {
@@ -504,41 +480,13 @@ void HistogramWindow::updateHistograms()
     if (!m_dataLoaded)
         return;
 
-    // Update amplitude histogram if visible
-    if (m_amplitudePlot->isVisible() && !m_amplitudeData.empty())
-    {
-        std::vector<float> ampData(m_amplitudeData.begin(), m_amplitudeData.end());
-        m_amplitudePlot->setData(ampData);
-        m_amplitudePlot->setEventLineVisible(true);
-        m_amplitudePlot->setEventValue(event_amplitude);
-        m_amplitudePlot->updatePlot();
-    }
+    // Update all visible histograms
+    update1DHistogram(m_amplitudePlot, m_amplitudeData, event_amplitude);
+    update1DHistogram(m_chargePlot, m_chargeData, event_charge);
+    update1DHistogram(m_timePlot, m_timeData, event_time);
 
-    // Update charge histogram if visible
-    if (m_chargePlot->isVisible() && !m_chargeData.empty())
-    {
-        std::vector<float> chargeData(m_chargeData.begin(), m_chargeData.end());
-        m_chargePlot->setData(chargeData);
-        m_chargePlot->setEventLineVisible(true);
-        m_chargePlot->setEventValue(event_charge);
-        m_chargePlot->updatePlot();
-    }
-
-    // Update time histogram if visible
-    if (m_timePlot->isVisible() && !m_timeData.empty())
-    {
-        m_timePlot->setData(m_timeData);
-        m_timePlot->setEventLineVisible(true);
-        m_timePlot->setEventValue(event_time);
-        m_timePlot->updatePlot();
-    }
-
-    // Update 2D histogram if visible
-    if (m_amplitudeVsChargePlot->isVisible() && !m_amplitudeData.empty() && !m_chargeData.empty())
-    {
-        update2DHistogram();
-        m_amplitudeVsChargePlot->setEventValue(static_cast<float>(event_amplitude), event_charge);
-    }
+    // Only update 2D plot when explicitly requested (via its update button)
+    // Removed the automatic update here
 }
 
 void HistogramWindow::update2DHistogram()
@@ -546,33 +494,8 @@ void HistogramWindow::update2DHistogram()
     if (!m_dataLoaded || m_amplitudeData.empty() || m_chargeData.empty())
         return;
 
-    // Convert amplitude data to float for the 2D plot
-    std::vector<float> amplitudeFloatData(m_amplitudeData.begin(), m_amplitudeData.end());
-
-    // Set data for the 2D histogram
-    m_amplitudeVsChargePlot->setData(amplitudeFloatData, m_chargeData);
-
-    // Auto-detect and set appropriate ranges
-    // if (!amplitudeFloatData.empty() && !m_chargeData.empty())
-    // {
-    //     auto ampMinMax = std::minmax_element(amplitudeFloatData.begin(), amplitudeFloatData.end());
-    //     auto chargeMinMax = std::minmax_element(m_chargeData.begin(), m_chargeData.end());
-
-    //     // Add 5% padding to ranges
-    //     float ampRange = *ampMinMax.second - *ampMinMax.first;
-    //     float chargeRange = *chargeMinMax.second - *chargeMinMax.first;
-
-    //     float ampMin = std::max(0.0f, *ampMinMax.first - 0.05f * ampRange);
-    //     float ampMax = *ampMinMax.second + 0.05f * ampRange;
-
-    //     float chargeMin = std::max(0.0f, *chargeMinMax.first - 0.05f * chargeRange);
-    //     float chargeMax = *chargeMinMax.second + 0.05f * chargeRange;
-
-    //     m_amplitudeVsChargePlot->setXRange(ampMin, ampMax);
-    //     m_amplitudeVsChargePlot->setYRange(chargeMin, chargeMax);
-    // }
-
-    // Update the plot
+    // No conversion needed anymore since m_amplitudeData is already float
+    m_amplitudeVsChargePlot->setData(m_amplitudeData, m_chargeData);
     m_amplitudeVsChargePlot->updatePlot();
 
     // Ensure crosshair is shown if event values are set
@@ -620,11 +543,49 @@ void HistogramWindow::onChannelChanged(int channel)
 
 void HistogramWindow::onHistogramSelectionChanged()
 {
+    // Store previous visibility states
+    bool amplitudeWasVisible = m_amplitudePlot->isVisible();
+    bool chargeWasVisible = m_chargePlot->isVisible();
+    bool timeWasVisible = m_timePlot->isVisible();
+    bool amplitudeVsChargeWasVisible = m_amplitudeVsChargePlot->isVisible();
+
     updateHistogramVisibility();
 
     if (m_dataLoaded)
     {
-        updateHistograms();
+        // Only update plots whose visibility actually changed
+        if (amplitudeWasVisible != m_amplitudePlot->isVisible() || m_amplitudePlot->isVisible())
+        {
+            update1DHistogram(m_amplitudePlot, m_amplitudeData, event_amplitude);
+        }
+        if (chargeWasVisible != m_chargePlot->isVisible() || m_chargePlot->isVisible())
+        {
+            update1DHistogram(m_chargePlot, m_chargeData, event_charge);
+        }
+        if (timeWasVisible != m_timePlot->isVisible() || m_timePlot->isVisible())
+        {
+            update1DHistogram(m_timePlot, m_timeData, event_time);
+        }
+
+        // Only update 2D plot if its visibility changed to visible
+        if (amplitudeVsChargeWasVisible != m_amplitudeVsChargePlot->isVisible())
+        {
+            if (m_amplitudeVsChargePlot->isVisible())
+            {
+                update2DHistogram();
+            }
+        }
+    }
+}
+
+void HistogramWindow::update1DHistogram(HistogramPlot *plot, const std::vector<float> &data, float eventValue)
+{
+    if (plot->isVisible() && !data.empty())
+    {
+        plot->setData(data);
+        plot->setEventLineVisible(true);
+        plot->setEventValue(eventValue);
+        plot->updatePlot();
     }
 }
 

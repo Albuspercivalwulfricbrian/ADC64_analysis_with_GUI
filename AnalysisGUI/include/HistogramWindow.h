@@ -16,7 +16,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include "HistogramPlot.h"
-#include "Histogram2DPlot.h" // Add this include
+#include "Histogram2DPlot.h"
 #include "ChannelEntry.h"
 #include <TTree.h>
 #include <TFile.h>
@@ -46,7 +46,7 @@ signals:
 
 public slots:
     void updateHistograms();
-    void update2DHistogram(); // New slot for 2D histogram
+    void update2DHistogram();
     void onChannelChanged(int channel);
     void onHistogramSelectionChanged();
     void onOpenRootFile();
@@ -63,13 +63,14 @@ private:
     void processHistogramData();
     void updateHistogramVisibility();
     void ensureProgressDialogVisible();
+    void update1DHistogram(HistogramPlot *plot, const std::vector<float> &data, float eventValue);
 
 private:
     // Histogram plots
     HistogramPlot *m_amplitudePlot;
     HistogramPlot *m_chargePlot;
     HistogramPlot *m_timePlot;
-    Histogram2DPlot *m_amplitudeVsChargePlot; // New 2D histogram
+    Histogram2DPlot *m_amplitudeVsChargePlot;
 
     ProgressDialog *m_progressDialog = nullptr;
     QTimer *m_progressTimer = nullptr;
@@ -82,7 +83,7 @@ private:
     QLabel *m_eventTimeLabel;
     QSpinBox *m_channelSpinBox;
     QPushButton *m_updateButton;
-    QPushButton *m_update2DButton; // New button for 2D histogram
+    QPushButton *m_update2DButton;
     QComboBox *m_histogramSelectionCombo;
     QListWidget *m_histogramListWidget;
 
@@ -93,7 +94,7 @@ private:
     QListWidgetItem *m_amplitudeItem;
     QListWidgetItem *m_chargeItem;
     QListWidgetItem *m_timeItem;
-    QListWidgetItem *m_amplitudeVsChargeItem; // New item for 2D histogram
+    QListWidgetItem *m_amplitudeVsChargeItem;
 
     // File path display
     QLabel *m_filePathLabel;
@@ -101,10 +102,10 @@ private:
     QString m_currentRootFile;
     int m_currentChannel;
 
-    // Data storage
+    // Data storage - CHANGED: amplitude is now float
     TFile *RootDataFile = nullptr;
     TTree *RootDataTree = nullptr;
-    std::vector<uint32_t> m_amplitudeData;
+    std::vector<float> m_amplitudeData; // CHANGED from uint32_t to float
     std::vector<float> m_chargeData;
     std::vector<float> m_timeData;
     uint32_t event_amplitude = 0;

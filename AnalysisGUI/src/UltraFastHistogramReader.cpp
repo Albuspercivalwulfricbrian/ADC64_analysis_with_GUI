@@ -45,83 +45,11 @@ bool UltraFastHistogramReader::isPeaksInfoTree(TTree *tree, int channel)
     return (className == "PeaksInfo");
 }
 
-void UltraFastHistogramReader::readDataAllAtOnce(std::vector<float> &ampData,
-                                                 std::vector<float> &chargeData,
-                                                 std::vector<float> &timeData,
-                                                 std::function<void(float)> progressCallback)
-{
-    if (!m_tree)
-        return;
-
-    Long64_t nentries = m_tree->GetEntries();
-    if (nentries <= 0)
-        return;
-
-    // Clear and resize
-    ampData.resize(nentries);
-    chargeData.resize(nentries);
-    timeData.resize(nentries);
-
-    // Create formula for all three columns at once
-    TString formulaAll;
-    if (m_isPeaksInfo)
-    {
-        formulaAll = TString::Format("channel_%i.amp():channel_%i.charge():channel_%i.time()",
-                                     m_channel + 1, m_channel + 1, m_channel + 1);
-    }
-    else
-    {
-        formulaAll = TString::Format("channel_%i.amp:channel_%i.charge:channel_%i.time",
-                                     m_channel + 1, m_channel + 1, m_channel + 1);
-    }
-
-    // Disable messages
-    Int_t oldErrorIgnoreLevel = gErrorIgnoreLevel;
-    gErrorIgnoreLevel = kFatal;
-
-    try
-    {
-        // Draw ALL THREE columns at once - ONE I/O operation!
-        m_tree->Draw(formulaAll.Data(), "", "goff", nentries, 0);
-
-        // Get arrays (V1, V2, V3 contain our data)
-        Double_t *ampArray = m_tree->GetV1();
-        Double_t *chargeArray = m_tree->GetV2();
-        Double_t *timeArray = m_tree->GetV3();
-
-        if (ampArray && chargeArray && timeArray)
-        {
-// Fast parallel copy
-#pragma omp parallel for
-            for (Long64_t i = 0; i < nentries; i++)
-            {
-                ampData[i] = static_cast<float>(ampArray[i]);
-                chargeData[i] = static_cast<float>(chargeArray[i]);
-                timeData[i] = static_cast<float>(timeArray[i]);
-            }
-        }
-
-        if (progressCallback)
-            progressCallback(1.0f);
-
-        std::cout << "UltraFastHistogramReader: Processed "
-                  << nentries << " entries" << std::endl;
-    }
-    catch (...)
-    {
-        std::cerr << "Error in readDataAllAtOnce" << std::endl;
-        ampData.clear();
-        chargeData.clear();
-        timeData.clear();
-    }
-
-    gErrorIgnoreLevel = oldErrorIgnoreLevel;
-}
-
-void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &ampData,
-                                                      std::vector<float> &chargeData,
-                                                      std::vector<float> &timeData,
-                                                      std::function<void(float)> progressCallback)
+// Main function - renamed from readDataAllAtOnceMixed
+void UltraFastHistogramReader::readData(std::vector<float> &ampData,
+                                        std::vector<float> &chargeData,
+                                        std::vector<float> &timeData,
+                                        std::function<void(float)> progressCallback)
 {
     if (!m_tree)
         return;
@@ -160,14 +88,13 @@ void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &amp
 
         m_tree->Draw(ampFormula.Data(), "", "goff", nentries, 0);
 
-        // Copy amplitude data immediately before ROOT reuses the buffer
+        // Copy amplitude data
         Double_t *ampArray = m_tree->GetV1();
         if (!ampArray)
         {
             throw std::runtime_error("Failed to get amplitude array from ROOT");
         }
 
-        // Copy to temporary buffer
         std::memcpy(tempAmp.data(), ampArray, nentries * sizeof(Double_t));
 
         if (progressCallback)
@@ -184,7 +111,7 @@ void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &amp
 
         m_tree->Draw(chargeFormula.Data(), "", "goff", nentries, 0);
 
-        // Copy charge data immediately
+        // Copy charge data
         Double_t *chargeArray = m_tree->GetV1();
         if (!chargeArray)
         {
@@ -207,7 +134,7 @@ void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &amp
 
         m_tree->Draw(timeFormula.Data(), "", "goff", nentries, 0);
 
-        // Copy time data immediately
+        // Copy time data
         Double_t *timeArray = m_tree->GetV1();
         if (!timeArray)
         {
@@ -219,8 +146,7 @@ void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &amp
         // STEP 4: Convert and copy to output vectors with progress
         std::cout << "Copying data to output vectors..." << std::endl;
 
-        // Calculate optimal chunk size for progress updates
-        const Long64_t PROGRESS_STEPS = 33; // 33 more steps for the remaining 34% of work
+        const Long64_t PROGRESS_STEPS = 33;
         const Long64_t entriesPerStep = std::max<Long64_t>(nentries / PROGRESS_STEPS, 1000);
 
         Long64_t processed = 0;
@@ -228,26 +154,22 @@ void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &amp
 
         for (Long64_t i = 0; i < nentries; i++)
         {
-            ampData[i] = static_cast<uint32_t>(tempAmp[i]);
+            ampData[i] = static_cast<float>(tempAmp[i]);
             chargeData[i] = static_cast<float>(tempCharge[i]);
             timeData[i] = static_cast<float>(tempTime[i]);
 
             processed++;
 
-            // Update progress every entriesPerStep entries
             if (processed % entriesPerStep == 0)
             {
                 float copyProgress = 0.66f + (0.34f * static_cast<float>(processed) / static_cast<float>(nentries));
 
-                // Only send update if progress has changed significantly
                 if (copyProgress - lastProgressSent >= 0.01f || i == nentries - 1)
                 {
                     if (progressCallback)
                     {
                         progressCallback(copyProgress);
                         lastProgressSent = copyProgress;
-
-                        // Small delay to allow GUI to update
                         std::this_thread::sleep_for(std::chrono::milliseconds(2));
                     }
                 }
@@ -266,7 +188,7 @@ void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &amp
     }
     catch (const std::exception &e)
     {
-        std::cerr << "Error in readDataAllAtOnceMixed: " << e.what() << std::endl;
+        std::cerr << "Error in readData: " << e.what() << std::endl;
         ampData.clear();
         chargeData.clear();
         timeData.clear();

@@ -185,8 +185,7 @@ void Histogram2DPlot::setupPlot(const QString &xAxisLabel, const QString &yAxisL
     m_colorMap = new QCPColorMap(m_customPlot->xAxis, m_customPlot->yAxis);
     m_colorMap->setColorScale(m_colorScale);
 
-    // Set initial gradient to gpJet
-    m_colorMap->setGradient(QCPColorGradient::gpJet);
+    // Gradient now set in initializeColorGradients()
 
     // DISABLE INTERPOLATION - show distinct bins
     m_colorMap->setInterpolate(false);
@@ -228,6 +227,16 @@ void Histogram2DPlot::setupEventMarkers()
 
 void Histogram2DPlot::initializeColorGradients()
 {
+    // Create ROOT Bird gradient (kBird equivalent)
+    QCPColorGradient birdGradient;
+    birdGradient.setColorStopAt(0.0, QColor("transparent"));
+    birdGradient.setColorStopAt(1e-9, QColor(30, 30, 100)); // Dark blue
+    birdGradient.setColorStopAt(0.3, QColor(0, 0, 255));    // Blue
+    birdGradient.setColorStopAt(0.5, QColor(0, 255, 255));  // Cyan
+    birdGradient.setColorStopAt(0.8, QColor(255, 200, 0));  // Orange (was yellow)
+    birdGradient.setColorStopAt(1.0, QColor(255, 255, 0));  // Yellow (was light yellow)
+
+    m_colorGradients.append(qMakePair(QString("ROOT Bird"), birdGradient));
     m_colorGradients.append(qMakePair(QString("Hot"), QCPColorGradient::gpHot));
     m_colorGradients.append(qMakePair(QString("Cold"), QCPColorGradient::gpCold));
     m_colorGradients.append(qMakePair(QString("Night"), QCPColorGradient::gpNight));
@@ -244,8 +253,9 @@ void Histogram2DPlot::initializeColorGradients()
     {
         m_colorGradientCombo->addItem(gradient.first);
     }
-    // Set default selection to "Jet" (index 9 for gpJet)
-    m_colorGradientCombo->setCurrentIndex(9);
+    // Set default selection to ROOT Bird (first in list)
+    m_colorGradientCombo->setCurrentIndex(0);
+    m_colorMap->setGradient(birdGradient);
 }
 
 QCPColorGradient Histogram2DPlot::getGradientFromIndex(int index)
@@ -356,6 +366,10 @@ void Histogram2DPlot::setData(const std::vector<float> &xData, const std::vector
         float xMax = *xMinMax.second + 0.05f * xRange;
         float yMin = *yMinMax.first - 0.05f * yRange;
         float yMax = *yMinMax.second + 0.05f * yRange;
+
+        // Apply amplitude limits for X axis
+        xMin = std::max(0.0f, xMin);
+        xMax = std::min(70000.0f, xMax);
 
         // Ensure positive values for log scales
         if (m_logXScaleCheck->isChecked() && xMin <= 0)
@@ -657,18 +671,10 @@ void Histogram2DPlot::updatePlot()
     m_colorMap->data()->setSize(xBins, yBins);
     m_colorMap->data()->setRange(QCPRange(xMin, xMax), QCPRange(yMin, yMax));
 
-    // Get current gradient
+    // Get current gradient and modify it
     QCPColorGradient gradient = m_colorMap->gradient();
-
-    // IMPORTANT: Set NaN color to transparent (alpha=0) instead of white
-    gradient.setNanColor(QColor(0, 0, 0, 0)); // Fully transparent
-
-    // Also modify the gradient to start with transparent for the lowest value
-    gradient.setColorStopAt(0.0, QColor(0, 0, 0, 0)); // Transparent at position 0
-
-    // For bins with count >= 1, we want to use the normal gradient
-    // Since our data will have values >= 1 for filled bins, we'll keep the gradient as is
-    m_colorMap->setGradient(gradient);
+    gradient.setNanColor(QColor(0, 0, 0, 0)); // Transparent for zero bins
+    m_colorMap->setGradient(gradient);        // Apply modified gradient
 
     // Determine data range for color scaling
     double minVal = std::numeric_limits<double>::max();

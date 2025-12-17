@@ -899,10 +899,6 @@ bool MainWindow::currentEventPassesFilters()
         if (peakInfo.amp < 500 && count > 0)
             break;
 
-        for (auto el : filterWaveform.wf)
-            cout << el << " ";
-        cout << endl;
-        cout << WriteMode << "; Peak no =  " << count + 1 << "; Amp = " << peakInfo.amp << "; Charge = " << peakInfo.charge << "; Time = " << peakInfo.time << endl;
         peaksInfo.AddPeak(peakInfo);
 
         if (WriteMode == "Single")

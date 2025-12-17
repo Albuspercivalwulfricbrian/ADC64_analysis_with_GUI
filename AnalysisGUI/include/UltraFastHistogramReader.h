@@ -6,32 +6,27 @@
 #include <TTree.h>
 #include <TString.h>
 
-class UltraFastHistogramReader {
+class UltraFastHistogramReader
+{
 public:
-    UltraFastHistogramReader(TTree* tree, int channel);
+    UltraFastHistogramReader(TTree *tree, int channel);
     ~UltraFastHistogramReader();
-    
-    // Version 1: All float vectors
-    void readDataAllAtOnce(std::vector<float>& ampData, 
-                          std::vector<float>& chargeData,
-                          std::vector<float>& timeData,
-                          std::function<void(float)> progressCallback = nullptr);
-    
-    // Version 2: Mixed types (amplitude as uint32_t)
-    void readDataAllAtOnceMixed(std::vector<uint32_t>& ampData, 
-                               std::vector<float>& chargeData,
-                               std::vector<float>& timeData,
-                               std::function<void(float)> progressCallback = nullptr);
-    
-    static bool isPeaksInfoTree(TTree* tree, int channel);
-    
+
+    // Single, main function - all floats
+    void readData(std::vector<float> &ampData,
+                  std::vector<float> &chargeData,
+                  std::vector<float> &timeData,
+                  std::function<void(float)> progressCallback = nullptr);
+
 private:
-    TTree* m_tree;
+    bool isPeaksInfoTree(TTree *tree, int channel);
+
+    TTree *m_tree;
     int m_channel;
+    bool m_isPeaksInfo;
     TString m_formulaAmp;
     TString m_formulaCharge;
     TString m_formulaTime;
-    bool m_isPeaksInfo;
 };
 
 #endif // ULTRAFASTHISTOGRAMREADER_H
