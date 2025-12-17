@@ -16,6 +16,7 @@
 #include <ProgressWidget.h>
 #include "HistogramWindow.h"
 #include <QPointer>
+#include "EventFilterWidget.h" // ADD THIS LINE
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -37,7 +38,9 @@ public:
 private:
     Ui::MainWindow *ui;
     QPointer<HistogramWindow> m_histogramWindow;
+    QPointer<EventFilterWidget> m_eventFilterWidget; // ADD THIS LINE
 
+    bool m_programmaticallyChangingEvent = false;
     int32_t passfilter = 0;
     int64_t currEvent = 1;
     int16_t currChannel = 0;
@@ -71,17 +74,17 @@ private:
     QAction *actionSavePng;
     QAction *actionSavePdf;
     QAction *actionSaveJpeg;
-
     QAction *action_Show_Histogram;
+    QAction *action_Event_Filter; // ADD THIS LINE
 
-    // Add to private slots
-    // void on_action_Show_Histogram_triggered();
-    // void onCurrentEventChanged();
     void setupGraph();
     void UpdateGraph();
     void ReDrawBoundaries();
     void showContextMenu(const QPoint &pos);
     void processFiles(const QStringList &files);
+
+    // Helper function to check if event passes filters
+    bool currentEventPassesFilters(); // ADD THIS LINE
 
     ctpl::thread_pool p;
 
@@ -94,8 +97,6 @@ private slots:
     void on_SetFileAnalysisButton_clicked();
     void on_action_Open_triggered();
     void on_action_Open_Config_triggered();
-    // void on_action_Use_Smart_Boarders();
-    // void on_action_Use_Spline();
     void on_channelSpinBox_valueChanged(int);
     void on_eventSpinBox_valueChanged(int);
     void on_FrequencySpinBox_valueChanged(int);
@@ -106,19 +107,16 @@ private slots:
     void on_action_Show_Fourier_Transform_changed();
     void on_action_Show_Filtered_changed();
     void on_MultiplePeaksCheckBox_stateChanged(int state);
-    // void savePlot();
     void savePlotAsPng();
     void savePlotAsJpeg();
     void savePlotAsPdf();
     void onTimeout();
     void windowEnable();
     void windowDisable();
-
     void on_action_Show_Histogram_triggered();
-    void onCurrentEventChanged();
+    void on_action_Event_Filter_triggered(); // ADD THIS LINE
+    void onEventFilterChanged();             // ADD THIS LINE
 
-protected:
-    // void mousePressEvent(QMouseEvent *event) override;
 signals:
     void progressUpdated(int value);
 };

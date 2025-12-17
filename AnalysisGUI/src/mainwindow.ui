@@ -569,6 +569,7 @@
     </property>
     <addaction name="action_Show_Fourier_Transform"/>
     <addaction name="action_Show_Filtered"/>
+    <addaction name="action_Event_Filter"/>  <!-- ADDED THIS LINE -->
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Analysis_Options"/>
@@ -721,6 +722,12 @@
    </property>
    <property name="text">
     <string>&amp;Show Histogram</string>
+   </property>
+  </action>
+  <!-- ADD THIS ACTION FOR EVENT FILTER -->
+  <action name="action_Event_Filter">
+   <property name="text">
+    <string>&amp;Event Filter</string>
    </property>
   </action>
  </widget>

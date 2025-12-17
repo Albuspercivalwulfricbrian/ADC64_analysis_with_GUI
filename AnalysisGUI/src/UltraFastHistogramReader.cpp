@@ -4,22 +4,26 @@
 #include <TError.h>
 #include <TGraph.h>
 #include <algorithm>
-#include <cstring>  // For memcpy
+#include <cstring> // For memcpy
 #include <thread>
 
-UltraFastHistogramReader::UltraFastHistogramReader(TTree* tree, int channel)
+UltraFastHistogramReader::UltraFastHistogramReader(TTree *tree, int channel)
     : m_tree(tree), m_channel(channel), m_isPeaksInfo(false)
 {
-    if (!m_tree) return;
-    
+    if (!m_tree)
+        return;
+
     // Determine if it's PeaksInfo or short_energy_ChannelEntry
     m_isPeaksInfo = isPeaksInfoTree(tree, channel);
-    
-    if (m_isPeaksInfo) {
+
+    if (m_isPeaksInfo)
+    {
         m_formulaAmp = TString::Format("channel_%i.amp()", channel + 1);
         m_formulaCharge = TString::Format("channel_%i.charge()", channel + 1);
         m_formulaTime = TString::Format("channel_%i.time()", channel + 1);
-    } else {
+    }
+    else
+    {
         m_formulaAmp = TString::Format("channel_%i.amp", channel + 1);
         m_formulaCharge = TString::Format("channel_%i.charge", channel + 1);
         m_formulaTime = TString::Format("channel_%i.time", channel + 1);
@@ -31,181 +35,243 @@ UltraFastHistogramReader::~UltraFastHistogramReader()
     // Clean up any temporary objects
 }
 
-bool UltraFastHistogramReader::isPeaksInfoTree(TTree* tree, int channel)
+bool UltraFastHistogramReader::isPeaksInfoTree(TTree *tree, int channel)
 {
-    TBranch* branch = tree->GetBranch(TString::Format("channel_%i", channel + 1));
-    if (!branch) return false;
-    
+    TBranch *branch = tree->GetBranch(TString::Format("channel_%i", channel + 1));
+    if (!branch)
+        return false;
+
     TString className = branch->GetClassName();
     return (className == "PeaksInfo");
 }
 
-void UltraFastHistogramReader::readDataAllAtOnce(std::vector<float>& ampData, 
-                                                std::vector<float>& chargeData,
-                                                std::vector<float>& timeData,
-                                                std::function<void(float)> progressCallback)
+void UltraFastHistogramReader::readDataAllAtOnce(std::vector<float> &ampData,
+                                                 std::vector<float> &chargeData,
+                                                 std::vector<float> &timeData,
+                                                 std::function<void(float)> progressCallback)
 {
-    if (!m_tree) return;
-    
+    if (!m_tree)
+        return;
+
     Long64_t nentries = m_tree->GetEntries();
-    if (nentries <= 0) return;
-    
+    if (nentries <= 0)
+        return;
+
     // Clear and resize
     ampData.resize(nentries);
     chargeData.resize(nentries);
     timeData.resize(nentries);
-    
+
     // Create formula for all three columns at once
     TString formulaAll;
-    if (m_isPeaksInfo) {
-        formulaAll = TString::Format("channel_%i.amp():channel_%i.charge():channel_%i.time()", 
-                                     m_channel + 1, m_channel + 1, m_channel + 1);
-    } else {
-        formulaAll = TString::Format("channel_%i.amp:channel_%i.charge:channel_%i.time", 
+    if (m_isPeaksInfo)
+    {
+        formulaAll = TString::Format("channel_%i.amp():channel_%i.charge():channel_%i.time()",
                                      m_channel + 1, m_channel + 1, m_channel + 1);
     }
-    
+    else
+    {
+        formulaAll = TString::Format("channel_%i.amp:channel_%i.charge:channel_%i.time",
+                                     m_channel + 1, m_channel + 1, m_channel + 1);
+    }
+
     // Disable messages
     Int_t oldErrorIgnoreLevel = gErrorIgnoreLevel;
     gErrorIgnoreLevel = kFatal;
-    
-    try {
+
+    try
+    {
         // Draw ALL THREE columns at once - ONE I/O operation!
         m_tree->Draw(formulaAll.Data(), "", "goff", nentries, 0);
-        
+
         // Get arrays (V1, V2, V3 contain our data)
-        Double_t* ampArray = m_tree->GetV1();
-        Double_t* chargeArray = m_tree->GetV2();
-        Double_t* timeArray = m_tree->GetV3();
-        
-        if (ampArray && chargeArray && timeArray) {
-            // Fast parallel copy
-            #pragma omp parallel for
-            for (Long64_t i = 0; i < nentries; i++) {
+        Double_t *ampArray = m_tree->GetV1();
+        Double_t *chargeArray = m_tree->GetV2();
+        Double_t *timeArray = m_tree->GetV3();
+
+        if (ampArray && chargeArray && timeArray)
+        {
+// Fast parallel copy
+#pragma omp parallel for
+            for (Long64_t i = 0; i < nentries; i++)
+            {
                 ampData[i] = static_cast<float>(ampArray[i]);
                 chargeData[i] = static_cast<float>(chargeArray[i]);
                 timeData[i] = static_cast<float>(timeArray[i]);
             }
         }
-        
-        if (progressCallback) progressCallback(1.0f);
-        
-        std::cout << "UltraFastHistogramReader: Processed " 
+
+        if (progressCallback)
+            progressCallback(1.0f);
+
+        std::cout << "UltraFastHistogramReader: Processed "
                   << nentries << " entries" << std::endl;
-        
-    } catch (...) {
+    }
+    catch (...)
+    {
         std::cerr << "Error in readDataAllAtOnce" << std::endl;
         ampData.clear();
         chargeData.clear();
         timeData.clear();
     }
-    
+
     gErrorIgnoreLevel = oldErrorIgnoreLevel;
 }
-void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t>& ampData, 
-                                                     std::vector<float>& chargeData,
-                                                     std::vector<float>& timeData,
-                                                     std::function<void(float)> progressCallback)
+
+void UltraFastHistogramReader::readDataAllAtOnceMixed(std::vector<uint32_t> &ampData,
+                                                      std::vector<float> &chargeData,
+                                                      std::vector<float> &timeData,
+                                                      std::function<void(float)> progressCallback)
 {
-    if (!m_tree) return;
-    
+    if (!m_tree)
+        return;
+
     Long64_t nentries = m_tree->GetEntries();
-    if (nentries <= 0) return;
-    
+    if (nentries <= 0)
+        return;
+
     // Clear and resize
     ampData.resize(nentries);
     chargeData.resize(nentries);
     timeData.resize(nentries);
-    
-    // Create formula for all three columns at once
-    TString formulaAll;
-    if (m_isPeaksInfo) {
-        formulaAll = TString::Format("channel_%i.amp():channel_%i.charge():channel_%i.time()", 
-                                     m_channel + 1, m_channel + 1, m_channel + 1);
-    } else {
-        formulaAll = TString::Format("channel_%i.amp:channel_%i.charge:channel_%i.time", 
-                                     m_channel + 1, m_channel + 1, m_channel + 1);
-    }
-    
+
+    // Allocate temporary buffers for Double_t data
+    std::vector<Double_t> tempAmp(nentries);
+    std::vector<Double_t> tempCharge(nentries);
+    std::vector<Double_t> tempTime(nentries);
+
     // Disable messages
     Int_t oldErrorIgnoreLevel = gErrorIgnoreLevel;
     gErrorIgnoreLevel = kFatal;
-    
-    try {
-        // STEP 1: Reading data (20% of work)
-        if (progressCallback) {
+
+    try
+    {
+        // STEP 1: Reading amplitude data (33% of work)
+        if (progressCallback)
+        {
             progressCallback(0.0f);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Small delay
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        
-        std::cout << "Reading data from ROOT file..." << std::endl;
-        m_tree->Draw(formulaAll.Data(), "", "goff", nentries, 0);
-        
-        // Send progress update after reading
-        if (progressCallback) {
-            progressCallback(0.2f);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        std::cout << "Reading amplitude data from ROOT file..." << std::endl;
+
+        // Read amplitude column
+        TString ampFormula = m_isPeaksInfo ? TString::Format("channel_%i.amp()", m_channel + 1) : TString::Format("channel_%i.amp", m_channel + 1);
+
+        m_tree->Draw(ampFormula.Data(), "", "goff", nentries, 0);
+
+        // Copy amplitude data immediately before ROOT reuses the buffer
+        Double_t *ampArray = m_tree->GetV1();
+        if (!ampArray)
+        {
+            throw std::runtime_error("Failed to get amplitude array from ROOT");
         }
-        
-        // Get arrays
-        Double_t* ampArray = m_tree->GetV1();
-        Double_t* chargeArray = m_tree->GetV2();
-        Double_t* timeArray = m_tree->GetV3();
-        
-        if (!ampArray || !chargeArray || !timeArray) {
-            throw std::runtime_error("Failed to get data arrays from ROOT");
+
+        // Copy to temporary buffer
+        std::memcpy(tempAmp.data(), ampArray, nentries * sizeof(Double_t));
+
+        if (progressCallback)
+        {
+            progressCallback(0.33f);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        
-        // STEP 2: Copying data (80% of work)
-        std::cout << "Copying data to vectors..." << std::endl;
-        
-        // Calculate optimal chunk size - update progress every 1% of copying
-        const Long64_t PROGRESS_STEPS = 100;
+
+        // STEP 2: Reading charge data (66% of work)
+        std::cout << "Reading charge data from ROOT file..." << std::endl;
+
+        // Read charge column
+        TString chargeFormula = m_isPeaksInfo ? TString::Format("channel_%i.charge()", m_channel + 1) : TString::Format("channel_%i.charge", m_channel + 1);
+
+        m_tree->Draw(chargeFormula.Data(), "", "goff", nentries, 0);
+
+        // Copy charge data immediately
+        Double_t *chargeArray = m_tree->GetV1();
+        if (!chargeArray)
+        {
+            throw std::runtime_error("Failed to get charge array from ROOT");
+        }
+
+        std::memcpy(tempCharge.data(), chargeArray, nentries * sizeof(Double_t));
+
+        if (progressCallback)
+        {
+            progressCallback(0.66f);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        // STEP 3: Reading time data (100% of work)
+        std::cout << "Reading time data from ROOT file..." << std::endl;
+
+        // Read time column
+        TString timeFormula = m_isPeaksInfo ? TString::Format("channel_%i.time()", m_channel + 1) : TString::Format("channel_%i.time", m_channel + 1);
+
+        m_tree->Draw(timeFormula.Data(), "", "goff", nentries, 0);
+
+        // Copy time data immediately
+        Double_t *timeArray = m_tree->GetV1();
+        if (!timeArray)
+        {
+            throw std::runtime_error("Failed to get time array from ROOT");
+        }
+
+        std::memcpy(tempTime.data(), timeArray, nentries * sizeof(Double_t));
+
+        // STEP 4: Convert and copy to output vectors with progress
+        std::cout << "Copying data to output vectors..." << std::endl;
+
+        // Calculate optimal chunk size for progress updates
+        const Long64_t PROGRESS_STEPS = 33; // 33 more steps for the remaining 34% of work
         const Long64_t entriesPerStep = std::max<Long64_t>(nentries / PROGRESS_STEPS, 1000);
-        
+
         Long64_t processed = 0;
-        float lastProgressSent = 0.2f; // Start from 20%
-        
-        for (Long64_t i = 0; i < nentries; i++) {
-            ampData[i] = static_cast<uint32_t>(ampArray[i]);
-            chargeData[i] = static_cast<float>(chargeArray[i]);
-            timeData[i] = static_cast<float>(timeArray[i]);
-            
+        float lastProgressSent = 0.66f;
+
+        for (Long64_t i = 0; i < nentries; i++)
+        {
+            ampData[i] = static_cast<uint32_t>(tempAmp[i]);
+            chargeData[i] = static_cast<float>(tempCharge[i]);
+            timeData[i] = static_cast<float>(tempTime[i]);
+
             processed++;
-            
+
             // Update progress every entriesPerStep entries
-            if (processed % entriesPerStep == 0) {
-                float copyProgress = 0.2f + (0.8f * static_cast<float>(processed) / static_cast<float>(nentries));
-                
-                // Only send update if progress has changed significantly (1% or more)
-                if (copyProgress - lastProgressSent >= 0.01f || i == nentries - 1) {
-                    if (progressCallback) {
+            if (processed % entriesPerStep == 0)
+            {
+                float copyProgress = 0.66f + (0.34f * static_cast<float>(processed) / static_cast<float>(nentries));
+
+                // Only send update if progress has changed significantly
+                if (copyProgress - lastProgressSent >= 0.01f || i == nentries - 1)
+                {
+                    if (progressCallback)
+                    {
                         progressCallback(copyProgress);
                         lastProgressSent = copyProgress;
-                        
+
                         // Small delay to allow GUI to update
-                        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(2));
                     }
                 }
             }
         }
-        
+
         // Send final update
-        if (progressCallback) {
+        if (progressCallback)
+        {
             progressCallback(1.0f);
             std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
-        
-        std::cout << "UltraFastHistogramReader: Successfully processed " 
+
+        std::cout << "UltraFastHistogramReader: Successfully processed "
                   << nentries << " entries" << std::endl;
-        
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
         std::cerr << "Error in readDataAllAtOnceMixed: " << e.what() << std::endl;
         ampData.clear();
         chargeData.clear();
         timeData.clear();
         throw;
     }
-    
+
     gErrorIgnoreLevel = oldErrorIgnoreLevel;
 }

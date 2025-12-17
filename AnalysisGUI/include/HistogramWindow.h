@@ -16,6 +16,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include "HistogramPlot.h"
+#include "Histogram2DPlot.h" // Add this include
 #include "ChannelEntry.h"
 #include <TTree.h>
 #include <TFile.h>
@@ -45,6 +46,7 @@ signals:
 
 public slots:
     void updateHistograms();
+    void update2DHistogram(); // New slot for 2D histogram
     void onChannelChanged(int channel);
     void onHistogramSelectionChanged();
     void onOpenRootFile();
@@ -67,9 +69,11 @@ private:
     HistogramPlot *m_amplitudePlot;
     HistogramPlot *m_chargePlot;
     HistogramPlot *m_timePlot;
-    ProgressDialog* m_progressDialog = nullptr;
-    QTimer* m_progressTimer = nullptr;
-    
+    Histogram2DPlot *m_amplitudeVsChargePlot; // New 2D histogram
+
+    ProgressDialog *m_progressDialog = nullptr;
+    QTimer *m_progressTimer = nullptr;
+
     // Layout and widgets
     QVBoxLayout *m_mainLayout;
     QWidget *m_centralWidget;
@@ -78,6 +82,7 @@ private:
     QLabel *m_eventTimeLabel;
     QSpinBox *m_channelSpinBox;
     QPushButton *m_updateButton;
+    QPushButton *m_update2DButton; // New button for 2D histogram
     QComboBox *m_histogramSelectionCombo;
     QListWidget *m_histogramListWidget;
 
@@ -88,6 +93,7 @@ private:
     QListWidgetItem *m_amplitudeItem;
     QListWidgetItem *m_chargeItem;
     QListWidgetItem *m_timeItem;
+    QListWidgetItem *m_amplitudeVsChargeItem; // New item for 2D histogram
 
     // File path display
     QLabel *m_filePathLabel;
@@ -104,7 +110,7 @@ private:
     uint32_t event_amplitude = 0;
     float event_charge = 0;
     float event_time = 0;
-    std::atomic<bool> m_dataLoaded;    
+    std::atomic<bool> m_dataLoaded;
     float rootLoadedpercentage = 0;
 
     ctpl::thread_pool *m_threadPool;

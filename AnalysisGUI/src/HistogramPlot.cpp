@@ -183,34 +183,33 @@ void HistogramPlot::updatePlot()
     bars->setPen(QPen(Qt::blue));
     bars->setBrush(QBrush(QColor(0, 0, 255, 100)));
 
-    // Set axis ranges
+    // Calculate LINEAR bin width (same for both linear and log display)
+    double binWidth = (maxVal - minVal) / bins;
+
+    // Set width based on plot coordinates
+    bars->setWidthType(QCPBars::wtPlotCoords);
+
+    // FIXED: Always use linear bin width for bar width
+    bars->setWidth(binWidth);
+
+    // Set axis ranges and scale type
+    m_customPlot->xAxis->setRange(minVal, maxVal);
+
+    if (m_logXScaleCheck->isChecked())
+    {
+        m_customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
+    }
+    else
+    {
+        m_customPlot->xAxis->setScaleType(QCPAxis::stLinear);
+    }
+
+    // Set Y range
     double maxCount = *std::max_element(y.constBegin(), y.constEnd());
     if (maxCount == 0)
         maxCount = 1;
 
     m_customPlot->yAxis->setRange(0, maxCount * 1.1);
-
-    // Handle x-axis scaling
-    if (m_logXScaleCheck->isChecked())
-    {
-        // For log scale - width will automatically scale with plot
-        bars->setWidthType(QCPBars::wtPlotCoords);
-        double logMin = log10(minVal);
-        double logMax = log10(maxVal);
-        double logRange = logMax - logMin;
-        bars->setWidth(logRange / bins); // Bin width in plot coordinates
-        m_customPlot->xAxis->setScaleType(QCPAxis::stLogarithmic);
-        m_customPlot->xAxis->setRange(minVal, maxVal);
-    }
-    else
-    {
-        // For linear scale - width will automatically scale with plot
-        double binWidth = (maxVal - minVal) / bins;
-        bars->setWidthType(QCPBars::wtPlotCoords);
-        bars->setWidth(binWidth); // Bin width in plot coordinates
-        m_customPlot->xAxis->setScaleType(QCPAxis::stLinear);
-        m_customPlot->xAxis->setRange(minVal, maxVal);
-    }
 
     m_customPlot->replot();
 }
@@ -227,55 +226,38 @@ void HistogramPlot::calculateHistogram(QVector<double> &x, QVector<double> &y)
     x.resize(bins);
     y.resize(bins);
 
-    // Fill histogram
+    // Initialize y to 0
+    y.fill(0.0);
+
+    // Calculate bin width based on LINEAR range
+    double binWidth = (maxVal - minVal) / bins;
+
+    // Fill histogram with LINEAR binning
     for (float value : m_data)
     {
         if (value >= minVal && value <= maxVal)
         {
-            if (m_logXScaleCheck->isChecked())
+            // Always use linear binning regardless of display scale
+            int bin = static_cast<int>((value - minVal) / binWidth);
+
+            // Handle the edge case where value equals max
+            if (bin == bins)
+                bin = bins - 1;
+
+            if (bin >= 0 && bin < bins)
             {
-                // For log scale, use logarithmic binning
-                double logMin = log10(minVal);
-                double logMax = log10(maxVal);
-                double logRange = logMax - logMin;
-                double logValue = log10(value);
-                int bin = static_cast<int>((logValue - logMin) / logRange * bins);
-                if (bin >= 0 && bin < bins)
-                {
-                    y[bin]++;
-                }
-            }
-            else
-            {
-                // For linear scale, use linear binning
-                double binWidth = (maxVal - minVal) / bins;
-                int bin = static_cast<int>((value - minVal) / binWidth);
-                if (bin >= 0 && bin < bins)
-                {
-                    y[bin]++;
-                }
+                y[bin]++;
             }
         }
     }
 
     // Calculate bin centers for display
+    // IMPORTANT: For log display, we still use linear centers
+    // but the display will stretch them on log scale
     for (int i = 0; i < bins; ++i)
     {
-        if (m_logXScaleCheck->isChecked())
-        {
-            // For log scale, use geometric centers
-            double logMin = log10(minVal);
-            double logMax = log10(maxVal);
-            double logRange = logMax - logMin;
-            double logBinCenter = logMin + (i + 0.5) * logRange / bins;
-            x[i] = pow(10.0, logBinCenter);
-        }
-        else
-        {
-            // For linear scale, use arithmetic centers
-            double binWidth = (maxVal - minVal) / bins;
-            x[i] = minVal + (i + 0.5) * binWidth;
-        }
+        // Always use linear centers
+        x[i] = minVal + (i + 0.5) * binWidth;
     }
 }
 

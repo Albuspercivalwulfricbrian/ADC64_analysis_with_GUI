@@ -13,11 +13,15 @@ HistogramWindow::HistogramWindow(QWidget *parent)
       m_amplitudePlot(new HistogramPlot("Amplitude Histogram", "Amplitude (ADC Channels)", this)),
       m_chargePlot(new HistogramPlot("Charge Histogram", "Charge", this)),
       m_timePlot(new HistogramPlot("Time Histogram", "Time", this)),
+      m_amplitudeVsChargePlot(new Histogram2DPlot("Amplitude vs Charge Correlation",
+                                                  "Amplitude (ADC Channels)",
+                                                  "Charge", this)),
       m_mainLayout(new QVBoxLayout()),
       m_centralWidget(new QWidget(this)),
       m_eventTimeLabel(new QLabel("Current Event Time: N/A", this)),
       m_channelSpinBox(new QSpinBox(this)),
       m_updateButton(new QPushButton("Update Histograms", this)),
+      m_update2DButton(new QPushButton("Update 2D Histogram", this)),
       m_histogramSelectionCombo(new QComboBox(this)),
       m_histogramListWidget(new QListWidget(this)),
       m_openRootFileAction(new QAction("Open ROOT File", this)),
@@ -37,15 +41,23 @@ HistogramWindow::HistogramWindow(QWidget *parent)
     m_chargePlot->setRange(0, 10000000);
     m_timePlot->setRange(0, 10000);
 
+    // Set initial ranges for 2D histogram
+    m_amplitudeVsChargePlot->setXRange(0, 60000);    // Amplitude range
+    m_amplitudeVsChargePlot->setYRange(0, 10000000); // Charge range
+    m_amplitudeVsChargePlot->setXBins(100);
+    m_amplitudeVsChargePlot->setYBins(100);
+    m_amplitudeVsChargePlot->setLogZScale(true); // Log scale often helps see patterns
+
     // Connect signals
     connect(m_updateButton, &QPushButton::clicked, this, &HistogramWindow::updateHistograms);
+    connect(m_update2DButton, &QPushButton::clicked, this, &HistogramWindow::update2DHistogram);
     connect(m_histogramListWidget, &QListWidget::itemChanged, this, &HistogramWindow::onHistogramSelectionChanged);
 
     // Connect menu action to slot
     connect(m_openRootFileAction, &QAction::triggered, this, &HistogramWindow::onOpenRootFile);
 
     setWindowTitle("Histogram Analysis");
-    resize(800, 900);
+    resize(1000, 1200); // Increased size for 2D histogram
 
     // Add menu action
     menuBar()->addAction(m_openRootFileAction);
@@ -55,15 +67,16 @@ HistogramWindow::~HistogramWindow()
 {
     // Clean up progress dialog and timer
     closeProgressDialog();
-    
-    if (RootDataFile) {
+
+    if (RootDataFile)
+    {
         RootDataFile->Close();
         delete RootDataFile;
         RootDataFile = nullptr;
     }
 
     RootDataTree = nullptr;
-    
+
     // Clear data vectors
     m_amplitudeData.clear();
     m_chargeData.clear();
@@ -72,32 +85,35 @@ HistogramWindow::~HistogramWindow()
 
 void HistogramWindow::createProgressDialog()
 {
-    if (m_progressDialog) {
+    if (m_progressDialog)
+    {
         // Clean up existing dialog first
         closeProgressDialog();
     }
-    
+
     m_progressDialog = new ProgressDialog(this);
     m_progressDialog->setWindowTitle(QString("Processing ROOT File - Channel %1").arg(m_currentChannel));
     m_progressDialog->setWindowModality(Qt::ApplicationModal);
-    
+
     // Connect progress updates
-    connect(this, &HistogramWindow::progressUpdated, m_progressDialog, 
+    connect(this, &HistogramWindow::progressUpdated, m_progressDialog,
             &ProgressDialog::updateProgress, Qt::QueuedConnection);
-    
+
     // Ensure it stays on top
     m_progressDialog->setWindowFlags(m_progressDialog->windowFlags() | Qt::WindowStaysOnTopHint);
 }
 
 void HistogramWindow::closeProgressDialog()
 {
-    if (m_progressDialog) {
+    if (m_progressDialog)
+    {
         m_progressDialog->close();
         m_progressDialog->deleteLater();
         m_progressDialog = nullptr;
     }
-    
-    if (m_progressTimer) {
+
+    if (m_progressTimer)
+    {
         m_progressTimer->stop();
         m_progressTimer->deleteLater();
         m_progressTimer = nullptr;
@@ -113,7 +129,8 @@ void HistogramWindow::setupProgressTimer()
 
 void HistogramWindow::ensureProgressDialogVisible()
 {
-    if (m_progressDialog && !m_progressDialog->isVisible()) {
+    if (m_progressDialog && !m_progressDialog->isVisible())
+    {
         m_progressDialog->show();
         m_progressDialog->raise();
         m_progressDialog->activateWindow();
@@ -146,7 +163,7 @@ void HistogramWindow::setupUI()
 
     // Add checkable items to the list widget
     m_amplitudeItem = new QListWidgetItem("Amplitude Histogram", m_histogramListWidget);
-    m_amplitudeItem->setCheckState(Qt::Checked);
+    m_amplitudeItem->setCheckState(Qt::Unchecked);
     m_amplitudeItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
 
     m_chargeItem = new QListWidgetItem("Charge Histogram", m_histogramListWidget);
@@ -157,8 +174,12 @@ void HistogramWindow::setupUI()
     m_timeItem->setCheckState(Qt::Unchecked);
     m_timeItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
 
+    m_amplitudeVsChargeItem = new QListWidgetItem("Amplitude vs Charge (2D)", m_histogramListWidget);
+    m_amplitudeVsChargeItem->setCheckState(Qt::Unchecked);
+    m_amplitudeVsChargeItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+
     // Set initial combo box text
-    m_histogramSelectionCombo->setEditText("Amplitude Histogram");
+    m_histogramSelectionCombo->setEditText("No histograms selected");
 
     // Histogram selection label
     QLabel *histogramLabel = new QLabel("Show:", this);
@@ -168,15 +189,18 @@ void HistogramWindow::setupUI()
     controlLayout->addWidget(channelLabel);
     controlLayout->addWidget(m_channelSpinBox);
     controlLayout->addWidget(m_updateButton);
+    controlLayout->addWidget(m_update2DButton); // Add 2D update button
     controlLayout->addStretch();
     controlLayout->addWidget(m_eventTimeLabel);
     controlLayout->addWidget(m_filePathLabel);
 
-    // Main layout
+    // Main layout - REMOVED the separate controls line before 2D histogram
     m_mainLayout->addWidget(controlWidget);
     m_mainLayout->addWidget(m_amplitudePlot);
     m_mainLayout->addWidget(m_chargePlot);
     m_mainLayout->addWidget(m_timePlot);
+    // No separate controls widget for 2D histogram - controls are built into Histogram2DPlot
+    m_mainLayout->addWidget(m_amplitudeVsChargePlot);
 
     m_centralWidget->setLayout(m_mainLayout);
     setCentralWidget(m_centralWidget);
@@ -191,6 +215,7 @@ void HistogramWindow::updateHistogramVisibility()
     m_amplitudePlot->setVisible(m_amplitudeItem->checkState() == Qt::Checked);
     m_chargePlot->setVisible(m_chargeItem->checkState() == Qt::Checked);
     m_timePlot->setVisible(m_timeItem->checkState() == Qt::Checked);
+    m_amplitudeVsChargePlot->setVisible(m_amplitudeVsChargeItem->checkState() == Qt::Checked);
 
     // Update combo box text to show selected histograms
     QStringList selectedHistograms;
@@ -200,6 +225,8 @@ void HistogramWindow::updateHistogramVisibility()
         selectedHistograms << "Charge";
     if (m_timeItem->checkState() == Qt::Checked)
         selectedHistograms << "Time";
+    if (m_amplitudeVsChargeItem->checkState() == Qt::Checked)
+        selectedHistograms << "Amplitude vs Charge";
 
     if (selectedHistograms.isEmpty())
     {
@@ -232,12 +259,20 @@ void HistogramWindow::setEventValues(uint32_t amplitude, float charge, float tim
         m_timePlot->setEventLineVisible(true);
         m_timePlot->setEventValue(time);
     }
+
+    // ADD THIS FOR 2D PLOT CROSSHAIR:
+    if (m_amplitudeVsChargePlot->isVisible())
+    {
+        m_amplitudeVsChargePlot->setEventMarkerVisible(true);
+        m_amplitudeVsChargePlot->setEventValue(static_cast<float>(amplitude), charge);
+    }
 }
 
 void HistogramWindow::loadRootFile(const QString &filePath)
 {
     // Clean up previous ROOT objects
-    if (RootDataFile) {
+    if (RootDataFile)
+    {
         RootDataFile->Close();
         delete RootDataFile;
         RootDataFile = nullptr;
@@ -262,11 +297,13 @@ void HistogramWindow::loadRootFile(const QString &filePath)
         QFileInfo fileInfo(filePath);
         m_filePathLabel->setText("File: " + fileInfo.fileName());
         RootDataFile = TFile::Open((TString)(filePath.toUtf8().constData()));
-        if (RootDataFile && !RootDataFile->IsZombie()) {
-            RootDataTree = dynamic_cast<TTree*>(RootDataFile->Get("adc64_data"));
+        if (RootDataFile && !RootDataFile->IsZombie())
+        {
+            RootDataTree = dynamic_cast<TTree *>(RootDataFile->Get("adc64_data"));
         }
 
-        if (!RootDataTree) {
+        if (!RootDataTree)
+        {
             QMessageBox::warning(this, "Error", "Failed to load ROOT tree from file");
             // Reset file path since load failed
             m_currentRootFile.clear();
@@ -301,8 +338,7 @@ void HistogramWindow::processHistogramData()
         QMetaObject::invokeMethod(this, [this]()
                                   { 
                                       closeProgressDialog();
-                                      QMessageBox::warning(this, "Error", "No ROOT file specified"); 
-                                  });
+                                      QMessageBox::warning(this, "Error", "No ROOT file specified"); });
         return;
     }
 
@@ -310,44 +346,42 @@ void HistogramWindow::processHistogramData()
     rootLoadedpercentage = 0.0f;
 
     // Create and show progress dialog FIRST, before starting the worker
-    QMetaObject::invokeMethod(this, [this]() {
-        // Clean up any existing dialog first
-        closeProgressDialog();
-        
-        // Create and show new progress dialog
-        m_progressDialog = new ProgressDialog(this);
-        m_progressDialog->setWindowTitle(QString("Processing ROOT File - Channel %1").arg(m_currentChannel));
-        m_progressDialog->setWindowModality(Qt::ApplicationModal);
-        m_progressDialog->setWindowFlags(m_progressDialog->windowFlags() | Qt::WindowStaysOnTopHint);
-        
-        // Show dialog
-        m_progressDialog->show();
-        m_progressDialog->raise();
-        m_progressDialog->activateWindow();
-        
-        // Force immediate paint
-        m_progressDialog->updateProgress(0);
-        m_progressDialog->repaint();
-        
-        // Process events to ensure dialog is visible
-        QApplication::processEvents();
-        
-    }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(this, [this]()
+                              {
+                                  // Clean up any existing dialog first
+                                  closeProgressDialog();
+
+                                  // Create and show new progress dialog
+                                  m_progressDialog = new ProgressDialog(this);
+                                  m_progressDialog->setWindowTitle(QString("Processing ROOT File - Channel %1").arg(m_currentChannel));
+                                  m_progressDialog->setWindowModality(Qt::ApplicationModal);
+                                  m_progressDialog->setWindowFlags(m_progressDialog->windowFlags() | Qt::WindowStaysOnTopHint);
+
+                                  // Show dialog
+                                  m_progressDialog->show();
+                                  m_progressDialog->raise();
+                                  m_progressDialog->activateWindow();
+
+                                  // Force immediate paint
+                                  m_progressDialog->updateProgress(0);
+                                  m_progressDialog->repaint();
+
+                                  // Process events to ensure dialog is visible
+                                  QApplication::processEvents(); }, Qt::BlockingQueuedConnection);
 
     // Now setup the timer and connections in main thread
-    QMetaObject::invokeMethod(this, [this]() {
-        m_progressTimer = new QTimer(this);
-        connect(m_progressTimer, &QTimer::timeout, this, &HistogramWindow::onTimeout);
-        m_progressTimer->start(50); // Update every 50ms for smoother progress
-        
-        // Connect progress signal AFTER dialog is created
-        connect(this, &HistogramWindow::progressUpdated, m_progressDialog, 
-                &ProgressDialog::updateProgress, Qt::QueuedConnection);
-        
-        // Send initial update
-        emit progressUpdated(0);
-        
-    }, Qt::BlockingQueuedConnection);
+    QMetaObject::invokeMethod(this, [this]()
+                              {
+                                  m_progressTimer = new QTimer(this);
+                                  connect(m_progressTimer, &QTimer::timeout, this, &HistogramWindow::onTimeout);
+                                  m_progressTimer->start(50); // Update every 50ms for smoother progress
+
+                                  // Connect progress signal AFTER dialog is created
+                                  connect(this, &HistogramWindow::progressUpdated, m_progressDialog,
+                                          &ProgressDialog::updateProgress, Qt::QueuedConnection);
+
+                                  // Send initial update
+                                  emit progressUpdated(0); }, Qt::BlockingQueuedConnection);
 
     try
     {
@@ -358,34 +392,37 @@ void HistogramWindow::processHistogramData()
 
         // Create UltraFastHistogramReader
         UltraFastHistogramReader reader(RootDataTree, m_currentChannel);
-        
+
         // Store the last progress value to avoid too many updates
         float lastReportedProgress = 0.0f;
-        
+
         // Use the mixed version that handles uint32_t for amplitude
         reader.readDataAllAtOnceMixed(m_amplitudeData, m_chargeData, m_timeData,
-            [this, &lastReportedProgress](float progress) {
-                // Only update if progress changed by at least 0.5%
-                if (progress - lastReportedProgress >= 0.005f || progress >= 1.0f) {
-                    rootLoadedpercentage = progress;
-                    lastReportedProgress = progress;
-                    
-                    // Emit signal to update progress dialog
-                    emit progressUpdated(static_cast<int>(1000 * progress));
-                }
-            });
+                                      [this, &lastReportedProgress](float progress)
+                                      {
+                                          // Only update if progress changed by at least 0.5%
+                                          if (progress - lastReportedProgress >= 0.005f || progress >= 1.0f)
+                                          {
+                                              rootLoadedpercentage = progress;
+                                              lastReportedProgress = progress;
+
+                                              // Emit signal to update progress dialog
+                                              emit progressUpdated(static_cast<int>(1000 * progress));
+                                          }
+                                      });
 
         // Processing completed successfully
         m_dataLoaded = true;
 
         // Send final update to ensure 100% is shown
         emit progressUpdated(1000);
-        
+
         // Small delay to ensure final update is shown
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        
+
         // Clean up progress dialog in main thread
-        QMetaObject::invokeMethod(this, [this]() {
+        QMetaObject::invokeMethod(this, [this]()
+                                  {
             if (m_progressTimer) {
                 m_progressTimer->stop();
                 m_progressTimer->deleteLater();
@@ -404,11 +441,16 @@ void HistogramWindow::processHistogramData()
                     m_progressDialog->deleteLater();
                     m_progressDialog = nullptr;
                 });
-            }
-        }, Qt::QueuedConnection);
+            } }, Qt::QueuedConnection);
 
         // Update histograms in main thread
         QMetaObject::invokeMethod(this, &HistogramWindow::updateHistograms, Qt::QueuedConnection);
+
+        // Also update 2D histogram if it's visible
+        if (m_amplitudeVsChargeItem->checkState() == Qt::Checked)
+        {
+            QMetaObject::invokeMethod(this, &HistogramWindow::update2DHistogram, Qt::QueuedConnection);
+        }
     }
     catch (const std::exception &e)
     {
@@ -428,29 +470,30 @@ void HistogramWindow::processHistogramData()
                                       }
                                       
                                       QMessageBox::critical(this, "Error", 
-                                          QString("Failed to process ROOT file: %1").arg(e.what())); 
-                                  });
+                                          QString("Failed to process ROOT file: %1").arg(e.what())); });
     }
 }
 
 void HistogramWindow::onTimeout()
 {
     // This slot runs in the main thread
-    if (rootLoadedpercentage < 1.0f) {
+    if (rootLoadedpercentage < 1.0f)
+    {
         // Use the stored progress value
         int progressValue = static_cast<int>(1000 * rootLoadedpercentage);
-        
+
         // Update the dialog directly (since we're in the main thread)
-        if (m_progressDialog) {
+        if (m_progressDialog)
+        {
             m_progressDialog->updateProgress(progressValue);
-            
+
             // Force repaint for immediate update
             m_progressDialog->repaint();
-            
+
             // Process a few events to keep GUI responsive
             QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         }
-        
+
         // Also emit the signal for any other connections
         emit progressUpdated(progressValue);
     }
@@ -489,15 +532,62 @@ void HistogramWindow::updateHistograms()
         m_timePlot->setEventValue(event_time);
         m_timePlot->updatePlot();
     }
+
+    // Update 2D histogram if visible
+    if (m_amplitudeVsChargePlot->isVisible() && !m_amplitudeData.empty() && !m_chargeData.empty())
+    {
+        update2DHistogram();
+        m_amplitudeVsChargePlot->setEventValue(static_cast<float>(event_amplitude), event_charge);
+    }
+}
+
+void HistogramWindow::update2DHistogram()
+{
+    if (!m_dataLoaded || m_amplitudeData.empty() || m_chargeData.empty())
+        return;
+
+    // Convert amplitude data to float for the 2D plot
+    std::vector<float> amplitudeFloatData(m_amplitudeData.begin(), m_amplitudeData.end());
+
+    // Set data for the 2D histogram
+    m_amplitudeVsChargePlot->setData(amplitudeFloatData, m_chargeData);
+
+    // Auto-detect and set appropriate ranges
+    // if (!amplitudeFloatData.empty() && !m_chargeData.empty())
+    // {
+    //     auto ampMinMax = std::minmax_element(amplitudeFloatData.begin(), amplitudeFloatData.end());
+    //     auto chargeMinMax = std::minmax_element(m_chargeData.begin(), m_chargeData.end());
+
+    //     // Add 5% padding to ranges
+    //     float ampRange = *ampMinMax.second - *ampMinMax.first;
+    //     float chargeRange = *chargeMinMax.second - *chargeMinMax.first;
+
+    //     float ampMin = std::max(0.0f, *ampMinMax.first - 0.05f * ampRange);
+    //     float ampMax = *ampMinMax.second + 0.05f * ampRange;
+
+    //     float chargeMin = std::max(0.0f, *chargeMinMax.first - 0.05f * chargeRange);
+    //     float chargeMax = *chargeMinMax.second + 0.05f * chargeRange;
+
+    //     m_amplitudeVsChargePlot->setXRange(ampMin, ampMax);
+    //     m_amplitudeVsChargePlot->setYRange(chargeMin, chargeMax);
+    // }
+
+    // Update the plot
+    m_amplitudeVsChargePlot->updatePlot();
+
+    // Ensure crosshair is shown if event values are set
+    m_amplitudeVsChargePlot->setEventMarkerVisible(true);
+    m_amplitudeVsChargePlot->setEventValue(static_cast<float>(event_amplitude), event_charge);
 }
 
 void HistogramWindow::onChannelChanged(int channel)
 {
     // Only process if channel actually changed
-    if (m_currentChannel == channel && m_dataLoaded) {
+    if (m_currentChannel == channel && m_dataLoaded)
+    {
         return;
     }
-    
+
     m_currentChannel = channel;
     // Update the spinbox value directly without triggering signals
     m_channelSpinBox->blockSignals(true);
@@ -506,19 +596,20 @@ void HistogramWindow::onChannelChanged(int channel)
 
     // Reset data when changing channels
     if (!m_currentRootFile.isEmpty() && RootDataTree)
-    {     
+    {
         // Reset data loaded flag to force reprocessing
         m_dataLoaded = false;
-        
+
         // Clear existing data
         m_amplitudeData.clear();
         m_chargeData.clear();
         m_timeData.clear();
-        
+
         // Reprocess for new channel
         if (m_threadPool)
         {
-            m_threadPool->push([this](int id) { processHistogramData(); });
+            m_threadPool->push([this](int id)
+                               { processHistogramData(); });
         }
         else
         {

@@ -8,7 +8,8 @@
 #include "thread"
 #include "FourierFilter.h"
 #include <QScrollArea>
-#include "HistogramWindow.h" // Add missing include
+#include "HistogramWindow.h"
+#include "EventFilterWidget.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), p(8)
@@ -16,9 +17,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ui->LeftBoundaryLabel->setStyleSheet("QLabel { color : green; }");
     ui->RightBoundaryLabel->setStyleSheet("QLabel { color : red; }");
-    // QToolTip::showText( ui->LeftBoundaryLabel->mapToGlobal( QPoint( 0, 0 ) ), "errorString" );
+
     customPlot = ui->customPlot;
-    // ui->LeftBoundaryLabel->setToolTip("press \"A\" to win");
     FileNameLabel = ui->FileNameLabel;
     coordinateLabel = ui->coordinateLabel;
     LeftBoundaryEdit = ui->LeftBoundaryEdit;
@@ -29,55 +29,70 @@ MainWindow::MainWindow(QWidget *parent)
     FrequencySpinBox = ui->FrequencySpinBox;
     ThreadsSpinBox = ui->ThreadsSpinBox;
     ThreadsSpinBox->setValue((int32_t)p.size());
-    WriteMode = "Single"; // Initialize WriteMode
+    WriteMode = "Single";
+
     setupGraph();
     connect(ui->MultiplePeaksCheckBox, &QCheckBox::stateChanged, this, &MainWindow::on_MultiplePeaksCheckBox_stateChanged);
-    int64_t counter = 0;
+
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
-    // connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::mousePressEvent);
-    // connect(customPlot, &QCustomPlot::keyPressEvent, this, &MainWindow::keyPressEvent);
+
     for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
         channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0);
+
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
     BranchName->setText(QString::fromStdString(channels[currChannel]->name));
-    // graphLayer = new QCPLayer(customPlot, "graphLayer");
+
     customLayer = new QCPLayer(customPlot, "CustomLayer");
     customPlot->addLayer("CustomLayer", customPlot->layer("main"), QCustomPlot::LayerInsertMode::limAbove);
-    // customLayer->setMode(QCPLayer::lmBuffered);
 
-    // line = new QCPItemLine(customPlot);
-    // line->setLayer("CustomLayer");
-    // line->setPen(QPen(Qt::red,2)); // Задаем цвет линии
     lineLeft = new QCPItemLine(customPlot);
     lineLeft->setLayer("CustomLayer");
-    lineLeft->setPen(QPen(Qt::green, 4)); // Задаем цвет линии
+    lineLeft->setPen(QPen(Qt::green, 4));
     lineRight = new QCPItemLine(customPlot);
     lineRight->setLayer("CustomLayer");
-    lineRight->setPen(QPen(Qt::red, 4)); // Задаем цвет линии
+    lineRight->setPen(QPen(Qt::red, 4));
+
+    // Initialize action pointers
     action_UseSpline = ui->action_Use_Spline;
     action_UseSmartScope = ui->action_Use_Smart_Boarders;
     action_Signal_is_Negative = ui->action_Signal_is_Negative;
     action_Show_Fourier_Transform = ui->action_Show_Fourier_Transform;
     action_Show_Filtered = ui->action_Show_Filtered;
     action_Use_Fourier_Filtering = ui->action_Use_Fourier_Filtering;
-    // graphLayer->setMode( QCPLayer::LayerMode::lmLogical);
+    action_Event_Filter = ui->action_Event_Filter;
     actionSavePng = ui->actionSavePng;
     actionSaveJpeg = ui->actionSaveJpeg;
     actionSavePdf = ui->actionSavePdf;
+    action_Show_Histogram = ui->action_Show_Histogram;
 
     connect(actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
     connect(actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
     connect(actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
+
+    // Connect Event Filter action
+
     connect(LeftBoundaryEdit, &QLineEdit::textChanged, [=](QString obj)
             { xLeftBoundary = obj.toInt(); ReDrawBoundaries(); });
     connect(RightBoundaryEdit, &QLineEdit::textChanged, [=](QString obj)
             { xRightBoundary = obj.toInt(); ReDrawBoundaries(); });
 
-    action_Show_Histogram = ui->action_Show_Histogram;
     connect(action_Show_Histogram, &QAction::triggered, this, &MainWindow::on_action_Show_Histogram_triggered);
 
+    if (!action_Event_Filter)
+    {
+        qDebug() << "ERROR: action_Event_Filter not found in UI!";
+        // Create it programmatically if missing
+        action_Event_Filter = new QAction("&Event Filter", this);
+        ui->menuGraphics->addAction(action_Event_Filter);
+    }
+
+    // Connect the action
+    connect(action_Event_Filter, &QAction::triggered,
+            this, &MainWindow::on_action_Event_Filter_triggered);
+
     m_histogramWindow = nullptr;
+    m_eventFilterWidget = nullptr; // Initialize event filter widget pointer
 }
 
 void MainWindow::setupGraph()
@@ -134,9 +149,7 @@ void MainWindow::UpdateGraph()
     {
         QVector<double> x(size);
         for (int i = 0; i < size; ++i)
-            x[i] = i
-                // * 16. / 1000.
-                ; // x от 0 до 10
+            x[i] = i;
 
         if (action_Show_Fourier_Transform->isChecked())
         {
@@ -156,7 +169,6 @@ void MainWindow::UpdateGraph()
         }
         else
         {
-
             QVector<double> y(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end());
             customPlot->graph(0)->setData(x, y);
             customPlot->yAxis->setScaleType(QCPAxis::stLinear);
@@ -190,55 +202,55 @@ void MainWindow::UpdateGraph()
         customPlot->xAxis->rescale();
         customPlot->replot();
 
+        ChannelEntry tempWfData = DFR.event_waveform;
         // Calculate waveform parameters if histogram window is visible
-        if (m_histogramWindow && m_histogramWindow->isVisible() && DFR.event_waveform.wf.size() > 0)
+        if (m_histogramWindow && m_histogramWindow->isVisible() && tempWfData.wf.size() > 0)
         {
             PeaksInfo *sci = new PeaksInfo();
             if (channels[currChannel])
             {
-                DFR.event_waveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                tempWfData.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
             }
             else
             {
-                DFR.event_waveform.Set_Zero_Level_Area(60);
+                tempWfData.Set_Zero_Level_Area(60);
             }
-            sci->zl = DFR.event_waveform.CalculateZlwithNoisePeaks(130);
-            sci->zl_rms = DFR.event_waveform.Get_Zero_Level_RMS();
+            sci->zl = tempWfData.CalculateZlwithNoisePeaks(130);
+            sci->zl_rms = tempWfData.Get_Zero_Level_RMS();
 
             if (channels[currChannel])
             {
-                DFR.event_waveform.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+                tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
             }
             else
             {
-                DFR.event_waveform.SetBoarders(50, 100);
+                tempWfData.SetBoarders(50, 100);
             }
 
-            sci->ADC_ID = DFR.event_waveform.ADCID;
+            sci->ADC_ID = tempWfData.ADCID;
             int count = 0;
 
             while (true)
             {
                 SinglePeakInfo peakInfo;
 
-                DFR.event_waveform.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+                tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
 
-                int pp = DFR.event_waveform.Get_time();
-                // event_waveform.SetBoarders(pp-12,pp+25);
-                peakInfo.amp = DFR.event_waveform.Get_Amplitude();
+                int pp = tempWfData.Get_time();
+                peakInfo.amp = tempWfData.Get_Amplitude();
                 if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
-                    DFR.event_waveform.AssumeSmartScope();
-                peakInfo.time = DFR.event_waveform.Get_time_gauss();
+                    tempWfData.AssumeSmartScope();
+                peakInfo.time = tempWfData.Get_time_gauss();
 
-                peakInfo.charge = DFR.event_waveform.Get_Charge();
-                peakInfo.II = DFR.event_waveform.GetIntegralInfo();
+                peakInfo.charge = tempWfData.Get_Charge();
+                peakInfo.II = tempWfData.GetIntegralInfo();
                 if (peakInfo.amp < 500 && count > 0)
                     break;
-                // if (peakInfo.amp != 0)
                 sci->AddPeak(peakInfo);
-                if (WriteMode == "Single") break;
+                if (WriteMode == "Single")
+                    break;
                 count++;
-                DFR.event_waveform.DeleteCurrentPeak();
+                tempWfData.DeleteCurrentPeak();
             }
             cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
             m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time());
@@ -246,25 +258,18 @@ void MainWindow::UpdateGraph()
         }
     }
 }
+
 void MainWindow::onMouseMove(QMouseEvent *event)
 {
-    // Получаем координаты курсора на графикеc
     double x = customPlot->xAxis->pixelToCoord(event->pos().x());
     double y = customPlot->yAxis->pixelToCoord(event->pos().y());
-    // Обновляем текст метки с координатами
     currentX = x;
     coordinateLabel->setText(QString("X: %1, Y: %2").arg(x).arg(y));
-    // ReDrawBoundaries();
 }
 
 void MainWindow::ReDrawBoundaries()
 {
 
-    // customPlot->layer("main")->setMode(QCPLayer::lmLogical);
-    // customLayer->setMode(QCPLayer::lmBuffered);
-    // Отрисовка вертикального курсора
-    // line->start->setCoords(currentX, -32767);
-    // line->end->setCoords(currentX, 32767);
     lineLeft->start->setCoords(xLeftBoundary, -32767000);
     lineLeft->end->setCoords(xLeftBoundary, 32767000);
     lineRight->start->setCoords(xRightBoundary, -32767000);
@@ -303,14 +308,23 @@ void MainWindow::on_channelSpinBox_valueChanged(int)
 
 void MainWindow::on_eventSpinBox_valueChanged(int)
 {
+    // Skip if we're programmatically changing the event
+    if (m_programmaticallyChangingEvent)
+        return;
+
     DFR.event_waveform.Initialize();
     currEvent = (int32_t)eventSpinBox->value();
     if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
     {
         DFR.ReadEvent(currEvent, currChannel);
-        UpdateGraph();
+
+        if (!m_eventFilterWidget || !m_eventFilterWidget->isFilteringEnabled() || currentEventPassesFilters())
+        {
+            UpdateGraph();
+        }
     }
 }
+
 void MainWindow::on_FrequencySpinBox_valueChanged(int)
 {
     passfilter = (int32_t)FrequencySpinBox->value();
@@ -346,65 +360,102 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 
 void MainWindow::on_NextEventButton_clicked()
 {
+    if (m_programmaticallyChangingEvent)
+        return;
+
+    m_programmaticallyChangingEvent = true;
+
     if (currEvent < 0)
         currEvent = 0;
 
     if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() - 1)
     {
-        bool NonEmpty = 0;
-        while (NonEmpty == 0)
-        {
-            currEvent++;
-            if (currEvent < DFR.GetTotalEvents())
-            {
-                DFR.ReadEvent(currEvent, currChannel);
+        bool NonEmpty = false;
+        int originalEvent = currEvent;
 
-                if (DFR.event_waveform.wf.size() > 0)
+        // Start from next event
+        currEvent++;
+
+        while (currEvent < DFR.GetTotalEvents())
+        {
+            DFR.ReadEvent(currEvent, currChannel);
+
+            if (DFR.event_waveform.wf.size() > 0)
+            {
+                // Check if event passes filters
+                if (!m_eventFilterWidget || !m_eventFilterWidget->isFilteringEnabled() ||
+                    currentEventPassesFilters())
                 {
-                    NonEmpty = 1;
+                    NonEmpty = true;
                     eventSpinBox->setValue(currEvent);
-                    // UpdateGraph();
-                    onCurrentEventChanged();
+                    UpdateGraph(); // Call UpdateGraph here directly
+                    break;
                 }
             }
-            else
-            {
-                eventSpinBox->setValue(currEvent);
-                std::cout << "Oops. Out of file Bounds" << std::endl;
-                break;
-            }
+
+            // Try next event
+            currEvent++;
+        }
+
+        if (!NonEmpty)
+        {
+            std::cout << "No more events matching filters" << std::endl;
+            currEvent = originalEvent; // Restore original position
+            eventSpinBox->setValue(currEvent);
         }
     }
+
+    m_programmaticallyChangingEvent = false;
 }
+
 void MainWindow::on_PreviousEventButton_clicked()
 {
-    DFR.event_waveform.Initialize();
+    if (m_programmaticallyChangingEvent)
+        return;
+
+    m_programmaticallyChangingEvent = true;
+
     if (currEvent > DFR.GetTotalEvents())
         currEvent = DFR.GetTotalEvents();
+
     if (DFR.FileIsSet == 1 && currEvent >= 1)
     {
-        bool NonEmpty = 0;
-        while (NonEmpty == 0)
+        bool NonEmpty = false;
+        int originalEvent = currEvent;
+
+        // Start from previous event
+        currEvent--;
+
+        while (currEvent >= 0)
         {
-            currEvent--;
-            if (currEvent >= 0)
+            DFR.ReadEvent(currEvent, currChannel);
+
+            if (DFR.event_waveform.wf.size() > 0)
             {
-                DFR.ReadEvent(currEvent, currChannel);
-                if (DFR.event_waveform.wf.size() > 0)
+                // Check if event passes filters
+                if (!m_eventFilterWidget || !m_eventFilterWidget->isFilteringEnabled() ||
+                    currentEventPassesFilters())
                 {
-                    NonEmpty = 1;
+                    NonEmpty = true;
                     eventSpinBox->setValue(currEvent);
-                    // UpdateGraph();
+                    UpdateGraph(); // Call UpdateGraph here directly
+                    break;
                 }
             }
-            else
-            {
-                eventSpinBox->setValue(currEvent);
-                cout << "Oops. Out of file Bounds" << endl;
-                break;
-            }
+
+            // Try previous event
+            currEvent--;
+        }
+
+        if (!NonEmpty)
+        {
+            std::cout << "No previous events matching filters" << std::endl;
+            currEvent = originalEvent; // Restore original position
+            eventSpinBox->setValue(currEvent);
         }
     }
+
+    m_programmaticallyChangingEvent = false;
 }
 
 void MainWindow::on_SetChannelBoundaries_clicked()
@@ -721,21 +772,6 @@ void MainWindow::processFiles(const QStringList &files)
     completionTimer->start(500);
 }
 
-void MainWindow::onCurrentEventChanged()
-{
-    if (m_histogramWindow && m_histogramWindow->isVisible())
-    {
-        // Get current event time from your waveform data
-        // Replace with your actual time method
-        float eventTime = 0.0f;
-        if (DFR.event_waveform.wf.size() > 0)
-        {
-            // Example: use the waveform size or some calculated time
-            eventTime = static_cast<float>(DFR.event_waveform.wf.size());
-        }
-    }
-}
-
 void MainWindow::on_MultiplePeaksCheckBox_stateChanged(int state)
 {
     WriteMode = (state == Qt::Checked) ? "Multiple" : "Single";
@@ -763,4 +799,131 @@ void MainWindow::on_action_Show_Histogram_triggered()
     m_histogramWindow->show();
     m_histogramWindow->raise();
     m_histogramWindow->activateWindow();
+}
+
+void MainWindow::on_action_Event_Filter_triggered()
+{
+    qDebug() << "Event Filter action triggered!";
+
+    if (m_eventFilterWidget.isNull())
+    {
+        qDebug() << "Creating new EventFilterWidget";
+        m_eventFilterWidget = new EventFilterWidget(this); // 'this' as parent
+
+        // Set window flags to ensure it's a proper top-level window
+        m_eventFilterWidget->setWindowFlags(Qt::Window | Qt::WindowTitleHint |
+                                            Qt::WindowCloseButtonHint | Qt::WindowMinMaxButtonsHint);
+
+        // Make it modal to the main window
+        m_eventFilterWidget->setWindowModality(Qt::ApplicationModal);
+
+        connect(m_eventFilterWidget, &EventFilterWidget::filtersChanged,
+                this, &MainWindow::onEventFilterChanged);
+    }
+
+    qDebug() << "Showing EventFilterWidget at position:" << pos();
+
+    // Show and activate
+    m_eventFilterWidget->show();
+    m_eventFilterWidget->raise();
+    m_eventFilterWidget->activateWindow();
+
+    // Force it to be on top
+    m_eventFilterWidget->setWindowState((m_eventFilterWidget->windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
+    m_eventFilterWidget->setFocus();
+}
+
+void MainWindow::onEventFilterChanged()
+{
+    // Optional: Update UI or perform any action when filters change
+}
+bool MainWindow::currentEventPassesFilters()
+{
+    if (!m_eventFilterWidget || m_eventFilterWidget.isNull() ||
+        !m_eventFilterWidget->isFilteringEnabled() ||
+        !DFR.FileIsSet || DFR.event_waveform.wf.size() == 0)
+        return true;
+
+    // Create a DEEP COPY of the waveform for filtering analysis
+    ChannelEntry filterWaveform = DFR.event_waveform;
+    filterWaveform.wf = DFR.event_waveform.wf; // This creates a copy of the vector
+
+    // Set up the waveform EXACTLY as in UpdateGraph()
+    if (channels[currChannel])
+    {
+        filterWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+    }
+    else
+    {
+        filterWaveform.Set_Zero_Level_Area(60);
+    }
+
+    // Calculate ZL and ZL_RMS like in UpdateGraph()
+    filterWaveform.CalculateZlwithNoisePeaks(130);
+    // float zl_rms = filterWaveform.Get_Zero_Level_RMS(); // Uncomment if needed
+
+    if (channels[currChannel])
+    {
+        filterWaveform.SetBoarders(channels[currChannel]->leftBoundary,
+                                   channels[currChannel]->rightBoundary);
+    }
+    else
+    {
+        filterWaveform.SetBoarders(50, 100);
+    }
+
+    // Create a PeaksInfo object to get aggregate values
+    PeaksInfo peaksInfo;
+
+    int count = 0;
+
+    // Use the EXACT SAME loop structure as in UpdateGraph()
+    while (true)
+    {
+        SinglePeakInfo peakInfo;
+
+        filterWaveform.SetBoarders(channels[currChannel]->leftBoundary,
+                                   channels[currChannel]->rightBoundary);
+
+        int pp = filterWaveform.Get_time(); // Added like in UpdateGraph()
+        peakInfo.amp = filterWaveform.Get_Amplitude();
+
+        if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
+            filterWaveform.AssumeSmartScope();
+
+        peakInfo.time = filterWaveform.Get_time_gauss();
+        peakInfo.charge = filterWaveform.Get_Charge();
+        peakInfo.II = filterWaveform.GetIntegralInfo();
+
+        // Use the SAME break condition as UpdateGraph()
+        if (peakInfo.amp < 500 && count > 0)
+            break;
+
+        for (auto el : filterWaveform.wf)
+            cout << el << " ";
+        cout << endl;
+        cout << WriteMode << "; Peak no =  " << count + 1 << "; Amp = " << peakInfo.amp << "; Charge = " << peakInfo.charge << "; Time = " << peakInfo.time << endl;
+        peaksInfo.AddPeak(peakInfo);
+
+        if (WriteMode == "Single")
+            break;
+
+        count++;
+        filterWaveform.DeleteCurrentPeak();
+
+        // Safety check
+        if (filterWaveform.wf.size() == 0)
+        {
+            break;
+        }
+    }
+
+    // Now use the aggregate functions
+    float totalAmp = peaksInfo.amp();
+    float totalCharge = peaksInfo.charge();
+    float totalTime = peaksInfo.time();
+
+    qDebug() << "Multiple peaks aggregate - amp:" << totalAmp
+             << "charge:" << totalCharge << "time:" << totalTime;
+    return m_eventFilterWidget->eventPassesFilters(totalAmp, totalCharge, totalTime);
 }
