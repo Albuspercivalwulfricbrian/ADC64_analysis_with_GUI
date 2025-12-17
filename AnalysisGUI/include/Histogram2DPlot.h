@@ -23,11 +23,9 @@ public:
                              const QString &yAxisLabel, QWidget *parent = nullptr);
     ~Histogram2DPlot();
 
-    // Data management
     void setData(const std::vector<float> &xData, const std::vector<float> &yData);
     void clearData();
 
-    // Range and bin configuration
     void setXRange(float min, float max);
     void setYRange(float min, float max);
     void setXBins(int bins);
@@ -35,7 +33,7 @@ public:
     void setLogXScale(bool logXScale);
     void setLogYScale(bool logYScale);
     void setLogZScale(bool logZScale);
-
+    void resetAutoRange();
     // Getters
     float getXMinRange() const { return m_xMinEdit->text().toFloat(); }
     float getXMaxRange() const { return m_xMaxEdit->text().toFloat(); }
@@ -116,7 +114,6 @@ private:
     // Color gradients
     QList<QPair<QString, QCPColorGradient>> m_colorGradients;
 
-    // Data
     std::vector<float> m_xData;
     std::vector<float> m_yData;
     std::vector<std::vector<double>> m_histogramData;
@@ -124,11 +121,10 @@ private:
     QString m_yAxisLabel;
     double m_dataMin;
     double m_dataMax;
-
+    bool m_isFirstDataSet;
     // Event markers
     QCPItemLine *m_eventLineX; // Horizontal line at yValue
     QCPItemLine *m_eventLineY; // Vertical line at xValue
-    // QCPItemEllipse *m_eventPoint; // Optional point marker at (xValue, yValue)
     float m_eventXValue;
     float m_eventYValue;
     bool m_eventMarkerVisible;

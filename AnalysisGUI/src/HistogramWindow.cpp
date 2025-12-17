@@ -37,8 +37,8 @@ HistogramWindow::HistogramWindow(QWidget *parent)
     setupUI();
 
     // Set initial ranges
-    m_amplitudePlot->setRange(0, 60000);
-    m_chargePlot->setRange(0, 10000000);
+    m_amplitudePlot->setRange(10, 60000);
+    m_chargePlot->setRange(1000, 10000000);
     m_timePlot->setRange(0, 10000);
 
     // Set initial ranges for 2D histogram
@@ -46,7 +46,7 @@ HistogramWindow::HistogramWindow(QWidget *parent)
     m_amplitudeVsChargePlot->setYRange(0, 10000000);
     m_amplitudeVsChargePlot->setXBins(300);
     m_amplitudeVsChargePlot->setYBins(300);
-    m_amplitudeVsChargePlot->setLogZScale(true);
+    m_amplitudeVsChargePlot->setLogZScale(false);
 
     // Connect signals
     connect(m_updateButton, &QPushButton::clicked, this, &HistogramWindow::updateHistograms);

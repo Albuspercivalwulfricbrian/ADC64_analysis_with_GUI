@@ -232,7 +232,7 @@ void Histogram2DPlot::initializeColorGradients()
     birdGradient.setColorStopAt(0.0, QColor("transparent"));
     birdGradient.setColorStopAt(1e-9, QColor(30, 30, 100)); // Dark blue
     birdGradient.setColorStopAt(0.3, QColor(0, 0, 255));    // Blue
-    birdGradient.setColorStopAt(0.5, QColor(0, 255, 255));  // Cyan
+    birdGradient.setColorStopAt(0.5, QColor(0, 255, 200));  // Cyan
     birdGradient.setColorStopAt(0.8, QColor(255, 200, 0));  // Orange (was yellow)
     birdGradient.setColorStopAt(1.0, QColor(255, 255, 0));  // Yellow (was light yellow)
 
