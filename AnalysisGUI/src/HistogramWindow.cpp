@@ -48,6 +48,12 @@ HistogramWindow::HistogramWindow(QWidget *parent)
     m_amplitudeVsChargePlot->setYBins(300);
     m_amplitudeVsChargePlot->setLogZScale(false);
 
+    // Disable auto-ranging for 2D plot
+    m_amplitudeVsChargePlot->setAutoRangeOnDataChange(false);
+
+    // Initialize histogram event limit to unlimited by default
+    m_histogramEventLimit = -1; // -1 means all events
+
     // Connect signals
     connect(m_updateButton, &QPushButton::clicked, this, &HistogramWindow::updateHistograms);
     connect(m_update2DButton, &QPushButton::clicked, this, &HistogramWindow::update2DHistogram);
@@ -269,6 +275,12 @@ void HistogramWindow::setEventValues(uint32_t amplitude, float charge, float tim
 
 void HistogramWindow::loadRootFile(const QString &filePath)
 {
+    // Show event limit dialog first
+    if (!showHistogramEventLimitDialog())
+    {
+        return; // User cancelled
+    }
+
     // Clean up previous ROOT objects
     if (RootDataFile)
     {
@@ -343,12 +355,23 @@ void HistogramWindow::processHistogramData()
     // Reset progress percentage
     rootLoadedpercentage = 0.0f;
 
+    // Update progress dialog title with event limit info
+    QString progressTitle;
+    if (m_histogramEventLimit == -1)
+    {
+        progressTitle = QString("Processing ROOT File (All Events) - Channel %1").arg(m_currentChannel);
+    }
+    else
+    {
+        progressTitle = QString("Processing ROOT File (Max %1 Events) - Channel %1").arg(m_histogramEventLimit).arg(m_currentChannel);
+    }
+
     // Create and show progress dialog
-    QMetaObject::invokeMethod(this, [this]()
+    QMetaObject::invokeMethod(this, [this, progressTitle]()
                               {
                                   closeProgressDialog();
                                   m_progressDialog = new ProgressDialog(this);
-                                  m_progressDialog->setWindowTitle(QString("Processing ROOT File - Channel %1").arg(m_currentChannel));
+                                  m_progressDialog->setWindowTitle(progressTitle);
                                   m_progressDialog->setWindowModality(Qt::ApplicationModal);
                                   m_progressDialog->setWindowFlags(m_progressDialog->windowFlags() | Qt::WindowStaysOnTopHint);
                                   m_progressDialog->show();
@@ -381,17 +404,25 @@ void HistogramWindow::processHistogramData()
         // Store the last progress value
         float lastReportedProgress = 0.0f;
 
-        // Use the main readData function (all floats)
-        reader.readData(m_amplitudeData, m_chargeData, m_timeData,
-                        [this, &lastReportedProgress](float progress)
+        // Calculate how many entries to read based on limit
+        Long64_t totalEntries = RootDataTree->GetEntries();
+        Long64_t entriesToRead = totalEntries;
+
+        if (m_histogramEventLimit > 0 && m_histogramEventLimit < totalEntries)
+        {
+            entriesToRead = m_histogramEventLimit;
+        }
+
+        // Use the main readData function with limit
+        reader.readData(m_amplitudeData, m_chargeData, m_timeData, [this, &lastReportedProgress](float progress)
                         {
                             if (progress - lastReportedProgress >= 0.005f || progress >= 1.0f)
                             {
                                 rootLoadedpercentage = progress;
                                 lastReportedProgress = progress;
                                 emit progressUpdated(static_cast<int>(1000 * progress));
-                            }
-                        });
+                            } },
+                        entriesToRead); // Pass the limit to readData
 
         // Processing completed successfully
         m_dataLoaded = true;
@@ -426,7 +457,9 @@ void HistogramWindow::processHistogramData()
 
         if (m_amplitudeVsChargeItem->checkState() == Qt::Checked)
         {
-            QMetaObject::invokeMethod(this, &HistogramWindow::update2DHistogram, Qt::QueuedConnection);
+            // When data is loaded for a new channel, reset to initial ranges
+            QMetaObject::invokeMethod(this, [this]()
+                                      { m_amplitudeVsChargePlot->resetRangesToInitial(); }, Qt::QueuedConnection);
         }
     }
     catch (const std::exception &e)
@@ -494,7 +527,8 @@ void HistogramWindow::update2DHistogram()
     if (!m_dataLoaded || m_amplitudeData.empty() || m_chargeData.empty())
         return;
 
-    // No conversion needed anymore since m_amplitudeData is already float
+    m_amplitudeVsChargePlot->setAutoRangeOnDataChange(false);
+
     m_amplitudeVsChargePlot->setData(m_amplitudeData, m_chargeData);
     m_amplitudeVsChargePlot->updatePlot();
 
@@ -516,6 +550,12 @@ void HistogramWindow::onChannelChanged(int channel)
     m_channelSpinBox->blockSignals(true);
     m_channelSpinBox->setValue(channel);
     m_channelSpinBox->blockSignals(false);
+
+    // Reset 2D plot to initial ranges when channel changes
+    if (m_amplitudeVsChargePlot->isVisible())
+    {
+        m_amplitudeVsChargePlot->resetRangesToInitial();
+    }
 
     // Reset data when changing channels
     if (!m_currentRootFile.isEmpty() && RootDataTree)
@@ -600,4 +640,129 @@ void HistogramWindow::onOpenRootFile()
     {
         loadRootFile(filePath);
     }
+}
+
+bool HistogramWindow::showHistogramEventLimitDialog()
+{
+    // Create a custom dialog
+    QDialog dialog(this);
+    dialog.setWindowTitle("Histogram Event Limit");
+    dialog.setMinimumWidth(350);
+
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+
+    // Add title label
+    QLabel *titleLabel = new QLabel("<b>Set maximum events for histogram filling:</b>", &dialog);
+    layout->addWidget(titleLabel);
+
+    // Add horizontal layout for Events: label and line edit
+    QHBoxLayout *hLayout = new QHBoxLayout();
+    QLabel *eventsLabel = new QLabel("Events:", &dialog);
+    QLineEdit *eventLimitEdit = new QLineEdit(&dialog);
+
+    // Set default value from binary file opening
+    if (m_defaultEventLimit > 0)
+    {
+        eventLimitEdit->setText(QString::number(m_defaultEventLimit));
+    }
+    else
+    {
+        eventLimitEdit->setText("1000"); // Fallback default
+    }
+
+    eventLimitEdit->setPlaceholderText("Enter number or check 'All events'");
+    eventLimitEdit->setValidator(new QIntValidator(1, 1000000000, this));
+
+    hLayout->addWidget(eventsLabel);
+    hLayout->addWidget(eventLimitEdit);
+    layout->addLayout(hLayout);
+
+    // Add checkbox for "All events"
+    QCheckBox *allEventsCheckBox = new QCheckBox("Use all events from ROOT file", &dialog);
+
+    // If default is -1 (unlimited), check the box by default
+    if (m_defaultEventLimit == -1)
+    {
+        allEventsCheckBox->setChecked(true);
+    }
+    else
+    {
+        allEventsCheckBox->setChecked(false);
+    }
+
+    layout->addWidget(allEventsCheckBox);
+
+    // Add informative label showing the default source
+    QLabel *infoLabel = new QLabel("Default value is from binary file opening settings.", &dialog);
+    infoLabel->setWordWrap(true);
+    infoLabel->setStyleSheet("color: gray; font-style: italic;");
+    layout->addWidget(infoLabel);
+
+    // Connect checkbox to enable/disable line edit
+    QObject::connect(allEventsCheckBox, &QCheckBox::stateChanged,
+                     [eventLimitEdit](int state)
+                     {
+                         eventLimitEdit->setEnabled(state == Qt::Unchecked);
+                         if (state == Qt::Checked)
+                         {
+                             eventLimitEdit->clear();
+                         }
+                     });
+
+    // Set initial state
+    eventLimitEdit->setEnabled(!allEventsCheckBox->isChecked());
+
+    // Add button box
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttonBox);
+
+    // Connect buttons
+    QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    // Show dialog
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        if (allEventsCheckBox->isChecked())
+        {
+            m_histogramEventLimit = -1; // All events
+            return true;
+        }
+        else
+        {
+            QString text = eventLimitEdit->text().trimmed();
+            if (text.isEmpty())
+            {
+                // If empty, use the default
+                if (m_defaultEventLimit > 0)
+                {
+                    m_histogramEventLimit = m_defaultEventLimit;
+                }
+                else
+                {
+                    m_histogramEventLimit = 1000; // Fallback
+                }
+                return true;
+            }
+            else
+            {
+                bool ok;
+                int64_t value = text.toLongLong(&ok);
+                if (ok && value > 0)
+                {
+                    m_histogramEventLimit = value;
+                    return true;
+                }
+                else
+                {
+                    // Invalid input, show error
+                    QMessageBox::warning(this, "Invalid Input",
+                                         "Please enter a valid positive number.");
+                    return false;
+                }
+            }
+        }
+    }
+
+    return false; // User cancelled
 }

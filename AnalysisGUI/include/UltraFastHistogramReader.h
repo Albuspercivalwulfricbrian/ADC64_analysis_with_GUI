@@ -16,7 +16,8 @@ public:
     void readData(std::vector<float> &ampData,
                   std::vector<float> &chargeData,
                   std::vector<float> &timeData,
-                  std::function<void(float)> progressCallback = nullptr);
+                  std::function<void(float)> progressCallback,
+                  Long64_t maxEntries = -1); // Add maxEntries parameter with default -1
 
 private:
     bool isPeaksInfoTree(TTree *tree, int channel);

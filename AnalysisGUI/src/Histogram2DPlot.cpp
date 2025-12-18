@@ -41,6 +41,11 @@ Histogram2DPlot::Histogram2DPlot(const QString &title, const QString &xAxisLabel
       m_yAxisLabel(yAxisLabel),
       m_dataMin(0),
       m_dataMax(1),
+      m_initialXMin(0),
+      m_initialXMax(100),
+      m_initialYMin(0),
+      m_initialYMax(100),
+      m_autoRangeOnDataChange(true),
       m_eventLineX(nullptr),
       m_eventLineY(nullptr),
       m_eventXValue(0),
@@ -267,6 +272,36 @@ QCPColorGradient Histogram2DPlot::getGradientFromIndex(int index)
     return QCPColorGradient::gpJet;
 }
 
+void Histogram2DPlot::setAutoRangeOnDataChange(bool enabled)
+{
+    m_autoRangeOnDataChange = enabled;
+}
+
+void Histogram2DPlot::resetRangesToInitial()
+{
+    // Reset to hardcoded default ranges (not using stored m_initialXMin, etc.)
+    m_xMinEdit->setText("0");
+    m_xMaxEdit->setText("60000");
+    m_yMinEdit->setText("0");
+    m_yMaxEdit->setText("10000000");
+
+    // Reset bins to default values
+    m_xBinsEdit->setText("300");
+    m_yBinsEdit->setText("300");
+
+    // Also reset Z scale
+    m_logZScaleCheck->setChecked(false);
+    m_dataMinEdit->setText("0");
+    m_dataMaxEdit->setText("1");
+
+    std::cout << "Resetting to initial ranges:" << std::endl;
+    std::cout << "X: 0 to 60000" << std::endl;
+    std::cout << "Y: 0 to 10000000" << std::endl;
+    std::cout << "Bins: 300x300" << std::endl;
+
+    updatePlot();
+}
+
 void Histogram2DPlot::setEventValue(float xValue, float yValue)
 {
     m_eventXValue = xValue;
@@ -342,15 +377,15 @@ void Histogram2DPlot::setData(const std::vector<float> &xData, const std::vector
     // Clear histogram data before recalculating
     m_histogramData.clear();
 
-    // Auto-determine ranges if needed
-    if (!xData.empty() && !yData.empty())
+    // Auto-determine ranges if enabled
+    if (m_autoRangeOnDataChange && !xData.empty() && !yData.empty())
     {
         auto xMinMax = std::minmax_element(xData.begin(), xData.end());
         auto yMinMax = std::minmax_element(yData.begin(), yData.end());
 
         // DEBUG: Print min/max values
-        std::cout << "X range: " << *xMinMax.first << " to " << *xMinMax.second << std::endl;
-        std::cout << "Y range: " << *yMinMax.first << " to " << *yMinMax.second << std::endl;
+        std::cout << "Auto-ranging: X range: " << *xMinMax.first << " to " << *xMinMax.second << std::endl;
+        std::cout << "Auto-ranging: Y range: " << *yMinMax.first << " to " << *yMinMax.second << std::endl;
 
         // Calculate ranges with small padding
         float xRange = *xMinMax.second - *xMinMax.first;
@@ -384,6 +419,12 @@ void Histogram2DPlot::setData(const std::vector<float> &xData, const std::vector
 
         std::cout << "Setting X range: " << xMin << " to " << xMax << std::endl;
         std::cout << "Setting Y range: " << yMin << " to " << yMax << std::endl;
+    }
+    else if (!m_autoRangeOnDataChange)
+    {
+        std::cout << "Using user-defined ranges:" << std::endl;
+        std::cout << "X: " << m_xMinEdit->text().toFloat() << " to " << m_xMaxEdit->text().toFloat() << std::endl;
+        std::cout << "Y: " << m_yMinEdit->text().toFloat() << " to " << m_yMaxEdit->text().toFloat() << std::endl;
     }
 
     updatePlot();
@@ -483,26 +524,87 @@ void Histogram2DPlot::autoRescaleDataRange()
 {
     if (!m_histogramData.empty())
     {
-        double minVal = std::numeric_limits<double>::max();
-        double maxVal = std::numeric_limits<double>::lowest();
-
+        // Collect all non-zero, non-NaN values
+        std::vector<double> allValues;
         for (const auto &row : m_histogramData)
         {
             for (double val : row)
             {
-                if (val < minVal)
-                    minVal = val;
-                if (val > maxVal)
-                    maxVal = val;
+                if (val > 0 && !std::isnan(val))
+                {
+                    allValues.push_back(val);
+                }
             }
         }
 
-        std::cout << "Auto-rescaling data range: min=" << minVal << ", max=" << maxVal << std::endl;
-
-        if (minVal < maxVal)
+        if (allValues.empty())
         {
-            setDataRange(minVal, maxVal);
+            std::cout << "No valid data points for auto-rescaling" << std::endl;
+            return;
         }
+
+        // Sort values to find percentiles
+        std::sort(allValues.begin(), allValues.end());
+
+        // Get the value at 80-85th percentile (so 15-20% of data is in top colors)
+        size_t percentileIndex = static_cast<size_t>(allValues.size() * 0.96); // 82nd percentile
+        percentileIndex = std::min(percentileIndex, allValues.size() - 1);
+
+        double minVal = allValues.front();
+        double percentileVal = allValues[percentileIndex];
+
+        std::cout << "Auto-rescaling data range:" << std::endl;
+        std::cout << "  Min value: " << minVal << std::endl;
+        std::cout << "  82nd percentile: " << percentileVal << std::endl;
+        std::cout << "  Max value: " << allValues.back() << std::endl;
+        std::cout << "  Total data points: " << allValues.size() << std::endl;
+
+        // For the ROOT Bird gradient, yellow/orange starts around 0.8 on the color scale
+        // We want the 82nd percentile value to map to around 0.8 on the color gradient
+        // This means about 18% of data will be in yellow/orange range
+
+        // If using log scale for Z, we need to handle it differently
+        if (getLogZScale())
+        {
+            // For log scale, take log of the values
+            minVal = log10(minVal + 1);
+            percentileVal = log10(percentileVal + 1);
+
+            // Scale so percentile maps to ~0.8 on color scale
+            double rangeScale = 1.25; // 1/0.8 = 1.25
+            double targetMax = percentileVal * rangeScale;
+
+            // Ensure we have a reasonable range
+            if (targetMax > percentileVal * 1.1) // At least 10% above percentile
+            {
+                setDataRange(minVal, targetMax);
+            }
+            else
+            {
+                setDataRange(minVal, percentileVal * 1.2);
+            }
+        }
+        else
+        {
+            // For linear scale, scale so percentile maps to ~0.8 on color scale
+            double rangeScale = 1.25; // 1/0.8 = 1.25
+            double targetMax = percentileVal * rangeScale;
+
+            // Ensure we have a reasonable range
+            // Don't let max be too close to percentile
+            if (targetMax > percentileVal * 1.1) // At least 10% above percentile
+            {
+                setDataRange(minVal, targetMax);
+            }
+            else
+            {
+                setDataRange(minVal, percentileVal * 1.2);
+            }
+        }
+    }
+    else
+    {
+        std::cout << "No histogram data for auto-rescaling" << std::endl;
     }
 }
 

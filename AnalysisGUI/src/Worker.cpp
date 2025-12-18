@@ -16,10 +16,10 @@ void Worker::ReadFile()
     fseek(fd, 0, SEEK_END);
     sSizeOfFile = ftell(fd);
   }
-  FileIsIndexed = FileIndexation();
+  FileIsIndexed = FileIndexation(maxEventLimit); // CHANGED: Pass the parameter
 }
 
-bool Worker::FileIndexation()
+bool Worker::FileIndexation(int64_t maxEvents) // CHANGED: Added parameter
 {
   bool iFileIsIndexed = 0;
   FileIsIndexed = 0;
@@ -38,6 +38,13 @@ bool Worker::FileIndexation()
       if ((TotalHeader.syncword) == SYNC_WORD || (TotalHeader.syncword) == SYNC_WORD_ADC64)
       {
         currPos = ftell(fd);
+
+        // CHANGED: Check event limit constraint
+        if (maxEvents > 0 && uiTotalEvents >= maxEvents)
+        {
+          iFileIsIndexed = 1;
+          break;
+        }
 
         // if (FileIsSet==0) FileIsSet = 1;
         uiTotalEvents++;

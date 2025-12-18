@@ -40,6 +40,7 @@ public:
 
     void loadRootFile(const QString &filePath);
     void setAnalysisThreadPool(ctpl::thread_pool *pool);
+    void setDefaultEventLimit(int64_t limit) { m_defaultEventLimit = limit; }
 
 signals:
     void progressUpdated(int value);
@@ -64,6 +65,7 @@ private:
     void updateHistogramVisibility();
     void ensureProgressDialogVisible();
     void update1DHistogram(HistogramPlot *plot, const std::vector<float> &data, float eventValue);
+    bool showHistogramEventLimitDialog();
 
 private:
     // Histogram plots
@@ -113,7 +115,8 @@ private:
     float event_time = 0;
     std::atomic<bool> m_dataLoaded;
     float rootLoadedpercentage = 0;
-
+    int64_t m_histogramEventLimit;
+    int64_t m_defaultEventLimit;
     ctpl::thread_pool *m_threadPool;
 };
 

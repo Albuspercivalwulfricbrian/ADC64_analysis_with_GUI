@@ -32,6 +32,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
+    int64_t getMaxReadoutEvents() const { return maxReadoutEvents; }
     ~MainWindow();
     std::string WriteMode;
 
@@ -40,6 +41,7 @@ private:
     QPointer<HistogramWindow> m_histogramWindow;
     QPointer<EventFilterWidget> m_eventFilterWidget; // ADD THIS LINE
 
+    int64_t maxReadoutEvents;
     bool m_programmaticallyChangingEvent = false;
     int32_t passfilter = 0;
     int64_t currEvent = 1;
@@ -85,6 +87,7 @@ private:
 
     // Helper function to check if event passes filters
     bool currentEventPassesFilters(); // ADD THIS LINE
+    bool showEventLimitDialog();
 
     ctpl::thread_pool p;
 
@@ -116,6 +119,7 @@ private slots:
     void on_action_Show_Histogram_triggered();
     void on_action_Event_Filter_triggered(); // ADD THIS LINE
     void onEventFilterChanged();             // ADD THIS LINE
+    void updateEventCountDisplay();
 
 signals:
     void progressUpdated(int value);

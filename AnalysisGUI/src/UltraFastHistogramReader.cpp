@@ -45,28 +45,37 @@ bool UltraFastHistogramReader::isPeaksInfoTree(TTree *tree, int channel)
     return (className == "PeaksInfo");
 }
 
-// Main function - renamed from readDataAllAtOnceMixed
+// CORRECTED: Added Long64_t maxEntries parameter to match header
 void UltraFastHistogramReader::readData(std::vector<float> &ampData,
                                         std::vector<float> &chargeData,
                                         std::vector<float> &timeData,
-                                        std::function<void(float)> progressCallback)
+                                        std::function<void(float)> progressCallback,
+                                        Long64_t maxEntries)
 {
     if (!m_tree)
         return;
 
-    Long64_t nentries = m_tree->GetEntries();
-    if (nentries <= 0)
+    Long64_t actualTotalEntries = m_tree->GetEntries();
+    Long64_t entriesToProcess = actualTotalEntries;
+
+    // Apply maxEntries limit if specified
+    if (maxEntries > 0 && maxEntries < actualTotalEntries)
+    {
+        entriesToProcess = maxEntries;
+    }
+
+    if (entriesToProcess <= 0)
         return;
 
     // Clear and resize
-    ampData.resize(nentries);
-    chargeData.resize(nentries);
-    timeData.resize(nentries);
+    ampData.resize(entriesToProcess);
+    chargeData.resize(entriesToProcess);
+    timeData.resize(entriesToProcess);
 
     // Allocate temporary buffers for Double_t data
-    std::vector<Double_t> tempAmp(nentries);
-    std::vector<Double_t> tempCharge(nentries);
-    std::vector<Double_t> tempTime(nentries);
+    std::vector<Double_t> tempAmp(entriesToProcess);
+    std::vector<Double_t> tempCharge(entriesToProcess);
+    std::vector<Double_t> tempTime(entriesToProcess);
 
     // Disable messages
     Int_t oldErrorIgnoreLevel = gErrorIgnoreLevel;
@@ -81,12 +90,12 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
 
-        std::cout << "Reading amplitude data from ROOT file..." << std::endl;
+        std::cout << "Reading amplitude data from ROOT file (" << entriesToProcess << " of " << actualTotalEntries << " entries)..." << std::endl;
 
-        // Read amplitude column
+        // Read amplitude column with limit
         TString ampFormula = m_isPeaksInfo ? TString::Format("channel_%i.amp()", m_channel + 1) : TString::Format("channel_%i.amp", m_channel + 1);
 
-        m_tree->Draw(ampFormula.Data(), "", "goff", nentries, 0);
+        m_tree->Draw(ampFormula.Data(), "", "goff", entriesToProcess, 0);
 
         // Copy amplitude data
         Double_t *ampArray = m_tree->GetV1();
@@ -95,7 +104,7 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
             throw std::runtime_error("Failed to get amplitude array from ROOT");
         }
 
-        std::memcpy(tempAmp.data(), ampArray, nentries * sizeof(Double_t));
+        std::memcpy(tempAmp.data(), ampArray, entriesToProcess * sizeof(Double_t));
 
         if (progressCallback)
         {
@@ -106,10 +115,10 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
         // STEP 2: Reading charge data (66% of work)
         std::cout << "Reading charge data from ROOT file..." << std::endl;
 
-        // Read charge column
+        // Read charge column with limit
         TString chargeFormula = m_isPeaksInfo ? TString::Format("channel_%i.charge()", m_channel + 1) : TString::Format("channel_%i.charge", m_channel + 1);
 
-        m_tree->Draw(chargeFormula.Data(), "", "goff", nentries, 0);
+        m_tree->Draw(chargeFormula.Data(), "", "goff", entriesToProcess, 0);
 
         // Copy charge data
         Double_t *chargeArray = m_tree->GetV1();
@@ -118,7 +127,7 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
             throw std::runtime_error("Failed to get charge array from ROOT");
         }
 
-        std::memcpy(tempCharge.data(), chargeArray, nentries * sizeof(Double_t));
+        std::memcpy(tempCharge.data(), chargeArray, entriesToProcess * sizeof(Double_t));
 
         if (progressCallback)
         {
@@ -129,10 +138,10 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
         // STEP 3: Reading time data (100% of work)
         std::cout << "Reading time data from ROOT file..." << std::endl;
 
-        // Read time column
+        // Read time column with limit
         TString timeFormula = m_isPeaksInfo ? TString::Format("channel_%i.time()", m_channel + 1) : TString::Format("channel_%i.time", m_channel + 1);
 
-        m_tree->Draw(timeFormula.Data(), "", "goff", nentries, 0);
+        m_tree->Draw(timeFormula.Data(), "", "goff", entriesToProcess, 0);
 
         // Copy time data
         Double_t *timeArray = m_tree->GetV1();
@@ -141,18 +150,18 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
             throw std::runtime_error("Failed to get time array from ROOT");
         }
 
-        std::memcpy(tempTime.data(), timeArray, nentries * sizeof(Double_t));
+        std::memcpy(tempTime.data(), timeArray, entriesToProcess * sizeof(Double_t));
 
         // STEP 4: Convert and copy to output vectors with progress
         std::cout << "Copying data to output vectors..." << std::endl;
 
         const Long64_t PROGRESS_STEPS = 33;
-        const Long64_t entriesPerStep = std::max<Long64_t>(nentries / PROGRESS_STEPS, 1000);
+        const Long64_t entriesPerStep = std::max<Long64_t>(entriesToProcess / PROGRESS_STEPS, 1000);
 
         Long64_t processed = 0;
         float lastProgressSent = 0.66f;
 
-        for (Long64_t i = 0; i < nentries; i++)
+        for (Long64_t i = 0; i < entriesToProcess; i++)
         {
             ampData[i] = static_cast<float>(tempAmp[i]);
             chargeData[i] = static_cast<float>(tempCharge[i]);
@@ -162,9 +171,9 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
 
             if (processed % entriesPerStep == 0)
             {
-                float copyProgress = 0.66f + (0.34f * static_cast<float>(processed) / static_cast<float>(nentries));
+                float copyProgress = 0.66f + (0.34f * static_cast<float>(processed) / static_cast<float>(entriesToProcess));
 
-                if (copyProgress - lastProgressSent >= 0.01f || i == nentries - 1)
+                if (copyProgress - lastProgressSent >= 0.01f || i == entriesToProcess - 1)
                 {
                     if (progressCallback)
                     {
@@ -184,7 +193,7 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
         }
 
         std::cout << "UltraFastHistogramReader: Successfully processed "
-                  << nentries << " entries" << std::endl;
+                  << entriesToProcess << " of " << actualTotalEntries << " entries" << std::endl;
     }
     catch (const std::exception &e)
     {

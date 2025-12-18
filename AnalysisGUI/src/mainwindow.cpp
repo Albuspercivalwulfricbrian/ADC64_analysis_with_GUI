@@ -65,6 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
     actionSaveJpeg = ui->actionSaveJpeg;
     actionSavePdf = ui->actionSavePdf;
     action_Show_Histogram = ui->action_Show_Histogram;
+    maxReadoutEvents = -1;
 
     connect(actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
     connect(actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
@@ -314,7 +315,19 @@ void MainWindow::on_eventSpinBox_valueChanged(int)
 
     DFR.event_waveform.Initialize();
     currEvent = (int32_t)eventSpinBox->value();
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
+
+    // Get the actual number of indexed events
+    int64_t indexedEvents = DFR.getIndexedEventsCount();
+
+    // Ensure we don't exceed indexed events
+    if (indexedEvents > 0 && currEvent >= indexedEvents)
+    {
+        currEvent = indexedEvents - 1;
+        eventSpinBox->setValue(currEvent);
+        return;
+    }
+
+    if (DFR.FileIsSet == 1 && indexedEvents > 0 && currEvent < indexedEvents && currEvent >= 0)
     {
         DFR.ReadEvent(currEvent, currChannel);
 
@@ -357,7 +370,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         ReDrawBoundaries();
     }
 }
-
 void MainWindow::on_NextEventButton_clicked()
 {
     if (m_programmaticallyChangingEvent)
@@ -368,7 +380,10 @@ void MainWindow::on_NextEventButton_clicked()
     if (currEvent < 0)
         currEvent = 0;
 
-    if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() - 1)
+    // Get the actual number of indexed events
+    int64_t indexedEvents = DFR.getIndexedEventsCount();
+
+    if (DFR.FileIsSet == 1 && currEvent < indexedEvents - 1)
     {
         bool NonEmpty = false;
         int originalEvent = currEvent;
@@ -376,7 +391,7 @@ void MainWindow::on_NextEventButton_clicked()
         // Start from next event
         currEvent++;
 
-        while (currEvent < DFR.GetTotalEvents())
+        while (currEvent < indexedEvents)
         {
             DFR.ReadEvent(currEvent, currChannel);
 
@@ -415,8 +430,11 @@ void MainWindow::on_PreviousEventButton_clicked()
 
     m_programmaticallyChangingEvent = true;
 
-    if (currEvent > DFR.GetTotalEvents())
-        currEvent = DFR.GetTotalEvents();
+    // Get the actual number of indexed events
+    int64_t indexedEvents = DFR.getIndexedEventsCount();
+
+    if (currEvent > indexedEvents)
+        currEvent = indexedEvents;
 
     if (DFR.FileIsSet == 1 && currEvent >= 1)
     {
@@ -493,38 +511,58 @@ void MainWindow::on_SaveConfigButton_clicked()
         ConfigManager::saveToJson(fileName.left(fileName.lastIndexOf(".")).toUtf8().toStdString() + ".json", channels);
     // ConfigManager::loadFromJson();
 }
-
 void MainWindow::on_action_Open_triggered()
 {
     fileName = QFileDialog::getOpenFileName(
         this, tr("Open File"), "~",
         tr("binary files ( *.data *.bin)"));
-    auto a = (fileName.toUtf8().constData());
-    QApplication::processEvents();
 
     if (fileName != "")
     {
+        // Show event limit dialog
+        if (!showEventLimitDialog())
+        {
+            return; // User cancelled
+        }
+
+        auto a = (fileName.toUtf8().constData());
+        QApplication::processEvents();
+
         FileNameLabel->setText("Open File: " + fileName);
         std::cout << a << " is set" << std::endl;
         DFR.setName(a);
+
+        // Set the max event limit in DFR
+        DFR.setMaxEventLimit(maxReadoutEvents);
+
         ProgressDialog *progressDialog = new ProgressDialog(this);
 
-        // Worker *worker = new Worker();
+        // Update progress dialog title based on event limit
+        if (maxReadoutEvents == -1)
+        {
+            progressDialog->setWindowTitle("Indexing file (reading all events)...");
+        }
+        else
+        {
+            progressDialog->setWindowTitle(QString("Indexing file (max %1 events)...").arg(maxReadoutEvents));
+        }
+
         QThread *thread = new QThread();
 
         DFR.moveToThread(thread);
-        // QTimer *timer = new QTimer();
         connect(timer, &QTimer::timeout, this, &MainWindow::onTimeout);
         timer->start(100);
         connect(thread, &QThread::started, [=]()
                 { DFR.doWork(progressDialog, a); });
         connect(this, &MainWindow::progressUpdated, progressDialog, &ProgressDialog::updateProgress);
 
-        // connect(timer, &QTimer::timeout, progressDialog, &ProgressDialog::updateProgress);
         connect(progressDialog, &QDialog::finished, thread, &QThread::quit);
-        // connect(thread, &QThread::finished, worker, &QObject::deleteLater);
         connect(thread, &QThread::finished, thread, &QObject::deleteLater);
         connect(thread, &QThread::finished, timer, &QTimer::stop);
+
+        // Add connection to update event count display when indexing is done
+        connect(thread, &QThread::finished, this, [this]()
+                { updateEventCountDisplay(); });
 
         progressDialog->show();
         thread->start();
@@ -785,16 +823,11 @@ void MainWindow::on_action_Show_Histogram_triggered()
         m_histogramWindow->setAnalysisThreadPool(&p);
     }
 
+    // Pass the current max events value from binary file opening
+    m_histogramWindow->setDefaultEventLimit(maxReadoutEvents);
+
     // Set the current channel from main window to histogram window
     m_histogramWindow->onChannelChanged(currChannel);
-
-    // if (DFR.FileIsSet)
-    // {
-    //     // You'll need to implement getRootFilePath() in your DataFileReader class
-    //     // For now, using a placeholder - adjust according to your actual file naming
-    //     QString rootFilePath = QString::fromStdString(DFR.fileName) + ".root";
-    //     m_histogramWindow->loadRootFile(rootFilePath, currChannel);
-    // }
 
     m_histogramWindow->show();
     m_histogramWindow->raise();
@@ -847,6 +880,7 @@ bool MainWindow::currentEventPassesFilters()
     // Create a DEEP COPY of the waveform for filtering analysis
     ChannelEntry filterWaveform = DFR.event_waveform;
     filterWaveform.wf = DFR.event_waveform.wf; // This creates a copy of the vector
+    PeaksInfo peaksInfo;
 
     // Set up the waveform EXACTLY as in UpdateGraph()
     if (channels[currChannel])
@@ -858,9 +892,8 @@ bool MainWindow::currentEventPassesFilters()
         filterWaveform.Set_Zero_Level_Area(60);
     }
 
-    // Calculate ZL and ZL_RMS like in UpdateGraph()
-    filterWaveform.CalculateZlwithNoisePeaks(130);
-    // float zl_rms = filterWaveform.Get_Zero_Level_RMS(); // Uncomment if needed
+    peaksInfo.zl = filterWaveform.CalculateZlwithNoisePeaks(130);
+    peaksInfo.zl_rms = filterWaveform.Get_Zero_Level_RMS();
 
     if (channels[currChannel])
     {
@@ -873,7 +906,6 @@ bool MainWindow::currentEventPassesFilters()
     }
 
     // Create a PeaksInfo object to get aggregate values
-    PeaksInfo peaksInfo;
 
     int count = 0;
 
@@ -918,8 +950,103 @@ bool MainWindow::currentEventPassesFilters()
     float totalAmp = peaksInfo.amp();
     float totalCharge = peaksInfo.charge();
     float totalTime = peaksInfo.time();
+    float bl = peaksInfo.zl;
+    float bl_rms = peaksInfo.zl_rms;
 
     qDebug() << "Multiple peaks aggregate - amp:" << totalAmp
              << "charge:" << totalCharge << "time:" << totalTime;
-    return m_eventFilterWidget->eventPassesFilters(totalAmp, totalCharge, totalTime);
+    return m_eventFilterWidget->eventPassesFilters(totalAmp, totalCharge, totalTime, bl, bl_rms);
+}
+bool MainWindow::showEventLimitDialog()
+{
+    // Create a custom dialog
+    QDialog dialog(this);
+    dialog.setWindowTitle("Maximum Readout Events");
+    dialog.setMinimumWidth(300);
+
+    QFormLayout *formLayout = new QFormLayout(&dialog);
+
+    // Add "Events:" label with line edit
+    QLineEdit *eventLimitEdit = new QLineEdit(&dialog);
+    eventLimitEdit->setPlaceholderText("Leave empty for all events");
+    eventLimitEdit->setValidator(new QIntValidator(0, 1000000000, this)); // 0 = all events
+
+    // Set the current value if it exists
+    if (maxReadoutEvents > 0)
+    {
+        eventLimitEdit->setText(QString::number(maxReadoutEvents));
+    }
+
+    formLayout->addRow("Maximum events to index:", eventLimitEdit);
+
+    // Add informative note
+    QLabel *infoLabel = new QLabel("Empty = all events, 0 = all events, positive number = limit", &dialog);
+    infoLabel->setStyleSheet("color: gray; font-style: italic;");
+    formLayout->addRow("", infoLabel);
+
+    // Add button box
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    formLayout->addRow(buttonBox);
+
+    // Connect buttons
+    QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    // Show dialog
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        QString text = eventLimitEdit->text().trimmed();
+
+        if (text.isEmpty() || text == "0")
+        {
+            maxReadoutEvents = -1; // Unlimited
+        }
+        else
+        {
+            bool ok;
+            int64_t value = text.toLongLong(&ok);
+            if (ok && value > 0)
+            {
+                maxReadoutEvents = value;
+            }
+            else
+            {
+                // Invalid input, use unlimited
+                maxReadoutEvents = -1;
+            }
+        }
+        return true;
+    }
+
+    return false; // User cancelled
+}
+
+void MainWindow::updateEventCountDisplay()
+{
+    if (DFR.FileIsSet)
+    {
+        int64_t indexedEvents = DFR.getIndexedEventsCount();
+
+        QString message;
+        if (maxReadoutEvents == -1)
+        {
+            message = QString("Indexed %1 events").arg(indexedEvents);
+        }
+        else if (indexedEvents < maxReadoutEvents)
+        {
+            message = QString("Indexed %1 events (file has fewer events than limit of %2)").arg(indexedEvents).arg(maxReadoutEvents);
+        }
+        else
+        {
+            message = QString("Indexed %1 events (limited to %2)").arg(indexedEvents).arg(maxReadoutEvents);
+        }
+
+        ui->statusbar->showMessage(message, 5000);
+
+        // Update event spinbox range
+        if (indexedEvents > 0)
+        {
+            eventSpinBox->setMaximum(indexedEvents - 1);
+        }
+    }
 }

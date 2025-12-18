@@ -33,7 +33,6 @@ public:
     void setLogXScale(bool logXScale);
     void setLogYScale(bool logYScale);
     void setLogZScale(bool logZScale);
-    void resetAutoRange();
     // Getters
     float getXMinRange() const { return m_xMinEdit->text().toFloat(); }
     float getXMaxRange() const { return m_xMaxEdit->text().toFloat(); }
@@ -54,6 +53,10 @@ public:
     // Event marker management
     void setEventValue(float xValue, float yValue);
     void setEventMarkerVisible(bool visible);
+
+    // New methods for range control
+    void setAutoRangeOnDataChange(bool enabled);
+    void resetRangesToInitial();
 
 public slots:
     void updatePlot();
@@ -121,7 +124,14 @@ private:
     QString m_yAxisLabel;
     double m_dataMin;
     double m_dataMax;
-    bool m_isFirstDataSet;
+
+    // Initial range values
+    float m_initialXMin;
+    float m_initialXMax;
+    float m_initialYMin;
+    float m_initialYMax;
+    bool m_autoRangeOnDataChange;
+
     // Event markers
     QCPItemLine *m_eventLineX; // Horizontal line at yValue
     QCPItemLine *m_eventLineY; // Vertical line at xValue

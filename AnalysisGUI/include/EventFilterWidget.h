@@ -2,12 +2,10 @@
 #define EVENTFILTERWIDGET_H
 
 #include <QWidget>
-#include <QLineEdit>
-#include <QLabel>
 #include <QPushButton>
 #include <QCheckBox>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
+#include "ParameterFilterWidget.h"
 
 class EventFilterWidget : public QWidget
 {
@@ -24,12 +22,17 @@ public:
     float getMaxCharge() const;
     float getMinTime() const;
     float getMaxTime() const;
+    float getMinBaseline() const;
+    float getMaxBaseline() const;
+    float getMinBaselineRMS() const;
+    float getMaxBaselineRMS() const;
 
     // Check if filtering is enabled
     bool isFilteringEnabled() const;
 
     // Check if event passes filters (only if filtering is enabled)
-    bool eventPassesFilters(float amplitude, float charge, float time) const;
+    bool eventPassesFilters(float amplitude, float charge, float time,
+                            float baseline, float baselineRMS) const;
 
 signals:
     void filtersChanged();
@@ -37,15 +40,15 @@ signals:
 private slots:
     void onResetButtonClicked();
     void onApplyFilterToggled(bool checked);
+    void onParameterFilterChanged();
 
 private:
     QCheckBox *m_applyFilterCheck;
-    QLineEdit *m_minAmpEdit;
-    QLineEdit *m_maxAmpEdit;
-    QLineEdit *m_minChargeEdit;
-    QLineEdit *m_maxChargeEdit;
-    QLineEdit *m_minTimeEdit;
-    QLineEdit *m_maxTimeEdit;
+    ParameterFilterWidget *m_ampFilter;
+    ParameterFilterWidget *m_chargeFilter;
+    ParameterFilterWidget *m_timeFilter;
+    ParameterFilterWidget *m_baselineFilter;
+    ParameterFilterWidget *m_baselineRMSFilter;
     QPushButton *m_resetButton;
 
     void setupUI();
