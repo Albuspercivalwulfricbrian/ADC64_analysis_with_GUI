@@ -84,6 +84,7 @@ private:
     int32_t peak_position = 0;
     int32_t fGATE_BEG = 1000000;
     int32_t fGATE_END = -1000000;
+    float cutoff_level = 0.02;
 
 public:
     void GetWfSize();

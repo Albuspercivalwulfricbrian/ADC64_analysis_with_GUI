@@ -194,7 +194,7 @@ void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
             fGATE_BEG++;
             break;
         }
-        if (wf[fGATE_BEG] > zl - 0.1 * amp)
+        if (wf[fGATE_BEG] > zl - cutoff_level * amp)
             break;
     }
     while (1)
@@ -205,7 +205,7 @@ void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
             fGATE_END--;
             break;
         }
-        if (wf[fGATE_END] > zl - 0.1 * amp)
+        if (wf[fGATE_END] > zl - cutoff_level * amp)
             break;
     }
 }
@@ -366,7 +366,7 @@ float ChannelEntry::Get_time_gauss() //! average time of event waveform
     for (int32_t s = fGATE_BEG; s < fGATE_END; ++s)
     {
         int32_t v = zl - wf[s];
-        if (v > amp * 0.1)
+        if (v > amp * cutoff_level)
         {
             ampl_sum += (float)v;
             peak_search += (float)v * s;
