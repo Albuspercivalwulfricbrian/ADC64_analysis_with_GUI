@@ -110,6 +110,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
     connect(actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
 
+    // Connect smart scope checkbox state change
+    connect(action_UseSmartScope, &QAction::toggled, this, [this](bool checked)
+            {
+        if (!checked) {
+            clearSmartScopeLines();
+        } else if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0) {
+            // If checkbox is checked and we have a waveform, recalculate smart scope
+            UpdateGraph();
+        } });
     connect(LeftBoundaryEdit, &QLineEdit::textChanged, [=](QString obj)
             { xLeftBoundary = obj.toInt(); ReDrawBoundaries(); });
     connect(RightBoundaryEdit, &QLineEdit::textChanged, [=](QString obj)
@@ -310,6 +319,13 @@ void MainWindow::UpdateGraph()
 
 void MainWindow::updateSmartScopeLines(int left, int right)
 {
+    // Only draw smart scope lines if the smart scope checkbox is checked
+    if (!action_UseSmartScope->isChecked())
+    {
+        clearSmartScopeLines();
+        return;
+    }
+
     if (left >= 0 && right > left)
     {
         // Remove the lines from the plot first (important!)
@@ -335,7 +351,6 @@ void MainWindow::updateSmartScopeLines(int left, int right)
         lineSmartScopeRight->setClipToAxisRect(true);
 
         // Use EXTENDED Y range to cover entire possible signal range
-        // Since ADC values can go from -32768 to 32767, use these extremes
         double yMin = -70000; // Extended below minimum
         double yMax = 70000;  // Extended above maximum
 
@@ -394,7 +409,6 @@ void MainWindow::onMouseMove(QMouseEvent *event)
 void MainWindow::ReDrawBoundaries()
 {
     // Use EXTENDED Y range for ALL vertical lines
-    // This ensures they cover the full height regardless of waveform amplitude
     double yMin = -70000; // Extended below ADC minimum
     double yMax = 70000;  // Extended above ADC maximum
 
@@ -409,8 +423,11 @@ void MainWindow::ReDrawBoundaries()
     lineRight->start->setCoords(xRightBoundary, yMin);
     lineRight->end->setCoords(xRightBoundary, yMax);
 
-    // Also update smart scope lines if they're visible
-    if (lineSmartScopeLeft->visible() && smartScopeLeft >= 0 && smartScopeRight > smartScopeLeft)
+    // Also update smart scope lines if they're visible AND smart scope is enabled
+    if (action_UseSmartScope->isChecked() &&
+        lineSmartScopeLeft->visible() &&
+        smartScopeLeft >= 0 &&
+        smartScopeRight > smartScopeLeft)
     {
         lineSmartScopeLeft->start->setType(QCPItemPosition::ptPlotCoords);
         lineSmartScopeLeft->end->setType(QCPItemPosition::ptPlotCoords);
@@ -421,6 +438,11 @@ void MainWindow::ReDrawBoundaries()
         lineSmartScopeRight->end->setType(QCPItemPosition::ptPlotCoords);
         lineSmartScopeRight->start->setCoords(smartScopeRight, yMin);
         lineSmartScopeRight->end->setCoords(smartScopeRight, yMax);
+    }
+    else if (!action_UseSmartScope->isChecked())
+    {
+        // Clear smart scope lines if checkbox is unchecked
+        clearSmartScopeLines();
     }
 
     customPlot->replot(QCustomPlot::rpQueuedRefresh);
