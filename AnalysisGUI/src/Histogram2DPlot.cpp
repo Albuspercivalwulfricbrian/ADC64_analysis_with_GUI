@@ -546,8 +546,7 @@ void Histogram2DPlot::autoRescaleDataRange()
         // Sort values to find percentiles
         std::sort(allValues.begin(), allValues.end());
 
-        // Get the value at 80-85th percentile (so 15-20% of data is in top colors)
-        size_t percentileIndex = static_cast<size_t>(allValues.size() * 0.96); // 82nd percentile
+        size_t percentileIndex = static_cast<size_t>(allValues.size() * 0.96);
         percentileIndex = std::min(percentileIndex, allValues.size() - 1);
 
         double minVal = allValues.front();
@@ -558,10 +557,6 @@ void Histogram2DPlot::autoRescaleDataRange()
         std::cout << "  82nd percentile: " << percentileVal << std::endl;
         std::cout << "  Max value: " << allValues.back() << std::endl;
         std::cout << "  Total data points: " << allValues.size() << std::endl;
-
-        // For the ROOT Bird gradient, yellow/orange starts around 0.8 on the color scale
-        // We want the 82nd percentile value to map to around 0.8 on the color gradient
-        // This means about 18% of data will be in yellow/orange range
 
         // If using log scale for Z, we need to handle it differently
         if (getLogZScale())

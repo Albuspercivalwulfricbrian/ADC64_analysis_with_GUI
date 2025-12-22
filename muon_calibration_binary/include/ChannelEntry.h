@@ -100,6 +100,8 @@ public:
     void Set_Zero_Level_Area(int32_t i);
     int32_t CountCoincidencePeaks(int32_t, int32_t);
     int32_t PointAmpl(int32_t);
+    int32_t GetLeftBoarder();
+    int32_t GetRightBoarder();
     float CalculateZlwithNoisePeaks(int);
     float Get_Zero_Level();
     float Get_Zero_Level_RMS();

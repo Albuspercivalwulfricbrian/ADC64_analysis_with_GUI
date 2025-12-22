@@ -16,7 +16,7 @@
 #include <ProgressWidget.h>
 #include "HistogramWindow.h"
 #include <QPointer>
-#include "EventFilterWidget.h" // ADD THIS LINE
+#include "EventFilterWidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -39,7 +39,7 @@ public:
 private:
     Ui::MainWindow *ui;
     QPointer<HistogramWindow> m_histogramWindow;
-    QPointer<EventFilterWidget> m_eventFilterWidget; // ADD THIS LINE
+    QPointer<EventFilterWidget> m_eventFilterWidget;
 
     int64_t maxReadoutEvents;
     bool m_programmaticallyChangingEvent = false;
@@ -49,6 +49,8 @@ private:
     double currentX = 0;
     int32_t xLeftBoundary = -1000;
     int32_t xRightBoundary = 3000;
+    int32_t smartScopeLeft = 0;  // Smart scope left boundary
+    int32_t smartScopeRight = 0; // Smart scope right boundary
     QLabel *coordinateLabel = new QLabel();
     QLabel *FileNameLabel;
     Worker DFR;
@@ -62,6 +64,8 @@ private:
     std::map<int, ConfigManager *> channels;
     QCPItemLine *lineLeft;
     QCPItemLine *lineRight;
+    QCPItemLine *lineSmartScopeLeft;  // Smart scope left line
+    QCPItemLine *lineSmartScopeRight; // Smart scope right line
     QCPLayer *customLayer;
     int32_t size;
     QTimer *timer = new QTimer();
@@ -77,16 +81,16 @@ private:
     QAction *actionSavePdf;
     QAction *actionSaveJpeg;
     QAction *action_Show_Histogram;
-    QAction *action_Event_Filter; // ADD THIS LINE
+    QAction *action_Event_Filter;
 
     void setupGraph();
     void UpdateGraph();
     void ReDrawBoundaries();
     void showContextMenu(const QPoint &pos);
     void processFiles(const QStringList &files);
-
-    // Helper function to check if event passes filters
-    bool currentEventPassesFilters(); // ADD THIS LINE
+    void updateSmartScopeLines(int left, int right); // Update smart scope lines
+    void clearSmartScopeLines();                     // Clear smart scope lines
+    bool currentEventPassesFilters();
     bool showEventLimitDialog();
 
     ctpl::thread_pool p;
@@ -117,8 +121,8 @@ private slots:
     void windowEnable();
     void windowDisable();
     void on_action_Show_Histogram_triggered();
-    void on_action_Event_Filter_triggered(); // ADD THIS LINE
-    void onEventFilterChanged();             // ADD THIS LINE
+    void on_action_Event_Filter_triggered();
+    void onEventFilterChanged();
     void updateEventCountDisplay();
 
 signals:

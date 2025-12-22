@@ -10,6 +10,11 @@
 #include <QScrollArea>
 #include "HistogramWindow.h"
 #include "EventFilterWidget.h"
+#include <QFileDialog>
+#include <QInputDialog>
+#include <QIntValidator>
+#include <QFormLayout>
+#include <QDialogButtonBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), p(8)
@@ -49,9 +54,43 @@ MainWindow::MainWindow(QWidget *parent)
     lineLeft = new QCPItemLine(customPlot);
     lineLeft->setLayer("CustomLayer");
     lineLeft->setPen(QPen(Qt::green, 4));
+    lineLeft->setClipAxisRect(customPlot->axisRect());
+    lineLeft->setClipToAxisRect(true);
+    // Initialize with extended Y range
+    lineLeft->start->setType(QCPItemPosition::ptPlotCoords);
+    lineLeft->end->setType(QCPItemPosition::ptPlotCoords);
+    lineLeft->start->setCoords(xLeftBoundary, -70000);
+    lineLeft->end->setCoords(xLeftBoundary, 70000);
+
     lineRight = new QCPItemLine(customPlot);
     lineRight->setLayer("CustomLayer");
     lineRight->setPen(QPen(Qt::red, 4));
+    lineRight->setClipAxisRect(customPlot->axisRect());
+    lineRight->setClipToAxisRect(true);
+    // Initialize with extended Y range
+    lineRight->start->setType(QCPItemPosition::ptPlotCoords);
+    lineRight->end->setType(QCPItemPosition::ptPlotCoords);
+    lineRight->start->setCoords(xRightBoundary, -70000);
+    lineRight->end->setCoords(xRightBoundary, 70000);
+
+    // Initialize smart scope lines
+    lineSmartScopeLeft = new QCPItemLine(customPlot);
+    lineSmartScopeLeft->setLayer("CustomLayer");
+    lineSmartScopeLeft->setPen(QPen(Qt::gray, 2, Qt::DashLine));
+    lineSmartScopeLeft->setVisible(false);
+    lineSmartScopeLeft->setClipAxisRect(customPlot->axisRect());
+    lineSmartScopeLeft->setClipToAxisRect(true);
+    lineSmartScopeLeft->start->setType(QCPItemPosition::ptPlotCoords);
+    lineSmartScopeLeft->end->setType(QCPItemPosition::ptPlotCoords);
+
+    lineSmartScopeRight = new QCPItemLine(customPlot);
+    lineSmartScopeRight->setLayer("CustomLayer");
+    lineSmartScopeRight->setPen(QPen(Qt::gray, 2, Qt::DashLine));
+    lineSmartScopeRight->setVisible(false);
+    lineSmartScopeRight->setClipAxisRect(customPlot->axisRect());
+    lineSmartScopeRight->setClipToAxisRect(true);
+    lineSmartScopeRight->start->setType(QCPItemPosition::ptPlotCoords);
+    lineSmartScopeRight->end->setType(QCPItemPosition::ptPlotCoords);
 
     // Initialize action pointers
     action_UseSpline = ui->action_Use_Spline;
@@ -70,8 +109,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
     connect(actionSaveJpeg, &QAction::triggered, this, &MainWindow::savePlotAsJpeg);
     connect(actionSavePdf, &QAction::triggered, this, &MainWindow::savePlotAsPdf);
-
-    // Connect Event Filter action
 
     connect(LeftBoundaryEdit, &QLineEdit::textChanged, [=](QString obj)
             { xLeftBoundary = obj.toInt(); ReDrawBoundaries(); });
@@ -231,6 +268,9 @@ void MainWindow::UpdateGraph()
             sci->ADC_ID = tempWfData.ADCID;
             int count = 0;
 
+            // Clear smart scope lines initially
+            clearSmartScopeLines();
+
             while (true)
             {
                 SinglePeakInfo peakInfo;
@@ -240,13 +280,21 @@ void MainWindow::UpdateGraph()
                 int pp = tempWfData.Get_time();
                 peakInfo.amp = tempWfData.Get_Amplitude();
                 if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
+                {
                     tempWfData.AssumeSmartScope();
+                    smartScopeLeft = tempWfData.GetLeftBoarder();
+                    smartScopeRight = tempWfData.GetRightBoarder();
+                    // Update smart scope lines
+                    updateSmartScopeLines(smartScopeLeft, smartScopeRight);
+                }
+
                 peakInfo.time = tempWfData.Get_time_gauss();
 
                 peakInfo.charge = tempWfData.Get_Charge();
                 peakInfo.II = tempWfData.GetIntegralInfo();
                 if (peakInfo.amp < 500 && count > 0)
                     break;
+
                 sci->AddPeak(peakInfo);
                 if (WriteMode == "Single")
                     break;
@@ -260,6 +308,81 @@ void MainWindow::UpdateGraph()
     }
 }
 
+void MainWindow::updateSmartScopeLines(int left, int right)
+{
+    if (left >= 0 && right > left)
+    {
+        // Remove the lines from the plot first (important!)
+        if (lineSmartScopeLeft->parentPlot())
+            customPlot->removeItem(lineSmartScopeLeft);
+        if (lineSmartScopeRight->parentPlot())
+            customPlot->removeItem(lineSmartScopeRight);
+
+        // Recreate the lines to ensure proper coordinate system
+        lineSmartScopeLeft = new QCPItemLine(customPlot);
+        lineSmartScopeRight = new QCPItemLine(customPlot);
+
+        // Set up left line
+        lineSmartScopeLeft->setLayer("CustomLayer");
+        lineSmartScopeLeft->setPen(QPen(Qt::gray, 2, Qt::DashLine));
+        lineSmartScopeLeft->setClipAxisRect(customPlot->axisRect());
+        lineSmartScopeLeft->setClipToAxisRect(true);
+
+        // Set up right line
+        lineSmartScopeRight->setLayer("CustomLayer");
+        lineSmartScopeRight->setPen(QPen(Qt::gray, 2, Qt::DashLine));
+        lineSmartScopeRight->setClipAxisRect(customPlot->axisRect());
+        lineSmartScopeRight->setClipToAxisRect(true);
+
+        // Use EXTENDED Y range to cover entire possible signal range
+        // Since ADC values can go from -32768 to 32767, use these extremes
+        double yMin = -70000; // Extended below minimum
+        double yMax = 70000;  // Extended above maximum
+
+        // Set positions with current plot coordinate system
+        lineSmartScopeLeft->start->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeLeft->end->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeLeft->start->setCoords(left, yMin);
+        lineSmartScopeLeft->end->setCoords(left, yMax);
+
+        lineSmartScopeRight->start->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeRight->end->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeRight->start->setCoords(right, yMin);
+        lineSmartScopeRight->end->setCoords(right, yMax);
+
+        // Make lines visible
+        lineSmartScopeLeft->setVisible(true);
+        lineSmartScopeRight->setVisible(true);
+
+        // Store values
+        smartScopeLeft = left;
+        smartScopeRight = right;
+
+        // Force immediate replot
+        customPlot->replot();
+
+        qDebug() << "Smart scope lines updated: X positions =" << left << "to" << right;
+    }
+    else
+    {
+        clearSmartScopeLines();
+    }
+}
+
+void MainWindow::clearSmartScopeLines()
+{
+    if (lineSmartScopeLeft && lineSmartScopeLeft->parentPlot())
+    {
+        lineSmartScopeLeft->setVisible(false);
+    }
+    if (lineSmartScopeRight && lineSmartScopeRight->parentPlot())
+    {
+        lineSmartScopeRight->setVisible(false);
+    }
+    smartScopeLeft = 0;
+    smartScopeRight = 0;
+}
+
 void MainWindow::onMouseMove(QMouseEvent *event)
 {
     double x = customPlot->xAxis->pixelToCoord(event->pos().x());
@@ -270,11 +393,36 @@ void MainWindow::onMouseMove(QMouseEvent *event)
 
 void MainWindow::ReDrawBoundaries()
 {
+    // Use EXTENDED Y range for ALL vertical lines
+    // This ensures they cover the full height regardless of waveform amplitude
+    double yMin = -70000; // Extended below ADC minimum
+    double yMax = 70000;  // Extended above ADC maximum
 
-    lineLeft->start->setCoords(xLeftBoundary, -32767000);
-    lineLeft->end->setCoords(xLeftBoundary, 32767000);
-    lineRight->start->setCoords(xRightBoundary, -32767000);
-    lineRight->end->setCoords(xRightBoundary, 32767000);
+    // Update boundary lines with extended Y range
+    lineLeft->start->setType(QCPItemPosition::ptPlotCoords);
+    lineLeft->end->setType(QCPItemPosition::ptPlotCoords);
+    lineLeft->start->setCoords(xLeftBoundary, yMin);
+    lineLeft->end->setCoords(xLeftBoundary, yMax);
+
+    lineRight->start->setType(QCPItemPosition::ptPlotCoords);
+    lineRight->end->setType(QCPItemPosition::ptPlotCoords);
+    lineRight->start->setCoords(xRightBoundary, yMin);
+    lineRight->end->setCoords(xRightBoundary, yMax);
+
+    // Also update smart scope lines if they're visible
+    if (lineSmartScopeLeft->visible() && smartScopeLeft >= 0 && smartScopeRight > smartScopeLeft)
+    {
+        lineSmartScopeLeft->start->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeLeft->end->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeLeft->start->setCoords(smartScopeLeft, yMin);
+        lineSmartScopeLeft->end->setCoords(smartScopeLeft, yMax);
+
+        lineSmartScopeRight->start->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeRight->end->setType(QCPItemPosition::ptPlotCoords);
+        lineSmartScopeRight->start->setCoords(smartScopeRight, yMin);
+        lineSmartScopeRight->end->setCoords(smartScopeRight, yMax);
+    }
+
     customPlot->replot(QCustomPlot::rpQueuedRefresh);
 }
 
@@ -298,13 +446,14 @@ void MainWindow::on_channelSpinBox_valueChanged(int)
     action_UseSpline->setChecked(channels[currChannel]->UseSpline);
     action_Signal_is_Negative->setChecked(channels[currChannel]->SignalNegative);
 
+    // Clear smart scope lines when channel changes
+    clearSmartScopeLines();
+
     // Update histogram window channel if it exists and is visible
     if (m_histogramWindow && !m_histogramWindow.isNull() && m_histogramWindow->isVisible())
     {
         m_histogramWindow->onChannelChanged(currChannel);
     }
-
-    // ReDrawBoundaries();
 }
 
 void MainWindow::on_eventSpinBox_valueChanged(int)
@@ -315,11 +464,8 @@ void MainWindow::on_eventSpinBox_valueChanged(int)
 
     DFR.event_waveform.Initialize();
     currEvent = (int32_t)eventSpinBox->value();
-
-    // Get the actual number of indexed events
     int64_t indexedEvents = DFR.getIndexedEventsCount();
 
-    // Ensure we don't exceed indexed events
     if (indexedEvents > 0 && currEvent >= indexedEvents)
     {
         currEvent = indexedEvents - 1;

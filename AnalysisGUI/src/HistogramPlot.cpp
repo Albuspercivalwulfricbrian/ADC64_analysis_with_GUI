@@ -31,9 +31,7 @@ HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QW
     connect(m_logXScaleCheck, &QCheckBox::toggled, this, &HistogramPlot::onLogXScaleToggled);
 }
 
-HistogramPlot::~HistogramPlot()
-{
-}
+HistogramPlot::~HistogramPlot() {}
 
 void HistogramPlot::setupUI(const QString &title, const QString &xAxisLabel)
 {
@@ -73,7 +71,6 @@ void HistogramPlot::setupUI(const QString &title, const QString &xAxisLabel)
     m_mainLayout->setSpacing(5); // Reduced spacing between controls and plot
 }
 
-// ... rest of the implementation remains the same as previous version
 void HistogramPlot::setupPlot(const QString &xAxisLabel)
 {
     m_customPlot->xAxis->setLabel(xAxisLabel);
@@ -183,16 +180,9 @@ void HistogramPlot::updatePlot()
     bars->setPen(QPen(Qt::blue));
     bars->setBrush(QBrush(QColor(0, 0, 255, 100)));
 
-    // Calculate LINEAR bin width (same for both linear and log display)
     double binWidth = (maxVal - minVal) / bins;
-
-    // Set width based on plot coordinates
     bars->setWidthType(QCPBars::wtPlotCoords);
-
-    // FIXED: Always use linear bin width for bar width
     bars->setWidth(binWidth);
-
-    // Set axis ranges and scale type
     m_customPlot->xAxis->setRange(minVal, maxVal);
 
     if (m_logXScaleCheck->isChecked())
@@ -251,9 +241,6 @@ void HistogramPlot::calculateHistogram(QVector<double> &x, QVector<double> &y)
         }
     }
 
-    // Calculate bin centers for display
-    // IMPORTANT: For log display, we still use linear centers
-    // but the display will stretch them on log scale
     for (int i = 0; i < bins; ++i)
     {
         // Always use linear centers

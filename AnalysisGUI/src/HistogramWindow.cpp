@@ -363,7 +363,7 @@ void HistogramWindow::processHistogramData()
     }
     else
     {
-        progressTitle = QString("Processing ROOT File (Max %1 Events) - Channel %1").arg(m_histogramEventLimit).arg(m_currentChannel);
+        progressTitle = QString("Processing ROOT File (Max %1 Events) - Channel %2").arg(m_histogramEventLimit).arg(m_currentChannel);
     }
 
     // Create and show progress dialog

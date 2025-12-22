@@ -210,6 +210,16 @@ void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
     }
 }
 
+int32_t ChannelEntry::GetLeftBoarder()
+{
+    return fGATE_BEG;
+}
+
+int32_t ChannelEntry::GetRightBoarder()
+{
+    return fGATE_END;
+}
+
 void ChannelEntry::DeleteCurrentPeak()
 {
     if (fGATE_BEG != fGATE_END)
