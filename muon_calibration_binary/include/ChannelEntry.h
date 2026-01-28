@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <vector>
+#include "PronyFitter.h"
 using namespace std;
 const int MAX_N_SAMPLES = 2048;
 
@@ -65,6 +66,15 @@ struct diff_short_energy_ChannelEntry
     void Initialize();
 };
 
+struct PronyFitResult
+{
+    float integral;
+    float chi2;
+    float r2;
+    double harmonics[3]; // For 2 harmonics + constant
+    int signal_begin;
+};
+
 class ChannelEntry
 {
 
@@ -95,6 +105,7 @@ public:
     void AssumeSmartScope();
     float GoToLevel(float Level);
     float LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0);
+    PronyFitResult PerformPronyFit();
     void DeleteCurrentPeak();
     void SetBoarders(int32_t, int32_t);
     void FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time);

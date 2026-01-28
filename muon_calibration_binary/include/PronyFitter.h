@@ -4,6 +4,7 @@
 	@brief  Class to fit waveform using Prony least squares method
 */
 #include <vector>
+#include "TROOT.h"
 #ifndef PronyFitter_H
 #define PronyFitter_H 1
 

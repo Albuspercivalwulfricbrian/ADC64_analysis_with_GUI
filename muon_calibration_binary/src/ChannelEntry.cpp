@@ -221,23 +221,15 @@ float ChannelEntry::GoToLevel(float Level)
 {
     // Start from peak_position (deepest point in inverted waveform)
     int point = peak_position;
-
-    // Calculate the target value in ADC counts
-    // Since waveform is inverted: signal = zl - wf[point]
-    // Level is expressed as fraction of amplitude (e.g., 0.1 for 10%)
     float targetADC = zl - Level * amp;
 
-    // Search backward from peak_position to fGATE_BEG
     while (point > fGATE_BEG)
     {
-        // Check current point and previous point
         float currentValue = static_cast<float>(wf[point]);
         float prevValue = static_cast<float>(wf[point - 1]);
 
-        // Check if we crossed the target level
         if ((targetADC - currentValue) * (targetADC - prevValue) <= 0)
         {
-            // Found crossing - interpolate
             return LevelBy2Points(static_cast<float>(point), currentValue,
                                   static_cast<float>(point - 1), prevValue, targetADC);
         }
@@ -247,6 +239,73 @@ float ChannelEntry::GoToLevel(float Level)
 
     // If we get here, level wasn't found
     return 0.0f;
+}
+
+PronyFitResult ChannelEntry::PerformPronyFit()
+{
+    PronyFitResult result = {};
+
+    // Basic validation
+    if (wf.empty() || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
+    {
+        return result;
+    }
+
+    // Calculate front times using GoToLevel
+    float front_30 = GoToLevel(0.3f); // 30% level
+    float front_90 = GoToLevel(0.9f); // 90% level
+
+    // If GoToLevel failed (returns 0), use fallback
+    if (front_30 <= 0 || front_90 <= 0)
+    {
+        // Use percentages of the gate
+        front_30 = fGATE_BEG + 0.2f * (fGATE_END - fGATE_BEG);
+        front_90 = fGATE_BEG + 0.6f * (fGATE_END - fGATE_BEG);
+    }
+
+    // Create PronyFitter
+    PronyFitter Pfitter(2, 2, fGATE_BEG, fGATE_END, wf.size());
+
+    // Convert waveform from int32_t to float
+    std::vector<float> float_wf(wf.size());
+    for (size_t i = 0; i < wf.size(); i++)
+    {
+        float_wf[i] = static_cast<float>(wf[i]);
+    }
+
+    // Use internal zero level (zl)
+    Pfitter.SetWaveform(float_wf.data(), zl);
+
+    // Calculate signal beginning
+    int SignalBeg = Pfitter.CalcSignalBegin(front_30, front_90);
+
+    // Find best signal beginning
+    Int_t best_signal_begin = Pfitter.ChooseBestSignalBeginHarmonics(SignalBeg - 1, SignalBeg + 2);
+
+    if (best_signal_begin > fGATE_BEG)
+    {
+        Pfitter.SetSignalBegin(best_signal_begin);
+        Pfitter.CalculateFitHarmonics();
+        Pfitter.CalculateFitAmplitudes();
+
+        // Get harmonics
+        double *harmonics = Pfitter.GetHarmonics();
+        if (harmonics)
+        {
+            result.harmonics[0] = harmonics[0];
+            result.harmonics[1] = harmonics[1];
+            result.harmonics[2] = harmonics[2];
+        }
+
+        // Get fit metrics
+        result.integral = Pfitter.GetIntegral(fGATE_BEG, fGATE_END);
+        result.chi2 = Pfitter.GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
+        result.r2 = Pfitter.GetRSquare(fGATE_BEG, fGATE_END);
+        result.signal_begin = best_signal_begin;
+        // result.success = true;
+    }
+
+    return result;
 }
 
 int32_t ChannelEntry::GetLeftBoarder()

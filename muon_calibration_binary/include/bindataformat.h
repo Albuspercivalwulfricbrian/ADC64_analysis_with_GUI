@@ -53,12 +53,7 @@ void MeanRMScalc(Float_t *DataArr, float *Mean, float *RMS, int begin, int end, 
 
 float_t LevelBy2Points(float_t X1, float_t Y1, float_t X2, float_t Y2, float_t Y0)
 {
-	//            [X2, Y2] 0
-	//                   *
-	//                 *
-	//   Y0--------- 0
-	//             *  X0 (returned)
-	//  [X1, Y1] 0
+
 	return (X1 * Y0 - X1 * Y2 - X2 * Y0 + X2 * Y1) / (Y1 - Y2);
 }
 
@@ -651,8 +646,8 @@ void BinDataReader::Calculate_fit_harmonics(event_fit_data_struct &result_fit_ev
 			Float_t fit_integral = Pfitter.GetIntegral(gate_beg, gate_end);
 			Float_t fit_chi2 = Pfitter.GetChiSquare(gate_beg, gate_end, time_max_in_gate_);
 			Float_t fit_R2 = Pfitter.GetRSquare(gate_beg, gate_end);
-			if (IsDebug)
-				printf("fit integral %.0f integral %.0f chi2 %.1f R2 %.3f\n", fit_integral, integral_in_gate_, fit_chi2, fit_R2);
+			// if (IsDebug)
+			printf("fit integral %.0f integral %.0f chi2 %.1f R2 %.3f\n", fit_integral, integral_in_gate_, fit_chi2, fit_R2);
 
 			if (fit_R2 < 0.02)
 			{
