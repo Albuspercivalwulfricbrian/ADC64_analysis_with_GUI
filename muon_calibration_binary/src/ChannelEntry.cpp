@@ -210,6 +210,45 @@ void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
     }
 }
 
+float ChannelEntry::LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0)
+{
+    if (Y1 == Y2)
+        return X1; // Avoid division by zero
+    return (X1 * Y0 - X1 * Y2 - X2 * Y0 + X2 * Y1) / (Y1 - Y2);
+}
+
+float ChannelEntry::GoToLevel(float Level)
+{
+    // Start from peak_position (deepest point in inverted waveform)
+    int point = peak_position;
+
+    // Calculate the target value in ADC counts
+    // Since waveform is inverted: signal = zl - wf[point]
+    // Level is expressed as fraction of amplitude (e.g., 0.1 for 10%)
+    float targetADC = zl - Level * amp;
+
+    // Search backward from peak_position to fGATE_BEG
+    while (point > fGATE_BEG)
+    {
+        // Check current point and previous point
+        float currentValue = static_cast<float>(wf[point]);
+        float prevValue = static_cast<float>(wf[point - 1]);
+
+        // Check if we crossed the target level
+        if ((targetADC - currentValue) * (targetADC - prevValue) <= 0)
+        {
+            // Found crossing - interpolate
+            return LevelBy2Points(static_cast<float>(point), currentValue,
+                                  static_cast<float>(point - 1), prevValue, targetADC);
+        }
+
+        point--;
+    }
+
+    // If we get here, level wasn't found
+    return 0.0f;
+}
+
 int32_t ChannelEntry::GetLeftBoarder()
 {
     return fGATE_BEG;
