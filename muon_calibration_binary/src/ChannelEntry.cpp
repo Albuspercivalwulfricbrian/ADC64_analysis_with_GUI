@@ -1,8 +1,9 @@
-
-// #include <TTree.h>
 #include "ChannelEntry.h"
-#include <cstdint>
-#include "iostream"
+#include "PronyFitter.h"
+#include <iostream>
+#include <cstring>
+#include <cmath>
+#include <limits>
 using namespace std;
 
 void IntegralInfo::Initialize()
@@ -244,66 +245,70 @@ float ChannelEntry::GoToLevel(float Level)
 PronyFitResult ChannelEntry::PerformPronyFit()
 {
     PronyFitResult result = {};
-
-    // Basic validation
+    
     if (wf.empty() || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
-    {
         return result;
+
+    // Get peak on ORIGINAL waveform
+    Get_time();
+    if (amp == 0) return result;
+
+    // Create positive waveform as float vector
+    std::vector<float> positive_wf(wf.size());
+    for (size_t i = 0; i < wf.size(); i++) {
+        positive_wf[i] = zl - (float)wf[i];
     }
 
-    // Calculate front times using GoToLevel
-    float front_30 = GoToLevel(0.3f); // 30% level
-    float front_90 = GoToLevel(0.9f); // 90% level
-
-    // If GoToLevel failed (returns 0), use fallback
-    if (front_30 <= 0 || front_90 <= 0)
-    {
-        // Use percentages of the gate
-        front_30 = fGATE_BEG + 0.2f * (fGATE_END - fGATE_BEG);
-        front_90 = fGATE_BEG + 0.6f * (fGATE_END - fGATE_BEG);
-    }
-
-    // Create PronyFitter
-    PronyFitter Pfitter(2, 2, fGATE_BEG, fGATE_END, wf.size());
-
-    // Convert waveform from int32_t to float
-    std::vector<float> float_wf(wf.size());
-    for (size_t i = 0; i < wf.size(); i++)
-    {
-        float_wf[i] = static_cast<float>(wf[i]);
-    }
-
-    // Use internal zero level (zl)
-    Pfitter.SetWaveform(float_wf.data(), zl);
-
-    // Calculate signal beginning
-    int SignalBeg = Pfitter.CalcSignalBegin(front_30, front_90);
-
-    // Find best signal beginning
-    Int_t best_signal_begin = Pfitter.ChooseBestSignalBeginHarmonics(SignalBeg - 1, SignalBeg + 2);
-
-    if (best_signal_begin > fGATE_BEG)
-    {
-        Pfitter.SetSignalBegin(best_signal_begin);
-        Pfitter.CalculateFitHarmonics();
-        Pfitter.CalculateFitAmplitudes();
-
-        // Get harmonics
-        double *harmonics = Pfitter.GetHarmonics();
-        if (harmonics)
-        {
-            result.harmonics[0] = harmonics[0];
-            result.harmonics[1] = harmonics[1];
-            result.harmonics[2] = harmonics[2];
+    // Implement GoToLevel for POSITIVE waveform
+    auto GoToLevelPositive = [&](float Level) -> float {
+        float target = Level * amp;
+        int point = peak_position;
+        
+        while (point > fGATE_BEG) {
+            float current = positive_wf[point];
+            float prev = positive_wf[point - 1];
+            
+            if ((target - current) * (target - prev) <= 0) {
+                // Linear interpolation
+                return point + (target - current) / (prev - current);
+            }
+            point--;
         }
+        return 0.0f;
+    };
 
-        // Get fit metrics
+    // Get front times
+    float front_30 = GoToLevelPositive(0.3f);
+    float front_90 = GoToLevelPositive(0.9f);
+    std::cout << "===" << endl;
+    std::cout << "Fronts: " << front_30 << " " << front_90 << endl;
+    PronyFitter Pfitter(2, 2, fGATE_BEG, fGATE_END, wf.size());
+    Pfitter.SetWaveform(positive_wf, 0.0f);  // Use new float vector version
+
+    // Calculate signal begin
+    int SignalBeg = Pfitter.CalcSignalBegin(front_30, front_90);
+    
+    if (SignalBeg < 0) SignalBeg = 0;
+
+    Pfitter.SetSignalBegin(SignalBeg);
+    Pfitter.CalculateFitHarmonics();
+    
+    Double_t* harmonics = Pfitter.GetHarmonics();
+    // if (harmonics && harmonics[1] > 0 && harmonics[1] < 1 && 
+    //                  harmonics[2] > 0 && harmonics[2] < 1)
+    // {
+        Pfitter.CalculateFitAmplitudes();
+        
+        result.harmonics[0] = harmonics[0];
+        result.harmonics[1] = harmonics[1];
+        result.harmonics[2] = harmonics[2];
+        result.signal_begin = SignalBeg;
+        
+        // Calculate fit metrics
         result.integral = Pfitter.GetIntegral(fGATE_BEG, fGATE_END);
         result.chi2 = Pfitter.GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
         result.r2 = Pfitter.GetRSquare(fGATE_BEG, fGATE_END);
-        result.signal_begin = best_signal_begin;
-        // result.success = true;
-    }
+    // }
 
     return result;
 }
@@ -489,18 +494,8 @@ uint32_t ChannelEntry::Get_Amplitude()
     return (uint32_t)amp;
 }
 
-// void ChannelEntry::FillWf(int32_t *Ewf)
-// {
-//     for (int i = 0; i < 1024; i++)
-//     {
-//         wf[i] = Ewf[i];
-//         wf_size++;
-//     }
-// }
-
 void ChannelEntry::InvertSignal()
 {
     for (int i = 0; i < wf_size; i++)
         wf[i] = -wf[i];
 }
-// ##################

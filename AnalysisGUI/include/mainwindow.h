@@ -82,6 +82,7 @@ private:
     QAction *actionSaveJpeg;
     QAction *action_Show_Histogram;
     QAction *action_Event_Filter;
+    QAction *action_Show_Prony_Fit;
 
     void setupGraph();
     void UpdateGraph();

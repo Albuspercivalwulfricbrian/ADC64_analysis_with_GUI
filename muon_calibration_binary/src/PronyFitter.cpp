@@ -2,8 +2,9 @@
 #include "PronyFitter.h"
 #include "TGraph.h"
 #include "TCanvas.h"
+#include "iostream"
 
-#include "../my_macros/like_ivashkin_wants_it.h"
+// #include "like_ivashkin_wants_it.h"
 
 PronyFitter::PronyFitter(Int_t model_order, Int_t exponent_number, Int_t gate_beg, Int_t gate_end, Int_t sample_total)
 {
@@ -72,6 +73,28 @@ void PronyFitter::SetWaveform(const std::vector<int32_t> &val_sample_vec, float 
 	}
 
 	fZeroLevel = zero_level;
+}
+
+void PronyFitter::SetWaveform(const std::vector<float> &val_sample_vec, float zero_level)
+{
+    if (val_sample_vec.size() != static_cast<size_t>(fSampleTotal))
+    {
+        if (fIsDebug)
+        {
+            printf("Warning: Input vector size (%zu) doesn't match fSampleTotal (%d)\n",
+                   val_sample_vec.size(), fSampleTotal);
+        }
+        return;
+    }
+
+    // Copy the data from vector<float> to fValSampleArr (which is Float_t*)
+    for (Int_t i = 0; i < fSampleTotal; i++)
+    {
+        fValSampleArr[i] = val_sample_vec[i];
+		std::cout <<  fValSampleArr[i] << " ";
+    }
+	std::cout <<std::endl;
+    fZeroLevel = zero_level;
 }
 
 Int_t PronyFitter::CalcSignalBegin(Float_t front_time_beg_03, Float_t front_time_end)
@@ -340,14 +363,14 @@ Float_t PronyFitter::GetIntegral(Int_t gate_beg, Int_t gate_end)
 	for (UShort_t sample_curr = gate_beg; sample_curr < gate_end; sample_curr++)
 		integral += fFITValSampleArr[sample_curr] - fh[0];
 
-	if (isfinite(integral))
+	if (std::isfinite(integral))
 		return integral;
 	return 0;
 }
 
 Float_t PronyFitter::GetFitValue(Int_t sample_number)
 {
-	if (isfinite(fFITValSampleArr[sample_number]))
+	if (std::isfinite(fFITValSampleArr[sample_number]))
 		return fFITValSampleArr[sample_number];
 	return 0;
 }
@@ -373,7 +396,7 @@ Float_t PronyFitter::GetMaxAmplitude()
 		for (Int_t i = 0; i < fExpNumber + 1; i++)
 			amplitude += (Float_t)fh[i] * pow(fz[i], signal_max_time);
 
-		if (isfinite(amplitude))
+		if (std::isfinite(amplitude))
 			return amplitude;
 	}
 	return 0;
@@ -546,46 +569,46 @@ void PronyFitter::DrawFit(TObjArray *check_fit_arr, TString hist_title)
 	delete[] sample_arr;
 }
 
-void PronyFitter::DrawFit_for_presentation(TCanvas *canv_ptr, TString source_path, TString run_name, TString fit_quality, TString hist_title)
-{
-	Float_t *sample_arr = new Float_t[fSampleTotal];
-	Float_t *yarr = new Float_t[fSampleTotal];
-	Float_t *yarrfit = new Float_t[fSampleTotal];
+// void PronyFitter::DrawFit_for_presentation(TCanvas *canv_ptr, TString source_path, TString run_name, TString fit_quality, TString hist_title)
+// {
+// 	Float_t *sample_arr = new Float_t[fSampleTotal];
+// 	Float_t *yarr = new Float_t[fSampleTotal];
+// 	Float_t *yarrfit = new Float_t[fSampleTotal];
 
-	for (Int_t i = 0; i < fSampleTotal; i++)
-	{
+// 	for (Int_t i = 0; i < fSampleTotal; i++)
+// 	{
 
-		sample_arr[i] = (Float_t)i;
-		yarr[i] = fValSampleArr[i] - fFITValSampleArr[0];
-		yarrfit[i] = fFITValSampleArr[i] - fFITValSampleArr[0];
-	}
+// 		sample_arr[i] = (Float_t)i;
+// 		yarr[i] = fValSampleArr[i] - fFITValSampleArr[0];
+// 		yarrfit[i] = fFITValSampleArr[i] - fFITValSampleArr[0];
+// 	}
 
-	TGraph *tgr_ptr = new TGraph(fSampleTotal, sample_arr, yarr);
-	TGraph *tgr_ptr_fit = new TGraph(fSampleTotal, sample_arr, yarrfit);
-	// TCanvas *canv_ptr = new TCanvas(run_name);
-	canv_ptr->cd();
-	tgr_ptr->SetTitle("");
-	Int_t color = 1;
-	if (fit_quality == "good_fit")
-		color = 1;
-	if (fit_quality == "bad_fit")
-		color = 4;
-	graph_like_ivashkin_wants_it(tgr_ptr, color, "Time [a.u.]", "Amplitude [ADC ch]");
-	tgr_ptr->Draw("");
+// 	TGraph *tgr_ptr = new TGraph(fSampleTotal, sample_arr, yarr);
+// 	TGraph *tgr_ptr_fit = new TGraph(fSampleTotal, sample_arr, yarrfit);
+// 	// TCanvas *canv_ptr = new TCanvas(run_name);
+// 	canv_ptr->cd();
+// 	tgr_ptr->SetTitle("");
+// 	Int_t color = 1;
+// 	if (fit_quality == "good_fit")
+// 		color = 1;
+// 	if (fit_quality == "bad_fit")
+// 		color = 4;
+// 	graph_like_ivashkin_wants_it(tgr_ptr, color, "Time [a.u.]", "Amplitude [ADC ch]");
+// 	tgr_ptr->Draw("");
 
-	if (fit_quality == "good_fit")
-		tgr_ptr_fit->SetLineColor(kRed);
-	if (fit_quality == "bad_fit")
-		tgr_ptr_fit->SetLineColor(kGreen);
+// 	if (fit_quality == "good_fit")
+// 		tgr_ptr_fit->SetLineColor(kRed);
+// 	if (fit_quality == "bad_fit")
+// 		tgr_ptr_fit->SetLineColor(kGreen);
 
-	tgr_ptr_fit->SetLineWidth(2);
+// 	tgr_ptr_fit->SetLineWidth(2);
 
-	tgr_ptr_fit->Draw("same");
+// 	tgr_ptr_fit->Draw("same");
 
-	canv_ptr->SaveAs((source_path + run_name + "/" + run_name + "_" + fit_quality + ".pdf)").Data());
+// 	canv_ptr->SaveAs((source_path + run_name + "/" + run_name + "_" + fit_quality + ".pdf)").Data());
 
-	delete[] sample_arr;
-}
+// 	delete[] sample_arr;
+// }
 
 Int_t PronyFitter::ChooseBestSignalBeginHarmonics(Int_t first_sample, Int_t last_sample)
 {

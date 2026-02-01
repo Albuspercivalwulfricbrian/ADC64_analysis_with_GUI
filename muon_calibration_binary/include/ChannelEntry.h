@@ -77,7 +77,6 @@ struct PronyFitResult
 
 class ChannelEntry
 {
-
 public:
     int32_t ADCID = 0;
     int32_t channel = 0;
@@ -104,6 +103,7 @@ public:
     void CalculateDiffWf();
     void AssumeSmartScope();
     float GoToLevel(float Level);
+    
     float LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0);
     PronyFitResult PerformPronyFit();
     void DeleteCurrentPeak();
@@ -127,4 +127,4 @@ public:
     void InvertSignal();
 };
 
-#endif CHANNEL_ENTRY_H
+#endif // CHANNEL_ENTRY_H

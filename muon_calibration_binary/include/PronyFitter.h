@@ -5,12 +5,11 @@
 */
 #include <vector>
 #include "TROOT.h"
-#ifndef PronyFitter_H
-#define PronyFitter_H 1
+#ifndef PRONYFITTER_H
+#define PRONYFITTER_H 1
 
 class PronyFitter
 {
-
 public:
 	/**   Default constructor   **/
 	PronyFitter() {};
@@ -29,7 +28,7 @@ public:
 	void SolveSLECholesky(Double_t *, Double_t **, Double_t *, Int_t);
 	void SolveSLEOverDetermined_3x2_(Double_t *, Double_t **, Double_t *);
 	void DrawFit(TObjArray *, TString);
-	void DrawFit_for_presentation(TCanvas *, TString, TString, TString, TString);
+	// void DrawFit_for_presentation(TCanvas *, TString, TString, TString, TString);
 
 	Float_t LevelBy2Points(Float_t, Float_t, Float_t, Float_t, Float_t);
 	//
@@ -38,6 +37,7 @@ public:
 	void SetDebugMode(Bool_t);
 	void SetWaveform(Float_t *, Float_t);
 	void SetWaveform(const std::vector<int32_t> &, float);
+	void SetWaveform(const std::vector<float> &, float);  // ADDED THIS LINE
 	void SetSignalBegin(Int_t);
 	void SetHarmonics(Double_t *);
 	void SetExternalHarmonics(Double_t, Double_t);
@@ -83,4 +83,4 @@ private:
 	Float_t *fFITValSampleArr;
 };
 
-#endif
+#endif // PRONYFITTER_H

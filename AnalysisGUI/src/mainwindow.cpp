@@ -104,6 +104,7 @@ MainWindow::MainWindow(QWidget *parent)
     actionSaveJpeg = ui->actionSaveJpeg;
     actionSavePdf = ui->actionSavePdf;
     action_Show_Histogram = ui->action_Show_Histogram;
+    action_Show_Prony_Fit = ui->action_Show_Prony_Fit;
     maxReadoutEvents = -1;
 
     connect(actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
@@ -125,6 +126,49 @@ MainWindow::MainWindow(QWidget *parent)
             { xRightBoundary = obj.toInt(); ReDrawBoundaries(); });
 
     connect(action_Show_Histogram, &QAction::triggered, this, &MainWindow::on_action_Show_Histogram_triggered);
+// Add these connections in MainWindow constructor after other action connections:
+
+// Prony fit action connection
+connect(action_Show_Prony_Fit, &QAction::toggled, this, [this](bool checked)
+        {
+            if (checked) 
+            {
+                // Uncheck conflicting actions
+                action_Show_Filtered->setChecked(false);
+                action_Show_Fourier_Transform->setChecked(false);
+                
+                if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
+                {
+                    UpdateGraph();
+                }
+            }
+        });
+
+// Ensure Prony fit is unchecked when other modes are enabled
+connect(action_Show_Filtered, &QAction::toggled, this, [this](bool checked)
+        {
+            if (checked) 
+            {
+                action_Show_Prony_Fit->setChecked(false);
+                if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
+                {
+                    UpdateGraph();
+                }
+            }
+        });
+
+connect(action_Show_Fourier_Transform, &QAction::toggled, this, [this](bool checked)
+        {
+            if (checked) 
+            {
+                action_Show_Prony_Fit->setChecked(false);
+                action_Show_Filtered->setChecked(false);
+                if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
+                {
+                    UpdateGraph();
+                }
+            }
+        });
 
     if (!action_Event_Filter)
     {
@@ -186,7 +230,9 @@ void MainWindow::setupGraph()
 
     customPlot->replot(QCustomPlot::rpQueuedRefresh);
     customPlot->addGraph();
+    // Set up graph(1) for Prony fits (or filtered signals)
     customPlot->graph(1)->setPen(QPen(Qt::red, 2, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
+    customPlot->graph(1)->setName("Prony Fit"); // Optional: set a name for the legend
 }
 
 void MainWindow::UpdateGraph()
@@ -242,77 +288,167 @@ void MainWindow::UpdateGraph()
                     customPlot->graph(1)->data()->clear();
             }
             else
+            {
+                // Clear filtered graph initially
                 customPlot->graph(1)->data()->clear();
-        }
-
-        customPlot->yAxis->rescale();
-        customPlot->xAxis->rescale();
-        customPlot->replot();
-
-        ChannelEntry tempWfData = DFR.event_waveform;
-        // Calculate waveform parameters if histogram window is visible
-        if (m_histogramWindow && m_histogramWindow->isVisible() && tempWfData.wf.size() > 0)
-        {
-            PeaksInfo *sci = new PeaksInfo();
-            if (channels[currChannel])
-            {
-                tempWfData.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
-            }
-            else
-            {
-                tempWfData.Set_Zero_Level_Area(60);
-            }
-            sci->zl = tempWfData.CalculateZlwithNoisePeaks(130);
-            sci->zl_rms = tempWfData.Get_Zero_Level_RMS();
-
-            if (channels[currChannel])
-            {
-                tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
-            }
-            else
-            {
-                tempWfData.SetBoarders(50, 100);
-            }
-
-            sci->ADC_ID = tempWfData.ADCID;
-            int count = 0;
-
-            // Clear smart scope lines initially
-            clearSmartScopeLines();
-
-            while (true)
-            {
-                SinglePeakInfo peakInfo;
-
-                tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
-
-                int pp = tempWfData.Get_time();
-                peakInfo.amp = tempWfData.Get_Amplitude();
-                if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
+                
+                // Check if we should perform Prony fitting
+                if (action_Show_Prony_Fit && action_Show_Prony_Fit->isChecked() && 
+                    !action_Show_Filtered->isChecked() && 
+                    !action_Show_Fourier_Transform->isChecked() &&
+                    !m_histogramWindow)
                 {
-                    tempWfData.AssumeSmartScope();
-                    smartScopeLeft = tempWfData.GetLeftBoarder();
-                    smartScopeRight = tempWfData.GetRightBoarder();
-                    // Update smart scope lines
-                    updateSmartScopeLines(smartScopeLeft, smartScopeRight);
+                    // Create a copy for Prony fitting (as in original)
+                    ChannelEntry pronyWaveform = DFR.event_waveform;
+                    
+                    // Set up the waveform
+                    if (channels[currChannel])
+                    {
+                        pronyWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                        pronyWaveform.SetBoarders(channels[currChannel]->leftBoundary, 
+                                                channels[currChannel]->rightBoundary);
+                    }
+                    else
+                    {
+                        pronyWaveform.Set_Zero_Level_Area(60);
+                        pronyWaveform.SetBoarders(50, 100);
+                    }
+                    
+                    // Calculate zero level
+                    float zl = pronyWaveform.CalculateZlwithNoisePeaks(130);
+                    
+                    // Perform Prony fitting (original implementation)
+                    PronyFitResult pronyResult = pronyWaveform.PerformPronyFit();
+                    
+                    // Output results to terminal
+                    cout << "=== Prony Fitting Results ===" << endl;
+                    cout << "Event: " << currEvent << ", Channel: " << currChannel << endl;
+                    cout << "Signal begin: " << pronyResult.signal_begin << endl;
+                    cout << "Integral: " << pronyResult.integral << endl;
+                    cout << "Chi2: " << pronyResult.chi2 << endl;
+                    cout << "R2: " << pronyResult.r2 << endl;
+                    cout << "Harmonics:" << endl;
+                    cout << "  Constant: " << pronyResult.harmonics[0] << endl;
+                    cout << "  Harmonic 1: " << pronyResult.harmonics[1] << endl;
+                    cout << "  Harmonic 2: " << pronyResult.harmonics[2] << endl;
+                    cout << "=============================" << endl;
+                    
+                    // If we got valid harmonics, create the fit curve
+                    if (pronyResult.signal_begin > 0 && 
+                        pronyResult.harmonics[1] != 0 && 
+                        pronyResult.harmonics[2] != 0)
+                    {
+                        // Create positive waveform for fit reconstruction
+                        std::vector<float> positive_wf(size);
+                        for (int i = 0; i < size; i++) {
+                            positive_wf[i] = zl - DFR.event_waveform.wf[i];
+                        }
+                        
+                        int fGateBeg = pronyWaveform.GetLeftBoarder();
+                        int fGateEnd = pronyWaveform.GetRightBoarder();
+                        
+                        // Recreate PronyFitter to get fit curve
+                        PronyFitter pfitter(2, 2, fGateBeg, fGateEnd, size);
+                        pfitter.SetWaveform(positive_wf, 0.0f);
+                        pfitter.SetSignalBegin(pronyResult.signal_begin);
+                        pfitter.SetExternalHarmonics(pronyResult.harmonics[1], pronyResult.harmonics[2]);
+                        pfitter.CalculateFitAmplitudes();
+                        
+                        // Calculate fit values
+                        QVector<double> y_fit(size);
+                        for (int i = 0; i < size; ++i)
+                        {
+                            float fit_value = pfitter.GetFitValue(i);
+                            // Convert back to original coordinates: original = zl - positive_fit
+                            y_fit[i] = zl - fit_value;
+                        }
+                        
+                        // Plot the fit
+                        customPlot->graph(1)->setData(x, y_fit);
+                        customPlot->graph(1)->setPen(QPen(Qt::red, 2, Qt::SolidLine));
+                    }
+                    else
+                    {
+                        cout << "Prony fitting failed or no valid harmonics." << endl;
+                        customPlot->graph(1)->data()->clear();
+                    }
+                }
+                else
+                {
+                    // If Prony fit is not checked, clear graph(1)
+                    customPlot->graph(1)->data()->clear();
+                }
+            }
+
+            customPlot->yAxis->rescale();
+            customPlot->xAxis->rescale();
+            customPlot->replot();
+
+            ChannelEntry tempWfData = DFR.event_waveform;
+            // Calculate waveform parameters if histogram window is visible
+            if (m_histogramWindow && m_histogramWindow->isVisible() && tempWfData.wf.size() > 0)
+            {
+                PeaksInfo *sci = new PeaksInfo();
+                if (channels[currChannel])
+                {
+                    tempWfData.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                }
+                else
+                {
+                    tempWfData.Set_Zero_Level_Area(60);
+                }
+                sci->zl = tempWfData.CalculateZlwithNoisePeaks(130);
+                sci->zl_rms = tempWfData.Get_Zero_Level_RMS();
+
+                if (channels[currChannel])
+                {
+                    tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+                }
+                else
+                {
+                    tempWfData.SetBoarders(50, 100);
                 }
 
-                peakInfo.time = tempWfData.Get_time_gauss();
+                sci->ADC_ID = tempWfData.ADCID;
+                int count = 0;
 
-                peakInfo.charge = tempWfData.Get_Charge();
-                peakInfo.II = tempWfData.GetIntegralInfo();
-                if (peakInfo.amp < 500 && count > 0)
-                    break;
+                // Clear smart scope lines initially
+                clearSmartScopeLines();
 
-                sci->AddPeak(peakInfo);
-                if (WriteMode == "Single")
-                    break;
-                count++;
-                tempWfData.DeleteCurrentPeak();
+                while (true)
+                {
+                    SinglePeakInfo peakInfo;
+
+                    tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+
+                    int pp = tempWfData.Get_time();
+                    peakInfo.amp = tempWfData.Get_Amplitude();
+                    if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
+                    {
+                        tempWfData.AssumeSmartScope();
+                        smartScopeLeft = tempWfData.GetLeftBoarder();
+                        smartScopeRight = tempWfData.GetRightBoarder();
+                        // Update smart scope lines
+                        updateSmartScopeLines(smartScopeLeft, smartScopeRight);
+                    }
+
+                    peakInfo.time = tempWfData.Get_time_gauss();
+
+                    peakInfo.charge = tempWfData.Get_Charge();
+                    peakInfo.II = tempWfData.GetIntegralInfo();
+                    if (peakInfo.amp < 500 && count > 0)
+                        break;
+
+                    sci->AddPeak(peakInfo);
+                    if (WriteMode == "Single")
+                        break;
+                    count++;
+                    tempWfData.DeleteCurrentPeak();
+                }
+                // cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
+                m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time());
+                delete sci;
             }
-            cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
-            m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time());
-            delete sci;
         }
     }
 }
