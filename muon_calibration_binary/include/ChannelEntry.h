@@ -106,6 +106,7 @@ public:
     float GoToLevel(float Level);
     float LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0);
     PronyFitResult PerformPronyFit();
+    PronyFitResult PerformPronyFitWithOverrideHarmonics();
     void DeleteCurrentPeak();
     void SetBoarders(int32_t, int32_t);
     void FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time);

@@ -40,7 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->MultiplePeaksCheckBox, &QCheckBox::stateChanged, this, &MainWindow::on_MultiplePeaksCheckBox_stateChanged);
 
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
-
+    connect(customPlot, &QCustomPlot::mouseDoubleClick, this, &MainWindow::onPlotDoubleClick);
     for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
         channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0);
 
@@ -316,9 +316,11 @@ void MainWindow::UpdateGraph()
 
                     if (action_UseSmartScope->isChecked())
                         pronyWaveform.AssumeSmartScope();
-                    PronyFitResult pronyResult = pronyWaveform.PerformPronyFit();
+                    // PronyFitResult pronyResult = pronyWaveform.PerformPronyFit();
+                    PronyFitResult pronyResult = pronyWaveform.PerformPronyFitWithOverrideHarmonics();
                     cout << "=== Prony Fitting Results ===" << endl;
                     cout << "Event: " << currEvent << ", Channel: " << currChannel << endl;
+                    cout << "Baseline: " << zl << endl;
                     cout << "Signal begin: " << pronyResult.signal_begin << endl;
                     cout << "Integral: " << pronyResult.integral << endl;
                     cout << "Chi2: " << pronyResult.chi2 << endl;
@@ -527,6 +529,47 @@ void MainWindow::onMouseMove(QMouseEvent *event)
     double y = customPlot->yAxis->pixelToCoord(event->pos().y());
     currentX = x;
     coordinateLabel->setText(QString("X: %1, Y: %2").arg(x).arg(y));
+}
+
+// void MainWindow::onPlotDoubleClick(QMouseEvent *event)
+// {
+//     if (event->button() == Qt::LeftButton)
+//     {
+//         // // Reset both X and Y axes to their initial/default ranges
+//         // customPlot->xAxis->setRange(0, 2048);
+
+//         // // Calculate appropriate Y range based on waveform data if available
+//         // if (DFR.FileIsSet == 1 && !DFR.event_waveform.wf.empty())
+//         // {
+//         //     // Find min and max values in the current waveform
+//         //     auto minmax = std::minmax_element(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end());
+//         //     int32_t minVal = *minmax.first;
+//         //     int32_t maxVal = *minmax.second;
+
+//         //     // Add 10% padding to the range
+//         //     double padding = (maxVal - minVal) * 0.1;
+//         //     customPlot->yAxis->setRange(minVal - padding, maxVal + padding);
+//         // }
+//         // else
+//         // {
+//         //     // Default range if no waveform data
+//         //     customPlot->yAxis->setRange(-30000, 30000);
+//         // }
+
+//         // // Replot to apply changes
+//         customPlot->replot();
+//     }
+// }
+
+void MainWindow::onPlotDoubleClick(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        customPlot->xAxis->setRange(0, DFR.event_waveform.wf.size());
+        customPlot->yAxis->rescale();
+        customPlot->replot();
+        ReDrawBoundaries();
+    }
 }
 
 void MainWindow::ReDrawBoundaries()

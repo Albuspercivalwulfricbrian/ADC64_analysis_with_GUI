@@ -242,6 +242,51 @@ float ChannelEntry::GoToLevel(float Level)
     return 0.0f;
 }
 
+PronyFitResult ChannelEntry::PerformPronyFitWithOverrideHarmonics()
+{
+    PronyFitResult result = {};
+
+    if (amp == 0 || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
+        return result;
+
+    std::vector<float> positive_wf(wf.size());
+    for (size_t i = 0; i < wf.size(); i++)
+    {
+        positive_wf[i] = zl - (float)wf[i];
+    }
+
+    // Create PronyFitter on heap
+    PronyFitter *pfitter = new PronyFitter(2, 2, fGATE_BEG, fGATE_END);
+
+    pfitter->SetWaveform(positive_wf, 0.0f);
+    int SignalBeg = pfitter->CalcSignalBeginStraight();
+
+    if (SignalBeg < 0)
+        SignalBeg = 0;
+
+    pfitter->SetSignalBegin(SignalBeg + 2);
+
+    // OVERRIDE HARMONICS INSTEAD OF CALCULATING THEM
+    std::vector<std::complex<float>> override_harmonics = {
+        {0.85215f, 0.0f},  // Harmonic 2
+        {0.968537f, 0.0f}, // Harmonic 3
+    };
+
+    pfitter->SetExternalHarmonics(override_harmonics);
+
+    result.harmonics = override_harmonics;
+    result.fitter = pfitter;
+    result.signal_begin = SignalBeg;
+
+    pfitter->CalculateFitAmplitudes();
+
+    result.integral = pfitter->GetIntegral(fGATE_BEG, fGATE_END);
+    result.chi2 = pfitter->GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
+    result.r2 = pfitter->GetRSquare(fGATE_BEG, fGATE_END);
+
+    return result;
+}
+
 PronyFitResult ChannelEntry::PerformPronyFit()
 {
     PronyFitResult result = {};

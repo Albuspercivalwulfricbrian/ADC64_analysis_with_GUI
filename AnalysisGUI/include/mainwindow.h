@@ -51,6 +51,7 @@ private:
     int32_t xRightBoundary = 3000;
     int32_t smartScopeLeft = 0;  // Smart scope left boundary
     int32_t smartScopeRight = 0; // Smart scope right boundary
+
     QLabel *coordinateLabel = new QLabel();
     QLabel *FileNameLabel;
     Worker DFR;
@@ -99,6 +100,8 @@ private:
 private slots:
 
     void onMouseMove(QMouseEvent *event);
+    void onPlotDoubleClick(QMouseEvent *event);
+
     void keyPressEvent(QKeyEvent *event) override;
     void on_NextEventButton_clicked();
     void on_PreviousEventButton_clicked();

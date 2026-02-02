@@ -827,7 +827,7 @@ void PronyFitter::CalculateFitAmplitudesFast(int signal_length, std::complex<flo
   for (int sample_curr = 0; sample_curr < fSampleTotal; sample_curr++)
   {
     fit_ampl_in_sample = {0., 0.};
-    if ((sample_curr >= fSignalBegin) && (sample_curr <= fGateEnd))
+    if ((sample_curr > fSignalBegin) && (sample_curr <= fGateEnd))
     {
       for (int i = 0; i < fExpNumber + 1; i++)
       {
