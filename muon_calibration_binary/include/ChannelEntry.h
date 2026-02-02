@@ -1,17 +1,19 @@
 #ifndef CHANNEL_ENTRY_H
 #define CHANNEL_ENTRY_H
-// #include<TTree.h>
+
 #include <stdint.h>
 #include <math.h>
 #include <vector>
+#include <array>
+#include <complex>
 #include "PronyFitter.h"
-using namespace std;
+
 const int MAX_N_SAMPLES = 2048;
+constexpr size_t MAX_HARMONICS = 10; // Define maximum expected harmonics
 
 struct IntegralInfo
 {
     int32_t signal_length = 0;
-    // int32_t npeaks = 0;
     int32_t end_amplitude = 0;
     void Initialize();
 };
@@ -71,20 +73,20 @@ struct PronyFitResult
     float integral;
     float chi2;
     float r2;
-    double harmonics[3]; // For 2 harmonics + constant
+    std::vector<std::complex<float>> harmonics;
+    PronyFitter *fitter = nullptr;
     int signal_begin;
 };
-
 class ChannelEntry
 {
 public:
     int32_t ADCID = 0;
     int32_t channel = 0;
     int32_t wf_size;
-    vector<int32_t> wf;
+    std::vector<int32_t> wf;
 
 private:
-    vector<int32_t> dwf;
+    std::vector<int32_t> dwf;
     int32_t fZlLeft = 0;
     int32_t fZlRight = 200;
     float zl = 0;
@@ -97,13 +99,11 @@ private:
 
 public:
     void GetWfSize();
-    // static TString GetChName(int32_t channel_num);
     void Initialize();
     void SplineWf();
     void CalculateDiffWf();
     void AssumeSmartScope();
     float GoToLevel(float Level);
-    
     float LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0);
     PronyFitResult PerformPronyFit();
     void DeleteCurrentPeak();
@@ -123,7 +123,6 @@ public:
     float Get_time_gauss();
     uint32_t Get_Amplitude();
     IntegralInfo GetIntegralInfo();
-    // void FillWf(int32_t *Ewf);
     void InvertSignal();
 };
 

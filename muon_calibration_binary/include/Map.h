@@ -62,7 +62,7 @@ namespace MAP_H
             for (int32_t j = 0; j < 3; j++)
                 Map[i][j] = 0;
         }
-        cout << mapxy.size() << endl;
+        // cout << mapxy.size() << endl;
         for (int32_t i = 0; i < mapxy.size(); i++)
         {
             int32_t xx = mapxy[i][0];
@@ -75,10 +75,10 @@ namespace MAP_H
                 Map[chch][0] = xx;
                 Map[chch][1] = yy;
                 Map[chch][2] = zz;
-                if (yy == 1)
-                    std::cout << "X = " << xx << "; Y = " << yy << "; Z =  " << zz << "; Ch = " << chch << " : ";
+                // if (yy == 1)
+                // std::cout << "X = " << xx << "; Y = " << yy << "; Z =  " << zz << "; Ch = " << chch << " : ";
             }
-            std::cout << std::endl;
+            // std::cout << std::endl;
         }
     }
 }

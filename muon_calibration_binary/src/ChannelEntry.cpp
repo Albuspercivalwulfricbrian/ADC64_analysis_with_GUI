@@ -4,14 +4,16 @@
 #include <cstring>
 #include <cmath>
 #include <limits>
+#include <algorithm>
+
 using namespace std;
 
 void IntegralInfo::Initialize()
 {
     signal_length = 0;
-    // npeaks = 0;
     end_amplitude = 0;
 }
+
 void short_energy_ChannelEntry::Initialize()
 {
     charge = 0.;
@@ -45,10 +47,12 @@ void PeaksInfo::ResetVector()
 {
     peaks = {};
 }
+
 int PeaksInfo::GetCurrentSize()
 {
     return peaks.size();
 }
+
 void PeaksInfo::AddPeak(const SinglePeakInfo &peak)
 {
     peaks.push_back(peak);
@@ -98,7 +102,7 @@ void ChannelEntry::Initialize()
 
 void ChannelEntry::GetWfSize() { wf_size = wf.size(); }
 
-void ChannelEntry::SplineWf() //! Smoothing waveform
+void ChannelEntry::SplineWf()
 {
     vector<float> wf1;
     const int32_t SplineWidth = 2;
@@ -129,6 +133,7 @@ int32_t ChannelEntry::PointAmpl(int32_t i)
     int32_t v = zl - wf[i];
     return v;
 }
+
 int32_t ChannelEntry::CountCoincidencePeaks(int32_t threshold1, int32_t threshold2)
 {
     int32_t nCoincidencePeaks = 0;
@@ -148,7 +153,7 @@ int32_t ChannelEntry::CountCoincidencePeaks(int32_t threshold1, int32_t threshol
     return nCoincidencePeaks;
 }
 
-void ChannelEntry::CalculateDiffWf() //! differentiate waveform
+void ChannelEntry::CalculateDiffWf()
 {
     const float Diff_window = 4;
     dwf.clear();
@@ -164,14 +169,13 @@ void ChannelEntry::CalculateDiffWf() //! differentiate waveform
     }
 }
 
-float ChannelEntry::CalculateZlwithNoisePeaks(int a) //! Calculating base line level without large noise burst taken into account
+float ChannelEntry::CalculateZlwithNoisePeaks(int a)
 {
     CalculateDiffWf();
     float sum = 0;
     float counter = 0;
     for (int s = fZlLeft + 1; s < fZlRight; ++s)
     {
-
         if (abs(dwf[s]) < a && abs(dwf[s - 1]) < a && abs(dwf[s + 1]) < a)
         {
             sum += wf[s];
@@ -182,7 +186,7 @@ float ChannelEntry::CalculateZlwithNoisePeaks(int a) //! Calculating base line l
     return zl;
 }
 
-void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
+void ChannelEntry::AssumeSmartScope()
 {
     fGATE_BEG = peak_position;
     fGATE_END = peak_position;
@@ -214,13 +218,12 @@ void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
 float ChannelEntry::LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0)
 {
     if (Y1 == Y2)
-        return X1; // Avoid division by zero
+        return X1;
     return (X1 * Y0 - X1 * Y2 - X2 * Y0 + X2 * Y1) / (Y1 - Y2);
 }
 
 float ChannelEntry::GoToLevel(float Level)
 {
-    // Start from peak_position (deepest point in inverted waveform)
     int point = peak_position;
     float targetADC = zl - Level * amp;
 
@@ -234,81 +237,52 @@ float ChannelEntry::GoToLevel(float Level)
             return LevelBy2Points(static_cast<float>(point), currentValue,
                                   static_cast<float>(point - 1), prevValue, targetADC);
         }
-
         point--;
     }
-
-    // If we get here, level wasn't found
     return 0.0f;
 }
 
 PronyFitResult ChannelEntry::PerformPronyFit()
 {
     PronyFitResult result = {};
-    
-    if (wf.empty() || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
+
+    if (amp == 0 || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
         return result;
 
-    // Get peak on ORIGINAL waveform
-    Get_time();
-    if (amp == 0) return result;
-
-    // Create positive waveform as float vector
     std::vector<float> positive_wf(wf.size());
-    for (size_t i = 0; i < wf.size(); i++) {
+    for (size_t i = 0; i < wf.size(); i++)
+    {
         positive_wf[i] = zl - (float)wf[i];
     }
 
-    // Implement GoToLevel for POSITIVE waveform
-    auto GoToLevelPositive = [&](float Level) -> float {
-        float target = Level * amp;
-        int point = peak_position;
-        
-        while (point > fGATE_BEG) {
-            float current = positive_wf[point];
-            float prev = positive_wf[point - 1];
-            
-            if ((target - current) * (target - prev) <= 0) {
-                // Linear interpolation
-                return point + (target - current) / (prev - current);
-            }
-            point--;
-        }
-        return 0.0f;
-    };
+    // Create PronyFitter on heap
+    PronyFitter *pfitter = new PronyFitter(5, 4, fGATE_BEG, fGATE_END);
+    // std::cout << fGATE_BEG << " " << fGATE_END << endl;
+    pfitter->SetWaveform(positive_wf, 0.0f);
+    // pfitter->SetDebugMode(1);
+    int SignalBeg = pfitter->CalcSignalBeginStraight();
 
-    // Get front times
-    float front_30 = GoToLevelPositive(0.3f);
-    float front_90 = GoToLevelPositive(0.9f);
-    std::cout << "===" << endl;
-    std::cout << "Fronts: " << front_30 << " " << front_90 << endl;
-    PronyFitter Pfitter(2, 2, fGATE_BEG, fGATE_END, wf.size());
-    Pfitter.SetWaveform(positive_wf, 0.0f);  // Use new float vector version
+    if (SignalBeg < 0)
+        SignalBeg = 0;
 
-    // Calculate signal begin
-    int SignalBeg = Pfitter.CalcSignalBegin(front_30, front_90);
-    
-    if (SignalBeg < 0) SignalBeg = 0;
+    pfitter->SetSignalBegin(SignalBeg);
+    pfitter->CalculateFitHarmonics();
 
-    Pfitter.SetSignalBegin(SignalBeg);
-    Pfitter.CalculateFitHarmonics();
-    
-    Double_t* harmonics = Pfitter.GetHarmonics();
-    // if (harmonics && harmonics[1] > 0 && harmonics[1] < 1 && 
-    //                  harmonics[2] > 0 && harmonics[2] < 1)
-    // {
-        Pfitter.CalculateFitAmplitudes();
-        
-        result.harmonics[0] = harmonics[0];
-        result.harmonics[1] = harmonics[1];
-        result.harmonics[2] = harmonics[2];
-        result.signal_begin = SignalBeg;
-        
-        // Calculate fit metrics
-        result.integral = Pfitter.GetIntegral(fGATE_BEG, fGATE_END);
-        result.chi2 = Pfitter.GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
-        result.r2 = Pfitter.GetRSquare(fGATE_BEG, fGATE_END);
-    // }
+    std::complex<float> *harmonics = pfitter->GetHarmonics();
+    int num_harmonics = pfitter->GetNumberOfHarmonics();
+
+    if (harmonics && num_harmonics > 0)
+    {
+        result.harmonics.assign(harmonics, harmonics + num_harmonics);
+    }
+    result.fitter = pfitter;
+    result.signal_begin = SignalBeg;
+
+    pfitter->CalculateFitAmplitudes();
+
+    result.integral = pfitter->GetIntegral(fGATE_BEG, fGATE_END);
+    result.chi2 = pfitter->GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
+    result.r2 = pfitter->GetRSquare(fGATE_BEG, fGATE_END);
 
     return result;
 }
@@ -332,11 +306,12 @@ void ChannelEntry::DeleteCurrentPeak()
     }
 }
 
-void ChannelEntry::SetBoarders(int32_t BEG, int32_t END) //! Setting boarders for event waveform analysis
+void ChannelEntry::SetBoarders(int32_t BEG, int32_t END)
 {
     fGATE_BEG = BEG;
     fGATE_END = END;
 }
+
 void ChannelEntry::FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time)
 {
     for (int32_t s = fGATE_BEG; s < fGATE_END; ++s)
@@ -355,7 +330,7 @@ void ChannelEntry::FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t 
     }
 }
 
-void ChannelEntry::Set_Zero_Level_Area(int32_t i) //! Setting Area for base line level calculation
+void ChannelEntry::Set_Zero_Level_Area(int32_t i)
 {
     fZlLeft = 0;
     fZlRight = i;
@@ -397,6 +372,7 @@ float ChannelEntry::Get_Zero_Level()
     }
     return zero_lvl;
 }
+
 float ChannelEntry::Get_Zero_Level_RMS()
 {
     const int32_t interv_num = 1;
@@ -432,14 +408,12 @@ float ChannelEntry::Get_Zero_Level_RMS()
 float ChannelEntry::Get_Charge()
 {
     float gateInteg = 0;
+    for (int s = fGATE_BEG; s <= fGATE_END; ++s)
     {
-        for (int s = fGATE_BEG; s <= fGATE_END; ++s)
-        {
-            gateInteg += ((float)zl - (float)wf[s]);
-        }
-        II.signal_length = fGATE_END - fGATE_BEG;
-        II.end_amplitude = (float)zl - (float)wf[fGATE_END];
+        gateInteg += ((float)zl - (float)wf[s]);
     }
+    II.signal_length = fGATE_END - fGATE_BEG;
+    II.end_amplitude = (float)zl - (float)wf[fGATE_END];
 
     return gateInteg;
 }
@@ -449,14 +423,12 @@ IntegralInfo ChannelEntry::GetIntegralInfo()
     return II;
 }
 
-int32_t ChannelEntry::Get_time() //! this time is the number of peak point of waveform
+int32_t ChannelEntry::Get_time()
 {
     amp = 0;
     peak_position = 0;
     if (wf.size() == 0)
     {
-        // amp = 0;
-        // peak_position = 0;
         return peak_position;
     }
     for (int s = fGATE_BEG; s < fGATE_END; ++s)
@@ -470,7 +442,8 @@ int32_t ChannelEntry::Get_time() //! this time is the number of peak point of wa
     }
     return peak_position;
 }
-float ChannelEntry::Get_time_gauss() //! average time of event waveform
+
+float ChannelEntry::Get_time_gauss()
 {
     if (wf.size() == 0)
         return 0;
@@ -488,7 +461,7 @@ float ChannelEntry::Get_time_gauss() //! average time of event waveform
     peak_search /= ampl_sum;
     return 16.0 * peak_search;
 }
-////////////
+
 uint32_t ChannelEntry::Get_Amplitude()
 {
     return (uint32_t)amp;

@@ -126,11 +126,11 @@ MainWindow::MainWindow(QWidget *parent)
             { xRightBoundary = obj.toInt(); ReDrawBoundaries(); });
 
     connect(action_Show_Histogram, &QAction::triggered, this, &MainWindow::on_action_Show_Histogram_triggered);
-// Add these connections in MainWindow constructor after other action connections:
+    // Add these connections in MainWindow constructor after other action connections:
 
-// Prony fit action connection
-connect(action_Show_Prony_Fit, &QAction::toggled, this, [this](bool checked)
-        {
+    // Prony fit action connection
+    connect(action_Show_Prony_Fit, &QAction::toggled, this, [this](bool checked)
+            {
             if (checked) 
             {
                 // Uncheck conflicting actions
@@ -141,12 +141,11 @@ connect(action_Show_Prony_Fit, &QAction::toggled, this, [this](bool checked)
                 {
                     UpdateGraph();
                 }
-            }
-        });
+            } });
 
-// Ensure Prony fit is unchecked when other modes are enabled
-connect(action_Show_Filtered, &QAction::toggled, this, [this](bool checked)
-        {
+    // Ensure Prony fit is unchecked when other modes are enabled
+    connect(action_Show_Filtered, &QAction::toggled, this, [this](bool checked)
+            {
             if (checked) 
             {
                 action_Show_Prony_Fit->setChecked(false);
@@ -154,11 +153,10 @@ connect(action_Show_Filtered, &QAction::toggled, this, [this](bool checked)
                 {
                     UpdateGraph();
                 }
-            }
-        });
+            } });
 
-connect(action_Show_Fourier_Transform, &QAction::toggled, this, [this](bool checked)
-        {
+    connect(action_Show_Fourier_Transform, &QAction::toggled, this, [this](bool checked)
+            {
             if (checked) 
             {
                 action_Show_Prony_Fit->setChecked(false);
@@ -167,8 +165,7 @@ connect(action_Show_Fourier_Transform, &QAction::toggled, this, [this](bool chec
                 {
                     UpdateGraph();
                 }
-            }
-        });
+            } });
 
     if (!action_Event_Filter)
     {
@@ -291,36 +288,35 @@ void MainWindow::UpdateGraph()
             {
                 // Clear filtered graph initially
                 customPlot->graph(1)->data()->clear();
-                
+
                 // Check if we should perform Prony fitting
-                if (action_Show_Prony_Fit && action_Show_Prony_Fit->isChecked() && 
-                    !action_Show_Filtered->isChecked() && 
+                if (action_Show_Prony_Fit && action_Show_Prony_Fit->isChecked() &&
+                    !action_Show_Filtered->isChecked() &&
                     !action_Show_Fourier_Transform->isChecked() &&
                     !m_histogramWindow)
                 {
                     // Create a copy for Prony fitting (as in original)
                     ChannelEntry pronyWaveform = DFR.event_waveform;
-                    
+
                     // Set up the waveform
                     if (channels[currChannel])
                     {
                         pronyWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
-                        pronyWaveform.SetBoarders(channels[currChannel]->leftBoundary, 
-                                                channels[currChannel]->rightBoundary);
+                        pronyWaveform.SetBoarders(channels[currChannel]->leftBoundary,
+                                                  channels[currChannel]->rightBoundary);
                     }
                     else
                     {
                         pronyWaveform.Set_Zero_Level_Area(60);
                         pronyWaveform.SetBoarders(50, 100);
                     }
-                    
-                    // Calculate zero level
-                    float zl = pronyWaveform.CalculateZlwithNoisePeaks(130);
-                    
-                    // Perform Prony fitting (original implementation)
+
+                    float zl = pronyWaveform.CalculateZlwithNoisePeaks(160);
+                    pronyWaveform.Get_time();
+
+                    if (action_UseSmartScope->isChecked())
+                        pronyWaveform.AssumeSmartScope();
                     PronyFitResult pronyResult = pronyWaveform.PerformPronyFit();
-                    
-                    // Output results to terminal
                     cout << "=== Prony Fitting Results ===" << endl;
                     cout << "Event: " << currEvent << ", Channel: " << currChannel << endl;
                     cout << "Signal begin: " << pronyResult.signal_begin << endl;
@@ -328,49 +324,40 @@ void MainWindow::UpdateGraph()
                     cout << "Chi2: " << pronyResult.chi2 << endl;
                     cout << "R2: " << pronyResult.r2 << endl;
                     cout << "Harmonics:" << endl;
-                    cout << "  Constant: " << pronyResult.harmonics[0] << endl;
-                    cout << "  Harmonic 1: " << pronyResult.harmonics[1] << endl;
-                    cout << "  Harmonic 2: " << pronyResult.harmonics[2] << endl;
-                    cout << "=============================" << endl;
-                    
-                    // If we got valid harmonics, create the fit curve
-                    if (pronyResult.signal_begin > 0 && 
-                        pronyResult.harmonics[1] != 0 && 
-                        pronyResult.harmonics[2] != 0)
+
+                    for (size_t i = 0; i < pronyResult.harmonics.size(); i++)
                     {
-                        // Create positive waveform for fit reconstruction
-                        std::vector<float> positive_wf(size);
-                        for (int i = 0; i < size; i++) {
-                            positive_wf[i] = zl - DFR.event_waveform.wf[i];
-                        }
-                        
-                        int fGateBeg = pronyWaveform.GetLeftBoarder();
-                        int fGateEnd = pronyWaveform.GetRightBoarder();
-                        
-                        // Recreate PronyFitter to get fit curve
-                        PronyFitter pfitter(2, 2, fGateBeg, fGateEnd, size);
-                        pfitter.SetWaveform(positive_wf, 0.0f);
-                        pfitter.SetSignalBegin(pronyResult.signal_begin);
-                        pfitter.SetExternalHarmonics(pronyResult.harmonics[1], pronyResult.harmonics[2]);
-                        pfitter.CalculateFitAmplitudes();
-                        
-                        // Calculate fit values
+                        cout << "  Harmonic " << i << ": " << pronyResult.harmonics[i] << endl;
+                    }
+                    cout << "=============================" << endl;
+
+                    // If we got valid harmonics, create the fit curve
+                    if (pronyResult.signal_begin > 0 && pronyResult.fitter)
+                    {
+                        // Use the fitter from the result
                         QVector<double> y_fit(size);
                         for (int i = 0; i < size; ++i)
                         {
-                            float fit_value = pfitter.GetFitValue(i);
-                            // Convert back to original coordinates: original = zl - positive_fit
+                            float fit_value = pronyResult.fitter->GetFitValue(i);
                             y_fit[i] = zl - fit_value;
                         }
-                        
-                        // Plot the fit
+
                         customPlot->graph(1)->setData(x, y_fit);
                         customPlot->graph(1)->setPen(QPen(Qt::red, 2, Qt::SolidLine));
+
+                        // Clean up the fitter
+                        delete pronyResult.fitter;
                     }
                     else
                     {
                         cout << "Prony fitting failed or no valid harmonics." << endl;
                         customPlot->graph(1)->data()->clear();
+
+                        // Clean up if fitter exists but signal begin is invalid
+                        if (pronyResult.fitter)
+                        {
+                            delete pronyResult.fitter;
+                        }
                     }
                 }
                 else
