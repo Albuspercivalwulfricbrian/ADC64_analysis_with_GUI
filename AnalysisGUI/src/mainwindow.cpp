@@ -329,7 +329,7 @@ void MainWindow::UpdateGraph()
 
                     for (size_t i = 0; i < pronyResult.harmonics.size(); i++)
                     {
-                        cout << "  Harmonic " << i << ": " << pronyResult.harmonics[i] << endl;
+                        cout << "  Harmonic " << i << ": " << pronyResult.harmonics[i] << " Amplitude: " << pronyResult.amplitudes[i] << endl;
                     }
                     cout << "=============================" << endl;
 

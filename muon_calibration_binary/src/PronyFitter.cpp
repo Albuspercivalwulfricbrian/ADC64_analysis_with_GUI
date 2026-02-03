@@ -123,7 +123,7 @@ int PronyFitter::CalcSignalBeginStraight()
   int timeMax = (int)std::distance(fWfm.begin(), max_iter);
 
   float trsh_03 = fZeroLevel + Amplitude * 0.3;
-  float trsh_09 = fZeroLevel + Amplitude * 0.9;
+  float trsh_09 = fZeroLevel + Amplitude * 0.6;
 
   int point = timeMax;
   float front_time_beg_03 = GoToLevel(trsh_03, point, -1, fSampleTotal);
@@ -131,7 +131,8 @@ int PronyFitter::CalcSignalBeginStraight()
   point = timeMax;
   float front_time_end = GoToLevel(trsh_09, point, -1, fSampleTotal);
 
-  return std::ceil((3 * front_time_beg_03 - front_time_end) / 2.);
+  // return std::ceil((3 * front_time_beg_03 - front_time_end) / 2.);
+  return std::ceil((2 * front_time_beg_03 - front_time_end));
 }
 
 void PronyFitter::SetSignalBegin(int SignalBeg)
@@ -719,6 +720,7 @@ void PronyFitter::CalculateFitAmplitudes()
     z_power[i] = unit;
 
   std::complex<float> fit_ampl_in_sample = {0., 0.};
+  fh[0] = {0.0f, 0.0f};
   fFitZeroLevel = std::real(fh[0]);
   for (int sample_curr = 0; sample_curr < fSampleTotal; sample_curr++)
   {

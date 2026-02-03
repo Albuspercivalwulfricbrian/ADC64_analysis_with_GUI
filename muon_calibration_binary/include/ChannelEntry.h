@@ -74,6 +74,8 @@ struct PronyFitResult
     float chi2;
     float r2;
     std::vector<std::complex<float>> harmonics;
+    std::vector<std::complex<float>> amplitudes;
+
     PronyFitter *fitter = nullptr;
     int signal_begin;
 };
@@ -95,7 +97,7 @@ private:
     int32_t peak_position = 0;
     int32_t fGATE_BEG = 1000000;
     int32_t fGATE_END = -1000000;
-    float cutoff_level = 0.02;
+    float cutoff_level = 0.1;
 
 public:
     void GetWfSize();
@@ -112,11 +114,12 @@ public:
     void FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time);
     void Set_Zero_Level(int);
     void Set_Zero_Level_Area(int32_t i);
+    float CalculateZlwithNoisePeaks(int);
+
     int32_t CountCoincidencePeaks(int32_t, int32_t);
     int32_t PointAmpl(int32_t);
     int32_t GetLeftBoarder();
     int32_t GetRightBoarder();
-    float CalculateZlwithNoisePeaks(int);
     float Get_Zero_Level();
     float Get_Zero_Level_RMS();
     float Get_Charge();

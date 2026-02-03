@@ -266,19 +266,35 @@ PronyFitResult ChannelEntry::PerformPronyFitWithOverrideHarmonics()
 
     pfitter->SetSignalBegin(SignalBeg + 2);
 
-    // OVERRIDE HARMONICS INSTEAD OF CALCULATING THEM
+    // OVERRIDE HARMONICS - NO DC TERM, SetExternalHarmonics adds it internally
     std::vector<std::complex<float>> override_harmonics = {
-        {0.85215f, 0.0f},  // Harmonic 2
-        {0.968537f, 0.0f}, // Harmonic 3
+        {0.881099f, 0.0f},  // This will be harmonic 1
+        {0.9617225f, 0.0f}, // This will be harmonic 2
     };
 
     pfitter->SetExternalHarmonics(override_harmonics);
 
-    result.harmonics = override_harmonics;
+    // Store harmonics in result (SetExternalHarmonics already added DC)
+    std::complex<float> *all_harmonics = pfitter->GetHarmonics();
+    int num_harmonics = pfitter->GetNumberOfHarmonics(); // Should return 3
+
+    if (all_harmonics && num_harmonics > 0)
+    {
+        result.harmonics.assign(all_harmonics, all_harmonics + num_harmonics);
+    }
+
     result.fitter = pfitter;
     result.signal_begin = SignalBeg;
 
     pfitter->CalculateFitAmplitudes();
+
+    // Get amplitudes and store them
+    std::complex<float> *amplitudes = pfitter->GetAmplitudes();
+
+    if (amplitudes && num_harmonics > 0)
+    {
+        result.amplitudes.assign(amplitudes, amplitudes + num_harmonics);
+    }
 
     result.integral = pfitter->GetIntegral(fGATE_BEG, fGATE_END);
     result.chi2 = pfitter->GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
@@ -301,7 +317,7 @@ PronyFitResult ChannelEntry::PerformPronyFit()
     }
 
     // Create PronyFitter on heap
-    PronyFitter *pfitter = new PronyFitter(5, 4, fGATE_BEG, fGATE_END);
+    PronyFitter *pfitter = new PronyFitter(5, 3, fGATE_BEG, fGATE_END);
     // std::cout << fGATE_BEG << " " << fGATE_END << endl;
     pfitter->SetWaveform(positive_wf, 0.0f);
     // pfitter->SetDebugMode(1);
@@ -310,7 +326,7 @@ PronyFitResult ChannelEntry::PerformPronyFit()
     if (SignalBeg < 0)
         SignalBeg = 0;
 
-    pfitter->SetSignalBegin(SignalBeg);
+    pfitter->SetSignalBegin(SignalBeg + 2);
     pfitter->CalculateFitHarmonics();
 
     std::complex<float> *harmonics = pfitter->GetHarmonics();
@@ -324,6 +340,10 @@ PronyFitResult ChannelEntry::PerformPronyFit()
     result.signal_begin = SignalBeg;
 
     pfitter->CalculateFitAmplitudes();
+    std::complex<float> *amplitudes = pfitter->GetAmplitudes();
+
+    if (amplitudes && num_harmonics > 0)
+        result.amplitudes.assign(amplitudes, amplitudes + num_harmonics);
 
     result.integral = pfitter->GetIntegral(fGATE_BEG, fGATE_END);
     result.chi2 = pfitter->GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
