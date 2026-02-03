@@ -7,6 +7,7 @@
 #include "DataFileReader.h"
 #include "thread"
 #include "FourierFilter.h"
+#include "DischargeFitter.h"
 #include <QScrollArea>
 #include "HistogramWindow.h"
 #include "EventFilterWidget.h"
@@ -294,74 +295,132 @@ void MainWindow::UpdateGraph()
                     !action_Show_Filtered->isChecked() &&
                     !action_Show_Fourier_Transform->isChecked() &&
                     !m_histogramWindow)
-                {
-                    // Create a copy for Prony fitting (as in original)
-                    ChannelEntry pronyWaveform = DFR.event_waveform;
+                // {
+                //     // Create a copy for Prony fitting (as in original)
+                //     ChannelEntry pronyWaveform = DFR.event_waveform;
 
-                    // Set up the waveform
+                //     // Set up the waveform
+                //     if (channels[currChannel])
+                //     {
+                //         pronyWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                //         pronyWaveform.SetBoarders(channels[currChannel]->leftBoundary,
+                //                                   channels[currChannel]->rightBoundary);
+                //     }
+                //     else
+                //     {
+                //         pronyWaveform.Set_Zero_Level_Area(60);
+                //         pronyWaveform.SetBoarders(50, 100);
+                //     }
+
+                //     float zl = pronyWaveform.CalculateZlwithNoisePeaks(160);
+                //     pronyWaveform.Get_time();
+
+                //     if (action_UseSmartScope->isChecked())
+                //         pronyWaveform.AssumeSmartScope();
+                //     // PronyFitResult pronyResult = pronyWaveform.PerformPronyFit();
+                //     PronyFitResult pronyResult = pronyWaveform.PerformPronyFitWithOverrideHarmonics();
+                //     cout << "=== Prony Fitting Results ===" << endl;
+                //     cout << "Event: " << currEvent << ", Channel: " << currChannel << endl;
+                //     cout << "Baseline: " << zl << endl;
+                //     cout << "Signal begin: " << pronyResult.signal_begin << endl;
+                //     cout << "Integral: " << pronyResult.integral << endl;
+                //     cout << "Chi2: " << pronyResult.chi2 << endl;
+                //     cout << "R2: " << pronyResult.r2 << endl;
+                //     cout << "Harmonics:" << endl;
+
+                //     for (size_t i = 0; i < pronyResult.harmonics.size(); i++)
+                //     {
+                //         cout << "  Harmonic " << i << ": " << pronyResult.harmonics[i] << " Amplitude: " << pronyResult.amplitudes[i] << endl;
+                //     }
+                //     cout << "=============================" << endl;
+
+                //     // If we got valid harmonics, create the fit curve
+                //     if (pronyResult.signal_begin > 0 && pronyResult.fitter)
+                //     {
+                //         // Use the fitter from the result
+                //         QVector<double> y_fit(size);
+                //         for (int i = 0; i < size; ++i)
+                //         {
+                //             float fit_value = pronyResult.fitter->GetFitValue(i);
+                //             y_fit[i] = zl - fit_value;
+                //         }
+
+                //         customPlot->graph(1)->setData(x, y_fit);
+                //         customPlot->graph(1)->setPen(QPen(Qt::red, 2, Qt::SolidLine));
+
+                //         // Clean up the fitter
+                //         delete pronyResult.fitter;
+                //     }
+                //     else
+                //     {
+                //         cout << "Prony fitting failed or no valid harmonics." << endl;
+                //         customPlot->graph(1)->data()->clear();
+
+                //         // Clean up if fitter exists but signal begin is invalid
+                //         if (pronyResult.fitter)
+                //         {
+                //             delete pronyResult.fitter;
+                //         }
+                //     }
+                // }
+
+                // Replace Prony fitting section with Discharge fitting:
+
+                {
+                    ChannelEntry poleWaveform = DFR.event_waveform;
+
                     if (channels[currChannel])
                     {
-                        pronyWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
-                        pronyWaveform.SetBoarders(channels[currChannel]->leftBoundary,
-                                                  channels[currChannel]->rightBoundary);
+                        poleWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                        poleWaveform.SetBoarders(channels[currChannel]->leftBoundary,
+                                                 channels[currChannel]->rightBoundary);
                     }
                     else
                     {
-                        pronyWaveform.Set_Zero_Level_Area(60);
-                        pronyWaveform.SetBoarders(50, 100);
+                        poleWaveform.Set_Zero_Level_Area(60);
+                        poleWaveform.SetBoarders(50, 100);
                     }
 
-                    float zl = pronyWaveform.CalculateZlwithNoisePeaks(160);
-                    pronyWaveform.Get_time();
+                    float zl = poleWaveform.CalculateZlwithNoisePeaks(160);
+                    poleWaveform.Get_time();
 
                     if (action_UseSmartScope->isChecked())
-                        pronyWaveform.AssumeSmartScope();
-                    // PronyFitResult pronyResult = pronyWaveform.PerformPronyFit();
-                    PronyFitResult pronyResult = pronyWaveform.PerformPronyFitWithOverrideHarmonics();
-                    cout << "=== Prony Fitting Results ===" << endl;
-                    cout << "Event: " << currEvent << ", Channel: " << currChannel << endl;
-                    cout << "Baseline: " << zl << endl;
-                    cout << "Signal begin: " << pronyResult.signal_begin << endl;
-                    cout << "Integral: " << pronyResult.integral << endl;
-                    cout << "Chi2: " << pronyResult.chi2 << endl;
-                    cout << "R2: " << pronyResult.r2 << endl;
-                    cout << "Harmonics:" << endl;
+                        poleWaveform.AssumeSmartScope();
 
-                    for (size_t i = 0; i < pronyResult.harmonics.size(); i++)
+                    std::vector<float> positive_wf(poleWaveform.wf.size());
+                    for (size_t i = 0; i < poleWaveform.wf.size(); i++)
                     {
-                        cout << "  Harmonic " << i << ": " << pronyResult.harmonics[i] << " Amplitude: " << pronyResult.amplitudes[i] << endl;
+                        positive_wf[i] = zl - (float)poleWaveform.wf[i];
                     }
-                    cout << "=============================" << endl;
 
-                    // If we got valid harmonics, create the fit curve
-                    if (pronyResult.signal_begin > 0 && pronyResult.fitter)
+                    DischargeFitter disFitter(poleWaveform.GetLeftBoarder(),
+                                              poleWaveform.GetRightBoarder());
+
+                    // Set reasonable bounds based on your detector
+                    disFitter.SetTauBounds(0.1f, 20.0f,    // τ_c range (fast, samples)
+                                           10.0f, 200.0f); // τ_e range (slow, samples)
+
+                    disFitter.SetWaveform(positive_wf, 0.0f);
+                    disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 2);
+                    disFitter.Fit();
+
+                    QVector<double> y_fit(size);
+                    for (int i = 0; i < size; ++i)
                     {
-                        // Use the fitter from the result
-                        QVector<double> y_fit(size);
-                        for (int i = 0; i < size; ++i)
-                        {
-                            float fit_value = pronyResult.fitter->GetFitValue(i);
-                            y_fit[i] = zl - fit_value;
-                        }
-
-                        customPlot->graph(1)->setData(x, y_fit);
-                        customPlot->graph(1)->setPen(QPen(Qt::red, 2, Qt::SolidLine));
-
-                        // Clean up the fitter
-                        delete pronyResult.fitter;
+                        float fit_value = disFitter.GetFitValue(i);
+                        y_fit[i] = zl - fit_value; // Convert back to original scale
                     }
-                    else
-                    {
-                        cout << "Prony fitting failed or no valid harmonics." << endl;
-                        customPlot->graph(1)->data()->clear();
 
-                        // Clean up if fitter exists but signal begin is invalid
-                        if (pronyResult.fitter)
-                        {
-                            delete pronyResult.fitter;
-                        }
-                    }
+                    customPlot->graph(1)->setData(x, y_fit);
+                    customPlot->graph(1)->setPen(QPen(Qt::magenta, 2, Qt::SolidLine));
+
+                    cout << "Discharge Fit: A=" << disFitter.GetAmplitude()
+                         << ", τ_c=" << disFitter.GetTauC()
+                         << ", τ_e=" << disFitter.GetTauE()
+                         << ", χ²=" << disFitter.GetChiSquare()
+                         << ", R²=" << 1. - disFitter.GetRSquare() << endl;
                 }
+
                 else
                 {
                     // If Prony fit is not checked, clear graph(1)
