@@ -1,64 +1,73 @@
-#ifndef DischargeFitter_H
-#define DischargeFitter_H
+#ifndef DISCHARGEFITTER_H
+#define DISCHARGEFITTER_H
 
 #include <vector>
-#include <complex>
 #include <map>
 #include <utility>
 
 class DischargeFitter
 {
 private:
-    std::vector<float> fWfm;
-    float fZeroLevel;
-    int fSignalBegin;
     int fGateBeg;
     int fGateEnd;
+    int fSignalBegin;
 
-    // Fitted parameters
-    float fAmplitude; // This now represents PEAK amplitude
+    float fTauCMin;
+    float fTauCMax;
+    float fTauEMin;
+    float fTauEMax;
+
+    float fAmplitude;
     float fTauC;
     float fTauE;
     float fChi2;
     float fR2;
 
-    // Fitted waveform
+    float fZeroLevel;
+    std::vector<float> fWfm;
     std::vector<float> fFitWfm;
 
-    // Bounds
-    float fTauCMin, fTauCMax;
-    float fTauEMin, fTauEMax;
+    // Simple cache for FindPeakValue (much faster than map)
+    static const int CACHE_SIZE = 64;
+    float fTauCCache[CACHE_SIZE];
+    float fTauECache[CACHE_SIZE];
+    float fPeakCache[CACHE_SIZE];
+    int fCacheIndex;
 
-    // Cache for peak normalization
-    mutable std::map<std::pair<float, float>, float> fPeakCache;
-
-    // Internal functions
-    float DischargeValue(float t, float A_peak, float tau_c, float tau_e);
     float DischargeValueRaw(float t, float A_prefactor, float tau_c, float tau_e);
     float FindPeakValue(float tau_c, float tau_e);
     void CalculateInitialGuesses();
+
+    float DischargeValueDerivativeA(float t, float A, float tau_c, float tau_e);
+    float DischargeValueDerivativeTauC(float t, float A, float tau_c, float tau_e);
+    float DischargeValueDerivativeTauE(float t, float A, float tau_c, float tau_e);
+
+    float GoToLevel(float Level, int &point, int iterator, int iLastPoint);
+    float LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0);
 
 public:
     DischargeFitter(int gate_beg, int gate_end);
 
     void SetWaveform(const std::vector<float> &wfm, float zero_level);
-    void SetSignalBegin(int signal_beg) { fSignalBegin = signal_beg; }
     void SetTauBounds(float tau_c_min, float tau_c_max,
                       float tau_e_min, float tau_e_max);
+    void SetSignalBegin(int signal_begin) { fSignalBegin = signal_begin; }
 
-    void Fit();
+    float DischargeValue(float t, float A_peak, float tau_c, float tau_e);
 
-    // Get results
+    void Fit(int max_iterations = 8);
+
     float GetFitValue(int sample);
     float GetFitValue(float x);
-    float GetAmplitude() const { return fAmplitude; } // Peak amplitude
+    float GetIntegral(int gate_beg, int gate_end);
+
+    float GetAmplitude() const { return fAmplitude; }
     float GetTauC() const { return fTauC; }
     float GetTauE() const { return fTauE; }
     float GetChiSquare() const { return fChi2; }
     float GetRSquare() const { return fR2; }
-    float GetIntegral(int gate_beg, int gate_end);
 
-    const std::vector<float> &GetFitWaveform() const { return fFitWfm; }
+    int CalcSignalBeginStraight();
 };
 
-#endif
+#endif // DISCHARGEFITTER_H

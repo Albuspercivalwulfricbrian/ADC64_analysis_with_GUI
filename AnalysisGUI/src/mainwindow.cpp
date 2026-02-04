@@ -257,6 +257,9 @@ void MainWindow::UpdateGraph()
             customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
             customPlot->graph(0)->setData(x, y);
             customPlot->graph(1)->data()->clear();
+            customPlot->yAxis->rescale();
+            customPlot->xAxis->rescale();
+            customPlot->replot();
         }
         else
         {
@@ -397,12 +400,13 @@ void MainWindow::UpdateGraph()
                                               poleWaveform.GetRightBoarder());
 
                     // Set reasonable bounds based on your detector
-                    disFitter.SetTauBounds(0.1f, 20.0f,    // τ_c range (fast, samples)
-                                           10.0f, 200.0f); // τ_e range (slow, samples)
+                    disFitter.SetTauBounds(4.1f, 12.0f,   // τ_c range (fast, samples)
+                                           20.0f, 35.0f); // τ_e range (slow, samples)
 
                     disFitter.SetWaveform(positive_wf, 0.0f);
-                    disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 2);
-                    disFitter.Fit();
+                    // disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
+                    disFitter.SetSignalBegin(disFitter.CalcSignalBeginStraight());
+                    disFitter.Fit(10);
 
                     QVector<double> y_fit(size);
                     for (int i = 0; i < size; ++i)

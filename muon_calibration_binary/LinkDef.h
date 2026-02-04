@@ -11,4 +11,6 @@
 #pragma link C++ class TrackInfo + ;
 #pragma link C++ class MuonTracker + ;
 #pragma link C++ class std::vector < SinglePeakInfo> + ;
+#pragma link C++ class FitParameters + ;
+#pragma link C++ class std::vector < FitParameters> + ;
 #endif

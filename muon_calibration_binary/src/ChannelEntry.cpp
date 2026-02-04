@@ -14,6 +14,16 @@ void IntegralInfo::Initialize()
     end_amplitude = 0;
 }
 
+void FitParameters::Initialize()
+{
+    fit_charge = 0.0f;
+    chi2 = 999.0f;
+    r2 = 0.0f;
+    tau_c = 0.0f;
+    tau_e = 0.0f;
+    fit_amplitude = 0.0f;
+}
+
 void short_energy_ChannelEntry::Initialize()
 {
     charge = 0.;
@@ -24,6 +34,7 @@ void short_energy_ChannelEntry::Initialize()
     ADC_ID = 0;
     ADCTimeStamp = 0.;
     II.Initialize();
+    FP.Initialize();
 }
 
 void SinglePeakInfo::Initialize()
@@ -32,6 +43,7 @@ void SinglePeakInfo::Initialize()
     time = 0.;
     amp = 0;
     II.Initialize();
+    FP.Initialize();
 }
 
 void PeaksInfo::Initialize()
@@ -348,6 +360,84 @@ PronyFitResult ChannelEntry::PerformPronyFit()
     result.integral = pfitter->GetIntegral(fGATE_BEG, fGATE_END);
     result.chi2 = pfitter->GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
     result.r2 = pfitter->GetRSquare(fGATE_BEG, fGATE_END);
+
+    return result;
+}
+
+FitParameters ChannelEntry::CalculateDischargeFit()
+{
+    FitParameters result;
+    result.Initialize();
+
+    if (amp == 0 || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
+        return result;
+
+    std::vector<float> positive_wf(wf.size());
+    for (size_t i = 0; i < wf.size(); i++)
+    {
+        positive_wf[i] = zl - (float)wf[i];
+    }
+
+    // Create DischargeFitter
+    DischargeFitter dischargeFit(fGATE_BEG, fGATE_END);
+    dischargeFit.SetWaveform(positive_wf, 0.0f);
+
+    // Set reasonable bounds for your detector
+    dischargeFit.SetTauBounds(4.1f, 12.0f, // τ_c range (fast, samples)
+                              20.0f, 35.0f);
+
+    // Calculate signal begin
+    int SignalBeg = dischargeFit.CalcSignalBeginStraight();
+    if (SignalBeg < 0)
+        SignalBeg = 0;
+    dischargeFit.SetSignalBegin(SignalBeg + 2);
+
+    // Perform the fit
+    dischargeFit.Fit(8);
+
+    // Store results
+    result.fit_charge = dischargeFit.GetIntegral(fGATE_BEG, fGATE_END);
+    result.chi2 = dischargeFit.GetChiSquare();
+    result.r2 = dischargeFit.GetRSquare();
+    result.tau_c = dischargeFit.GetTauC();
+    result.tau_e = dischargeFit.GetTauE();
+    result.fit_amplitude = dischargeFit.GetAmplitude();
+
+    return result;
+}
+
+FitParameters ChannelEntry::CalculatePronyFit()
+{
+    FitParameters result;
+    result.Initialize();
+
+    PronyFitResult pronyResult = PerformPronyFit();
+    if (pronyResult.fitter)
+    {
+        result.chi2 = pronyResult.chi2;
+        result.r2 = pronyResult.r2;
+        result.fit_charge = pronyResult.integral;
+        result.fit_amplitude = (pronyResult.amplitudes.size() > 0) ? std::real(pronyResult.amplitudes[0]) : 0.0f;
+        delete pronyResult.fitter;
+    }
+
+    return result;
+}
+
+FitParameters ChannelEntry::CalculatePronyFitWithOverrideHarmonics()
+{
+    FitParameters result;
+    result.Initialize();
+
+    PronyFitResult pronyResult = PerformPronyFitWithOverrideHarmonics();
+    if (pronyResult.fitter)
+    {
+        result.chi2 = pronyResult.chi2;
+        result.r2 = pronyResult.r2;
+        result.fit_charge = pronyResult.integral;
+        result.fit_amplitude = (pronyResult.amplitudes.size() > 0) ? std::real(pronyResult.amplitudes[0]) : 0.0f;
+        delete pronyResult.fitter;
+    }
 
     return result;
 }

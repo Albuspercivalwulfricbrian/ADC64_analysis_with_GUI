@@ -7,6 +7,7 @@
 #include <array>
 #include <complex>
 #include "PronyFitter.h"
+#include "DischargeFitter.h"
 
 const int MAX_N_SAMPLES = 2048;
 constexpr size_t MAX_HARMONICS = 10; // Define maximum expected harmonics
@@ -15,6 +16,19 @@ struct IntegralInfo
 {
     int32_t signal_length = 0;
     int32_t end_amplitude = 0;
+    void Initialize();
+};
+
+// Add this near other structs (after IntegralInfo)
+struct FitParameters
+{
+    float fit_charge = 0.0f;
+    float chi2 = 999.0f;
+    float r2 = 999.0f;
+    float tau_c = 0.0f;
+    float tau_e = 0.0f;
+    float fit_amplitude = 0.0f;
+
     void Initialize();
 };
 
@@ -27,6 +41,7 @@ struct short_energy_ChannelEntry
     float zl = 0;
     float zl_rms = 0;
     IntegralInfo II;
+    FitParameters FP;
     uint32_t ADC_ID = 0;
     void Initialize();
 };
@@ -37,6 +52,7 @@ struct SinglePeakInfo
     float time = 0;
     uint32_t amp = 0;
     IntegralInfo II;
+    FitParameters FP;
     void Initialize();
     SinglePeakInfo() { Initialize(); }
 };
@@ -97,7 +113,7 @@ private:
     int32_t peak_position = 0;
     int32_t fGATE_BEG = 1000000;
     int32_t fGATE_END = -1000000;
-    float cutoff_level = 0.05;
+    float cutoff_level = 0.02;
 
 public:
     void GetWfSize();
@@ -108,6 +124,9 @@ public:
     float GoToLevel(float Level);
     float LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0);
     PronyFitResult PerformPronyFit();
+    FitParameters CalculateDischargeFit();
+    FitParameters CalculatePronyFit();
+    FitParameters CalculatePronyFitWithOverrideHarmonics();
     PronyFitResult PerformPronyFitWithOverrideHarmonics();
     void DeleteCurrentPeak();
     void SetBoarders(int32_t, int32_t);
