@@ -10,7 +10,7 @@
 #include "DischargeFitter.h"
 
 const int MAX_N_SAMPLES = 2048;
-constexpr size_t MAX_HARMONICS = 10; // Define maximum expected harmonics
+// constexpr size_t MAX_HARMONICS = 10; // Define maximum expected harmonics
 
 struct IntegralInfo
 {
@@ -19,7 +19,6 @@ struct IntegralInfo
     void Initialize();
 };
 
-// Add this near other structs (after IntegralInfo)
 struct FitParameters
 {
     float fit_charge = 0.0f;
@@ -113,7 +112,7 @@ private:
     int32_t peak_position = 0;
     int32_t fGATE_BEG = 1000000;
     int32_t fGATE_END = -1000000;
-    float cutoff_level = 0.02;
+    float cutoff_level = 0.05;
 
 public:
     void GetWfSize();

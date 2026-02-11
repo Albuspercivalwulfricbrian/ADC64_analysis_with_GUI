@@ -400,12 +400,12 @@ void MainWindow::UpdateGraph()
                                               poleWaveform.GetRightBoarder());
 
                     // Set reasonable bounds based on your detector
-                    disFitter.SetTauBounds(4.1f, 12.0f,   // τ_c range (fast, samples)
-                                           20.0f, 35.0f); // τ_e range (slow, samples)
+                    disFitter.SetTauBounds(7.1f, 12.0f,   // τ_c range (fast, samples)
+                                           10.0f, 20.0f); // τ_e range (slow, samples)
 
                     disFitter.SetWaveform(positive_wf, 0.0f);
-                    // disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
-                    disFitter.SetSignalBegin(disFitter.CalcSignalBeginStraight());
+                    disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
+                    // disFitter.SetSignalBegin(disFitter.CalcSignalBeginStraight());
                     disFitter.Fit(10);
 
                     QVector<double> y_fit(size);
