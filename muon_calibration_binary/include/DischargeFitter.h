@@ -22,7 +22,7 @@ private:
     float fTauE;
     float fChi2;
     float fR2;
-
+    float best_one_minus_r2;
     float fZeroLevel;
     std::vector<float> fWfm;
     std::vector<float> fFitWfm;

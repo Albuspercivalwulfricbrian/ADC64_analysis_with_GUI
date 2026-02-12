@@ -10,9 +10,9 @@ DischargeFitter::DischargeFitter(int gate_beg, int gate_end)
       fTauEMin(5.0f), fTauEMax(500.0f),
       fAmplitude(0.0f), fTauC(5.0f), fTauE(50.0f),
       fChi2(999.0f), fR2(0.0f),
-      fZeroLevel(0.0f), fCacheIndex(0)
+      fZeroLevel(0.0f), fCacheIndex(0),
+      best_one_minus_r2(999.0f)
 {
-    // Initialize cache with invalid values
     for (int i = 0; i < CACHE_SIZE; i++)
     {
         fTauCCache[i] = -1.0f;
@@ -46,7 +46,6 @@ float DischargeFitter::DischargeValueRaw(float t, float A_prefactor, float tau_c
 
 float DischargeFitter::FindPeakValue(float tau_c, float tau_e)
 {
-    // FAST SIMPLE CACHE - linear search in small array
     for (int i = 0; i < CACHE_SIZE; i++)
     {
         if (fabs(fTauCCache[i] - tau_c) < 0.001f &&
@@ -56,19 +55,12 @@ float DischargeFitter::FindPeakValue(float tau_c, float tau_e)
         }
     }
 
-    // Calculate peak value (SIMPLIFIED - much faster)
-    // For the discharge function, the peak value is approximately:
-    // peak ≈ (tau_c / (tau_c + tau_e)) * exp(-tau_c / (tau_c + tau_e))
-    // This is an analytical approximation that's VERY fast
-
     float ratio = tau_c / (tau_c + tau_e + 1e-6f);
     float peak_approx = ratio * exp(-ratio);
 
-    // Quick refinement with just 5 points
     float t_peak = tau_c * (1.0f + tau_c / (tau_e + 1e-6f));
     float max_val = peak_approx;
 
-    // Just check 5 points around the approximation
     for (int k = 0; k < 5; k++)
     {
         float t = t_peak * (0.8f + 0.1f * k);
@@ -81,7 +73,6 @@ float DischargeFitter::FindPeakValue(float tau_c, float tau_e)
             max_val = val;
     }
 
-    // Store in cache (rounding helps cache hits)
     float rounded_tau_c = roundf(tau_c * 100.0f) / 100.0f;
     float rounded_tau_e = roundf(tau_e * 100.0f) / 100.0f;
 
@@ -119,16 +110,19 @@ void DischargeFitter::CalculateInitialGuesses()
 
     fAmplitude = data_peak;
 
+    // FIX τ_e GUESS - 1/e point is NOT at tau_e, it's LATER
     float decay_target = data_peak * 0.368f;
     fTauE = fTauEMax;
     for (int i = peak_idx + 1; i <= fGateEnd && i < (int)fWfm.size(); i++)
         if (fWfm[i] <= decay_target)
         {
-            fTauE = (float)(i - 1 - peak_idx) + (decay_target - fWfm[i - 1]) / (fWfm[i] - fWfm[i - 1]);
+            float t_1e = (float)(i - 1 - peak_idx) + (decay_target - fWfm[i - 1]) / (fWfm[i] - fWfm[i - 1]);
+            fTauE = t_1e * 0.7f; // τ_e ≈ 0.7 * 1/e time
             break;
         }
     fTauE = std::clamp(fTauE, fTauEMin, fTauEMax);
 
+    // FIX τ_c GUESS - rise time 20-80% is NOT 0.8*τ_c, it's ~2.2*τ_c
     float t20 = -1.0f, t80 = -1.0f;
     for (int i = fSignalBegin; i < peak_idx; i++)
     {
@@ -137,7 +131,15 @@ void DischargeFitter::CalculateInitialGuesses()
         if (fWfm[i] >= 0.8f * data_peak && t80 < 0)
             t80 = i - fSignalBegin;
     }
-    fTauC = (t20 > 0 && t80 > t20) ? (t80 - t20) * 0.8f : 5.0f;
+    if (t20 > 0 && t80 > t20)
+    {
+        fTauC = (t80 - t20) * 1.2f; // τ_c ≈ (t80-t20)/2.2? Wait no - RISE TIME ≈ 2.2*τ_c
+        fTauC = (t80 - t20) / 2.2f; // Correct: τ_c = rise_time / 2.2
+    }
+    else
+    {
+        fTauC = 15.0f; // Better default
+    }
     fTauC = std::clamp(fTauC, fTauCMin, fTauCMax);
 }
 
@@ -152,69 +154,28 @@ float DischargeFitter::DischargeValueDerivativeA(float t, float A, float tau_c, 
 
 float DischargeFitter::DischargeValueDerivativeTauC(float t, float A, float tau_c, float tau_e)
 {
-    if (t < 0)
+    if (t < 0 || tau_c <= 0)
         return 0.0f;
 
-    // SIMPLIFIED DERIVATIVE - skip expensive calculations
-    // Most of the time, this derivative is small anyway
-    static float last_t = -1.0f, last_tau_c = -1.0f, last_tau_e = -1.0f;
-    static float cached_value = 0.0f;
+    float eps = 0.001f * tau_c;
+    float f_plus = DischargeValue(t, A, tau_c + eps, tau_e);
+    float f_minus = DischargeValue(t, A, tau_c - eps, tau_e);
+    float deriv = (f_plus - f_minus) / (2.0f * eps);
 
-    if (t == last_t && tau_c == last_tau_c && tau_e == last_tau_e)
-    {
-        return cached_value;
-    }
-
-    float peak_raw = FindPeakValue(tau_c, tau_e);
-    if (peak_raw <= 1e-6f)
-    {
-        cached_value = 0.0f;
-        return 0.0f;
-    }
-
-    // Simplified derivative - approximate
-    float raw_val = DischargeValueRaw(t, 1.0f, tau_c, tau_e);
-    float d_raw_d_tau_c = A * raw_val * (t / (tau_c * tau_c * (tau_c + tau_e + 1e-6f)));
-
-    cached_value = d_raw_d_tau_c / peak_raw;
-    last_t = t;
-    last_tau_c = tau_c;
-    last_tau_e = tau_e;
-
-    return cached_value;
+    return deriv;
 }
 
 float DischargeFitter::DischargeValueDerivativeTauE(float t, float A, float tau_c, float tau_e)
 {
-    if (t < 0)
+    if (t < 0 || tau_e <= 0)
         return 0.0f;
 
-    // SIMPLIFIED DERIVATIVE
-    static float last_t = -1.0f, last_tau_c = -1.0f, last_tau_e = -1.0f;
-    static float cached_value = 0.0f;
+    float eps = 0.001f * tau_e;
+    float f_plus = DischargeValue(t, A, tau_c, tau_e + eps);
+    float f_minus = DischargeValue(t, A, tau_c, tau_e - eps);
+    float deriv = (f_plus - f_minus) / (2.0f * eps);
 
-    if (t == last_t && tau_c == last_tau_c && tau_e == last_tau_e)
-    {
-        return cached_value;
-    }
-
-    float peak_raw = FindPeakValue(tau_c, tau_e);
-    if (peak_raw <= 1e-6f)
-    {
-        cached_value = 0.0f;
-        return 0.0f;
-    }
-
-    // Simplified derivative
-    float raw_val = DischargeValueRaw(t, 1.0f, tau_c, tau_e);
-    float d_raw_d_tau_e = -A * raw_val * (t / (tau_e * tau_e));
-
-    cached_value = d_raw_d_tau_e / peak_raw;
-    last_t = t;
-    last_tau_c = tau_c;
-    last_tau_e = tau_e;
-
-    return cached_value;
+    return deriv;
 }
 
 void DischargeFitter::Fit(int max_iterations)
@@ -227,86 +188,159 @@ void DischargeFitter::Fit(int max_iterations)
     float A = fAmplitude, tau_c = fTauC, tau_e = fTauE;
     float best_chi2 = std::numeric_limits<float>::max();
     float best_A = A, best_tau_c = tau_c, best_tau_e = tau_e;
+    best_one_minus_r2 = 999.0f;
 
-    int num_fit_points = 0;
+    int n_points = 0;
     for (int i = fSignalBegin; i <= fGateEnd; i += 2)
-        num_fit_points++;
-    float dof = std::max(1.0f, (float)num_fit_points - 3.0f);
+        n_points++;
+
+    if (n_points < 4)
+    {
+        printf("Warning: Not enough fit points (%d)\n", n_points);
+        return;
+    }
+
+    float norm = (float)n_points;
+    float dof = std::max(1.0f, (float)n_points - 3.0f);
+
+    printf("Fit start: n_points=%d, A=%.2f, tc=%.2f, te=%.2f\n",
+           n_points, A, tau_c, tau_e);
 
     for (int iter = 0; iter < max_iterations; iter++)
     {
         float chi2 = 0.0f, grad_A = 0.0f, grad_tau_c = 0.0f, grad_tau_e = 0.0f;
 
-        // OPTIMIZATION: Pre-calculate peak value for current tau_c/tau_e
         float current_peak = FindPeakValue(tau_c, tau_e);
 
         for (int i = fSignalBegin; i <= fGateEnd; i += 2)
         {
             float t = i - fSignalBegin;
+            float y = fWfm[i];
 
-            // FAST MODEL CALCULATION with pre-calculated peak
             float raw_val = DischargeValueRaw(t, 1.0f, tau_c, tau_e);
             float model = A * (raw_val / current_peak);
-            float error = model - fWfm[i];
+            float error = model - y;
             chi2 += error * error;
 
-            // FAST DERIVATIVES
             float dA = raw_val / current_peak;
             grad_A += 2.0f * error * dA;
 
-            // Skip tau derivatives sometimes (they're less important)
-            if (iter % 2 == 0 || i % 4 == 0)
-            {
-                grad_tau_c += 2.0f * error * DischargeValueDerivativeTauC(t, A, tau_c, tau_e);
-                grad_tau_e += 2.0f * error * DischargeValueDerivativeTauE(t, A, tau_c, tau_e);
-            }
+            grad_tau_c += 2.0f * error * DischargeValueDerivativeTauC(t, A, tau_c, tau_e);
+            grad_tau_e += 2.0f * error * DischargeValueDerivativeTauE(t, A, tau_c, tau_e);
         }
 
-        chi2 /= dof;
-        if (chi2 < best_chi2)
+        chi2 /= norm;
+        grad_A /= norm;
+        grad_tau_c /= norm;
+        grad_tau_e /= norm;
+
+        // Calculate R² and 1-R²
+        float ss_res = chi2 * norm;
+        float ss_tot = 0;
+        float mean_y = 0;
+
+        for (int i = fSignalBegin; i <= fGateEnd; i += 2)
+            mean_y += fWfm[i];
+        mean_y /= n_points;
+
+        for (int i = fSignalBegin; i <= fGateEnd; i += 2)
+            ss_tot += (fWfm[i] - mean_y) * (fWfm[i] - mean_y);
+
+        float r2 = (ss_tot > 1e-10f) ? 1.0f - ss_res / ss_tot : 0.0f;
+        float one_minus_r2 = 1.0f - r2;
+
+        if (iter > 5 && (fabs(one_minus_r2 - best_one_minus_r2) < 0.02f * best_one_minus_r2 || one_minus_r2 < 0.07))
+            break;
+
+        // Save best fit based on 1-R²
+        if (one_minus_r2 < best_one_minus_r2)
         {
+            best_one_minus_r2 = one_minus_r2;
             best_chi2 = chi2;
             best_A = A;
             best_tau_c = tau_c;
             best_tau_e = tau_e;
         }
 
-        float step = 0.2f / (1.0f + iter * 0.1f);
-        A -= step * grad_A;
-        tau_c -= step * grad_tau_c;
-        tau_e -= step * grad_tau_e;
+        float step_scale = 1.0f;
+        if (one_minus_r2 < 0.4f)
+            step_scale = 0.8f;
+        if (one_minus_r2 < 0.3f)
+            step_scale = 0.6f;
+        if (one_minus_r2 < 0.25f)
+            step_scale = 0.35f;
+        if (one_minus_r2 < 0.15f)
+            step_scale = 0.1f;
 
-        A = std::max(0.1f, std::min(A, 10000.0f));
-        tau_c = std::clamp(tau_c, fTauCMin, fTauCMax);
-        tau_e = std::clamp(tau_e, fTauEMin, fTauEMax);
+        float step_size_tc = 0.1f * (fTauCMax - fTauCMin) * step_scale;
+        float step_size_te = 0.1f * (fTauEMax - fTauEMin) * step_scale;
+        float step_size_A = 0.1f * A * step_scale;
 
-        if (iter > 8 && fabs(chi2 - best_chi2) < 0.01f * best_chi2)
-            break;
+        float norm_grad_tc = sqrt(grad_tau_c * grad_tau_c + 1e-10f);
+        float norm_grad_te = sqrt(grad_tau_e * grad_tau_e + 1e-10f);
+        float norm_grad_A = sqrt(grad_A * grad_A + 1e-10f);
+
+        tau_c -= step_size_tc * (grad_tau_c / norm_grad_tc);
+        tau_e -= step_size_te * (grad_tau_e / norm_grad_te);
+        A -= step_size_A * (grad_A / norm_grad_A);
+
+        if (A < 0)
+            A = 0;
+
+        // Convergence check on 1-R²
+        // if (iter > 5 && fabs(one_minus_r2 - best_one_minus_r2) < 0.001f * best_one_minus_r2)
+        //     break;
+
+        // Print every iteration
+        printf("iter=%d, tc=%.2f, grad_tc=%.2f, te=%.2f, grad_te=%.2f, A=%.2f, 1-R2=%.4f\n",
+               iter, tau_c, grad_tau_c, tau_e, grad_tau_e, A, one_minus_r2);
     }
 
     fAmplitude = best_A;
     fTauC = best_tau_c;
     fTauE = best_tau_e;
+    fChi2 = best_chi2;
+    fR2 = 1.0f - best_one_minus_r2;
 
+    // Precompute fit waveform
+    float final_peak = FindPeakValue(fTauC, fTauE);
     for (int i = 0; i < (int)fFitWfm.size(); i++)
-        fFitWfm[i] = (i >= fSignalBegin) ? DischargeValue(i - fSignalBegin, fAmplitude, fTauC, fTauE) : 0.0f;
+    {
+        if (i >= fSignalBegin)
+        {
+            float t = i - fSignalBegin;
+            float raw_val = DischargeValueRaw(t, 1.0f, fTauC, fTauE);
+            fFitWfm[i] = fAmplitude * (raw_val / final_peak);
+        }
+        else
+        {
+            fFitWfm[i] = 0.0f;
+        }
+    }
 
-    float ss_res = 0.0f, ss_tot = 0.0f, mean = 0.0f;
+    // Calculate final statistics
+    float ss_res = 0.0f, ss_tot_final = 0.0f, mean_final = 0.0f;
     int count = 0;
     for (int i = fSignalBegin; i <= fGateEnd; i++)
-        mean += fWfm[i], count++;
+    {
+        mean_final += fWfm[i];
+        count++;
+    }
     if (count > 0)
-        mean /= count;
+        mean_final /= count;
 
     for (int i = fSignalBegin; i <= fGateEnd; i++)
     {
         float error = fFitWfm[i] - fWfm[i];
         ss_res += error * error;
-        ss_tot += (fWfm[i] - mean) * (fWfm[i] - mean);
+        ss_tot_final += (fWfm[i] - mean_final) * (fWfm[i] - mean_final);
     }
 
-    fChi2 = (count > 0) ? ss_res / std::max(1.0f, (float)count - 3.0f) : 999.0f;
-    fR2 = (ss_tot > 1e-10f) ? 1.0f - ss_res / ss_tot : 999.0f;
+    fChi2 = ss_res / dof;
+    fR2 = (ss_tot_final > 1e-10f) ? 1.0f - ss_res / ss_tot_final : 999.0f;
+
+    printf("Fit done: A=%.2f, tc=%.2f, te=%.2f, chi2=%.2f, R2=%.4f\n\n",
+           fAmplitude, fTauC, fTauE, fChi2, fR2);
 }
 
 float DischargeFitter::GetFitValue(int sample)
@@ -316,10 +350,8 @@ float DischargeFitter::GetFitValue(int sample)
 
 float DischargeFitter::GetFitValue(float x)
 {
-    int sample = (int)x;
-    if (sample >= 0 && sample < (int)fFitWfm.size() && sample >= fSignalBegin)
-        return DischargeValue(x - fSignalBegin, fAmplitude, fTauC, fTauE);
-    return 0.0f;
+    int sample = (int)(x + 0.5f);
+    return GetFitValue(sample);
 }
 
 float DischargeFitter::GetIntegral(int gate_beg, int gate_end)
