@@ -381,20 +381,13 @@ FitParameters ChannelEntry::CalculateDischargeFit()
     // Create DischargeFitter
     DischargeFitter dischargeFit(fGATE_BEG, fGATE_END);
     dischargeFit.SetWaveform(positive_wf, 0.0f);
-
-    // Set reasonable bounds for your detector
-    dischargeFit.SetTauBounds(7.1f, 12.0f, // τ_c range (fast, samples)
-                              10.0f, 20.0f);
-
-    // Calculate signal begin
+    dischargeFit.SetFixedTauValues(6.2, 16.2);
+    // dischargeFit.SetTauBounds(5.0f, 10.0f, 15.0f, 20.0f);
     int SignalBeg = dischargeFit.CalcSignalBeginStraight();
     if (SignalBeg < 2)
         SignalBeg = 2;
-    // dischargeFit.SetSignalBegin(SignalBeg - 2);
     dischargeFit.SetSignalBegin(GetLeftBoarder() - 1);
-
-    // Perform the fit
-    dischargeFit.Fit(8);
+    dischargeFit.Fit(15);
 
     // Store results
     result.fit_charge = dischargeFit.GetIntegral(fGATE_BEG, fGATE_END);

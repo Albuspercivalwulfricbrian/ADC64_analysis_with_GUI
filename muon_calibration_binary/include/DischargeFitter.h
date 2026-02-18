@@ -4,7 +4,6 @@
 #include <vector>
 #include <map>
 #include <utility>
-
 class DischargeFitter
 {
 private:
@@ -26,6 +25,10 @@ private:
     float fZeroLevel;
     std::vector<float> fWfm;
     std::vector<float> fFitWfm;
+
+    // Fixed tau mode
+    bool fFixedTauMode;
+    bool fDebugMode;
 
     // Simple cache for FindPeakValue (much faster than map)
     static const int CACHE_SIZE = 64;
@@ -53,6 +56,11 @@ public:
                       float tau_e_min, float tau_e_max);
     void SetSignalBegin(int signal_begin) { fSignalBegin = signal_begin; }
 
+    // Fixed tau mode methods
+    void SetDebugMode(bool debug = false) { fDebugMode = debug; }
+    void SetFixedTauMode(bool fixed = true) { fFixedTauMode = fixed; }
+    void SetFixedTauValues(float tau_c, float tau_e);
+
     float DischargeValue(float t, float A_peak, float tau_c, float tau_e);
 
     void Fit(int max_iterations = 8);
@@ -67,7 +75,8 @@ public:
     float GetChiSquare() const { return fChi2; }
     float GetRSquare() const { return fR2; }
 
+    bool IsFixedTauMode() const { return fFixedTauMode; }
+
     int CalcSignalBeginStraight();
 };
-
-#endif // DISCHARGEFITTER_H
+#endif DISCHARGEFITTER_H

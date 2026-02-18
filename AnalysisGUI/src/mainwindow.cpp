@@ -396,18 +396,18 @@ void MainWindow::UpdateGraph()
                         positive_wf[i] = zl - (float)poleWaveform.wf[i];
                     }
 
-                    DischargeFitter disFitter(poleWaveform.GetLeftBoarder(),
-                                              poleWaveform.GetRightBoarder());
+                    // DischargeFitter disFitter(poleWaveform.GetLeftBoarder(), poleWaveform.GetRightBoarder());
+                    // disFitter.SetTauBounds(5.0f, 10.0f, 12.0f, 20.0f);
+                    // disFitter.SetWaveform(positive_wf, 0.0f);
+                    // disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
+                    // disFitter.Fit(15);
 
-                    // Set reasonable bounds based on your detector
-                    // disFitter.SetTauBounds(7.1f, 60.f,     // τ_c range (fast, samples)
-                    //                        10.0f, 120.0f); // τ_e range (slow, samples)
-                    disFitter.SetTauBounds(10.0f, 20.0f,  // τ_c range - let it go below 15!
-                                           50.0f, 90.0f); // τ_e range
+                    DischargeFitter disFitter(poleWaveform.GetLeftBoarder(), poleWaveform.GetRightBoarder());
+                    disFitter.SetDebugMode(1);
+                    disFitter.SetFixedTauValues(6.2, 16.2);
                     disFitter.SetWaveform(positive_wf, 0.0f);
                     disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
-                    // disFitter.SetSignalBegin(disFitter.CalcSignalBeginStraight());
-                    disFitter.Fit(300);
+                    disFitter.Fit(15);
 
                     QVector<double> y_fit(size);
                     for (int i = 0; i < size; ++i)
