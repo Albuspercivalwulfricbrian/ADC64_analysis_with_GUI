@@ -381,7 +381,7 @@ FitParameters ChannelEntry::CalculateDischargeFit()
     // Create DischargeFitter
     DischargeFitter dischargeFit(fGATE_BEG, fGATE_END);
     dischargeFit.SetWaveform(positive_wf, 0.0f);
-    dischargeFit.SetFixedTauValues(6.2, 16.2);
+    dischargeFit.SetFixedTauValues(6.4, 19.5);
     // dischargeFit.SetTauBounds(5.0f, 10.0f, 15.0f, 20.0f);
     int SignalBeg = dischargeFit.CalcSignalBeginStraight();
     if (SignalBeg < 2)
