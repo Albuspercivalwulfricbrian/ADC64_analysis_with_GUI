@@ -201,7 +201,8 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
               chInfo[ch]->II = event_waveform.GetIntegralInfo();
 
               // ADD THIS: Calculate discharge fit parameters
-              chInfo[ch]->FP = event_waveform.CalculateDischargeFit();
+              if (config_manager[ch] && config_manager[ch]->UseFitPeaks == 1)
+                chInfo[ch]->FP = event_waveform.CalculateDischargeFit();
               // chInfo[ch]->FP = event_waveform.CalculatePronyFitWithOverrideHarmonics();
             }
 
@@ -229,7 +230,8 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
                 peakInfo.II = event_waveform.GetIntegralInfo();
 
                 // ADD THIS: Calculate discharge fit parameters for each peak
-                peakInfo.FP = event_waveform.CalculateDischargeFit();
+                if (config_manager[ch] && config_manager[ch]->UseFitPeaks == 1)
+                  peakInfo.FP = event_waveform.CalculateDischargeFit();
                 // peakInfo.FP = event_waveform.CalculatePronyFitWithOverrideHarmonics();
                 if (peakInfo.amp < 500 && count > 0)
                   break;

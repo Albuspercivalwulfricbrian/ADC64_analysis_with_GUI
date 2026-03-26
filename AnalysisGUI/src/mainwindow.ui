@@ -56,7 +56,7 @@
          <number>10</number>
         </property>
         <property name="sizeConstraint">
-         <enum>QLayout::SetDefaultConstraint</enum>
+         <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
         </property>
         <item>
          <widget class="QLabel" name="ChannelLabel">
@@ -96,7 +96,7 @@
            </font>
           </property>
           <property name="layoutDirection">
-           <enum>Qt::LeftToRight</enum>
+           <enum>Qt::LayoutDirection::LeftToRight</enum>
           </property>
           <property name="text">
            <string>Frequency Cutoff:</string>
@@ -120,7 +120,7 @@
       <item>
        <layout class="QHBoxLayout" name="BoundaryLayout">
         <property name="sizeConstraint">
-         <enum>QLayout::SetDefaultConstraint</enum>
+         <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
         </property>
         <item>
          <widget class="QLabel" name="LeftBoundaryLabel">
@@ -326,7 +326,7 @@
          <number>4</number>
         </property>
         <property name="sizeConstraint">
-         <enum>QLayout::SetDefaultConstraint</enum>
+         <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
         </property>
         <item>
          <widget class="QLineEdit" name="BranchName">
@@ -387,7 +387,7 @@
       <item>
        <layout class="QHBoxLayout" name="EventLayout">
         <property name="sizeConstraint">
-         <enum>QLayout::SetDefaultConstraint</enum>
+         <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
         </property>
         <item>
          <widget class="QLabel" name="EventLabel">
@@ -510,7 +510,6 @@
           <property name="font">
            <font>
             <pointsize>12</pointsize>
-            <weight>75</weight>
             <bold>true</bold>
            </font>
           </property>
@@ -531,7 +530,7 @@
      <x>0</x>
      <y>0</y>
      <width>1116</width>
-     <height>29</height>
+     <height>28</height>
     </rect>
    </property>
    <property name="font">
@@ -568,6 +567,7 @@
     <addaction name="action_Use_Smart_Boarders"/>
     <addaction name="action_Signal_is_Negative"/>
     <addaction name="action_Use_Fourier_Filtering"/>
+    <addaction name="action_Fit_Peaks"/>
     <addaction name="action_Show_Histogram"/>
    </widget>
    <widget class="QMenu" name="menuGraphics">
@@ -743,6 +743,17 @@
    </property>
    <property name="text">
     <string>&amp;Show Prony Fit</string>
+   </property>
+  </action>
+  <action name="action_Fit_Peaks">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Fit Peaks</string>
    </property>
   </action>
  </widget>

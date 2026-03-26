@@ -43,7 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     connect(customPlot, &QCustomPlot::mouseDoubleClick, this, &MainWindow::onPlotDoubleClick);
     for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
-        channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0);
+        channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0, 0);
 
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
@@ -104,6 +104,7 @@ MainWindow::MainWindow(QWidget *parent)
     actionSavePng = ui->actionSavePng;
     actionSaveJpeg = ui->actionSaveJpeg;
     actionSavePdf = ui->actionSavePdf;
+    action_Fit_Peaks = ui->action_Fit_Peaks;
     action_Show_Histogram = ui->action_Show_Histogram;
     action_Show_Prony_Fit = ui->action_Show_Prony_Fit;
     maxReadoutEvents = -1;
@@ -697,6 +698,7 @@ void MainWindow::on_channelSpinBox_valueChanged(int)
     action_UseSmartScope->setChecked(channels[currChannel]->UseSmartScope);
     action_UseSpline->setChecked(channels[currChannel]->UseSpline);
     action_Signal_is_Negative->setChecked(channels[currChannel]->SignalNegative);
+    action_Fit_Peaks->setChecked(channels[currChannel]->UseFitPeaks); // Add this line
 
     // Clear smart scope lines when channel changes
     clearSmartScopeLines();
@@ -883,6 +885,7 @@ void MainWindow::on_SetChannelBoundaries_clicked()
     channels[currChannel]->SignalNegative = action_Signal_is_Negative->isChecked();
     channels[currChannel]->UseFourierFiltering = action_Signal_is_Negative->isChecked();
     channels[currChannel]->FrequencyCutoff = passfilter;
+    channels[currChannel]->UseFitPeaks = action_Fit_Peaks->isChecked(); // Add this line
 }
 
 void MainWindow::on_SetAllChannelsBoundaries_clicked()
@@ -894,6 +897,7 @@ void MainWindow::on_SetAllChannelsBoundaries_clicked()
         channels[i]->UseSpline = action_UseSpline->isChecked();
         channels[i]->UseSmartScope = action_UseSmartScope->isChecked();
         channels[i]->SignalNegative = action_Signal_is_Negative->isChecked();
+        channels[i]->UseFitPeaks = action_Fit_Peaks->isChecked(); // Add this line
     }
 }
 

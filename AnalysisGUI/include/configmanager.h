@@ -10,8 +10,14 @@
 class ConfigManager
 {
 public:
-    ConfigManager(int id, const std::string &name, double leftBoundary, double rightBoundary, bool UseSpline, bool UseSmartScope, bool SignalNegative, bool UseFourierFiltering, double FrequencyCutoff)
-        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary), UseSpline(UseSpline), UseSmartScope(UseSmartScope), SignalNegative(SignalNegative), UseFourierFiltering(UseFourierFiltering), FrequencyCutoff(FrequencyCutoff) {}
+    // Update constructor to include UseFitPeaks
+    ConfigManager(int id, const std::string &name, double leftBoundary, double rightBoundary,
+                  bool UseSpline, bool UseSmartScope, bool SignalNegative,
+                  bool UseFourierFiltering, double FrequencyCutoff, bool UseFitPeaks)
+        : id(id), name(name), leftBoundary(leftBoundary), rightBoundary(rightBoundary),
+          UseSpline(UseSpline), UseSmartScope(UseSmartScope), SignalNegative(SignalNegative),
+          UseFourierFiltering(UseFourierFiltering), FrequencyCutoff(FrequencyCutoff),
+          UseFitPeaks(UseFitPeaks) {}
 
     // Метод для сохранения данных в JSON файл
     static void saveToJson(const std::string &filename, const std::map<int, ConfigManager *> &channels)
@@ -28,13 +34,15 @@ public:
                 {"Use_Smart_Area", channel.second->UseSmartScope},
                 {"Signal_is_Negative", channel.second->SignalNegative},
                 {"Use_Fourier_Filtering", channel.second->UseFourierFiltering},
-                {"Fourier_Filtering_Cutoff", channel.second->FrequencyCutoff}};
+                {"Fourier_Filtering_Cutoff", channel.second->FrequencyCutoff},
+                {"Use_Fit_Peaks", channel.second->UseFitPeaks} // Add this line
+            };
         }
 
         std::ofstream file(filename);
         if (file.is_open())
         {
-            file << j.dump(4); // Сохранение с отступами
+            file << j.dump(4);
             file.close();
         }
         else
@@ -58,12 +66,24 @@ public:
             {
                 int id = std::stoi(item.key());
                 const auto &channelInfo = item.value();
-                channels[id] = new ConfigManager(id, channelInfo["name"].get<std::string>(),
-                                                 channelInfo["left_boundary"].get<double>(), channelInfo["right_boundary"].get<double>(),
-                                                 channelInfo["Use_Spline"].get<bool>(), channelInfo["Use_Smart_Area"].get<bool>(),
+
+                // Load UseFitPeaks with default false if not present (for backward compatibility)
+                bool useFitPeaks = false;
+                if (channelInfo.contains("Use_Fit_Peaks"))
+                {
+                    useFitPeaks = channelInfo["Use_Fit_Peaks"].get<bool>();
+                }
+
+                channels[id] = new ConfigManager(id,
+                                                 channelInfo["name"].get<std::string>(),
+                                                 channelInfo["left_boundary"].get<double>(),
+                                                 channelInfo["right_boundary"].get<double>(),
+                                                 channelInfo["Use_Spline"].get<bool>(),
+                                                 channelInfo["Use_Smart_Area"].get<bool>(),
                                                  channelInfo["Signal_is_Negative"].get<bool>(),
                                                  channelInfo["Use_Fourier_Filtering"].get<bool>(),
-                                                 channelInfo["Fourier_Filtering_Cutoff"].get<double>());
+                                                 channelInfo["Fourier_Filtering_Cutoff"].get<double>(),
+                                                 useFitPeaks);
             }
             return channels;
         }
@@ -84,6 +104,7 @@ public:
     bool SignalNegative;
     bool UseFourierFiltering;
     double FrequencyCutoff;
+    bool UseFitPeaks; // Add this member
 };
 
 #endif CONFIGMANAGER
