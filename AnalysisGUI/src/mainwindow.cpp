@@ -909,18 +909,87 @@ void MainWindow::on_SaveConfigButton_clicked()
         ConfigManager::saveToJson(fileName.left(fileName.lastIndexOf(".")).toUtf8().toStdString() + ".json", channels);
     // ConfigManager::loadFromJson();
 }
+// void MainWindow::on_action_Open_triggered()
+// {
+//     fileName = QFileDialog::getOpenFileName(
+//         this, tr("Open File"), "~",
+//         tr("binary files ( *.data *.bin)"));
+
+//     if (fileName != "")
+//     {
+//         // Show event limit dialog
+//         if (!showEventLimitDialog())
+//         {
+//             return; // User cancelled
+//         }
+
+//         auto a = (fileName.toUtf8().constData());
+//         QApplication::processEvents();
+
+//         FileNameLabel->setText("Open File: " + fileName);
+//         std::cout << a << " is set" << std::endl;
+//         DFR.setName(a);
+
+//         // Set the max event limit in DFR
+//         DFR.setMaxEventLimit(maxReadoutEvents);
+
+//         ProgressDialog *progressDialog = new ProgressDialog(this);
+
+//         // Update progress dialog title based on event limit
+//         if (maxReadoutEvents == -1)
+//         {
+//             progressDialog->setWindowTitle("Indexing file (reading all events)...");
+//         }
+//         else
+//         {
+//             progressDialog->setWindowTitle(QString("Indexing file (max %1 events)...").arg(maxReadoutEvents));
+//         }
+
+//         QThread *thread = new QThread();
+
+//         DFR.moveToThread(thread);
+//         connect(timer, &QTimer::timeout, this, &MainWindow::onTimeout);
+//         timer->start(100);
+//         connect(thread, &QThread::started, [=]()
+//                 { DFR.doWork(progressDialog, a); });
+//         connect(this, &MainWindow::progressUpdated, progressDialog, &ProgressDialog::updateProgress);
+
+//         connect(progressDialog, &QDialog::finished, thread, &QThread::quit);
+//         connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+//         connect(thread, &QThread::finished, timer, &QTimer::stop);
+
+//         // Add connection to update event count display when indexing is done
+//         connect(thread, &QThread::finished, this, [this]()
+//                 { updateEventCountDisplay(); });
+
+//         progressDialog->show();
+//         thread->start();
+//     }
+//     else
+//     {
+//         std::cout << "File NOT chosen" << std::endl;
+//     }
+// }
+
 void MainWindow::on_action_Open_triggered()
 {
+    // Clean up old timer
+    if (timer)
+    {
+        timer->stop();
+        delete timer;
+        timer = nullptr;
+    }
+
     fileName = QFileDialog::getOpenFileName(
         this, tr("Open File"), "~",
         tr("binary files ( *.data *.bin)"));
 
     if (fileName != "")
     {
-        // Show event limit dialog
         if (!showEventLimitDialog())
         {
-            return; // User cancelled
+            return;
         }
 
         auto a = (fileName.toUtf8().constData());
@@ -928,14 +997,14 @@ void MainWindow::on_action_Open_triggered()
 
         FileNameLabel->setText("Open File: " + fileName);
         std::cout << a << " is set" << std::endl;
-        DFR.setName(a);
 
-        // Set the max event limit in DFR
+        DFR.~Worker(); // Call destructor explicitly
+        new (&DFR) Worker();
+        DFR.setName(a);
         DFR.setMaxEventLimit(maxReadoutEvents);
 
         ProgressDialog *progressDialog = new ProgressDialog(this);
 
-        // Update progress dialog title based on event limit
         if (maxReadoutEvents == -1)
         {
             progressDialog->setWindowTitle("Indexing file (reading all events)...");
@@ -946,28 +1015,23 @@ void MainWindow::on_action_Open_triggered()
         }
 
         QThread *thread = new QThread();
-
         DFR.moveToThread(thread);
+
+        timer = new QTimer(this);
         connect(timer, &QTimer::timeout, this, &MainWindow::onTimeout);
         timer->start(100);
+
         connect(thread, &QThread::started, [=]()
                 { DFR.doWork(progressDialog, a); });
         connect(this, &MainWindow::progressUpdated, progressDialog, &ProgressDialog::updateProgress);
-
         connect(progressDialog, &QDialog::finished, thread, &QThread::quit);
         connect(thread, &QThread::finished, thread, &QObject::deleteLater);
         connect(thread, &QThread::finished, timer, &QTimer::stop);
-
-        // Add connection to update event count display when indexing is done
         connect(thread, &QThread::finished, this, [this]()
                 { updateEventCountDisplay(); });
 
         progressDialog->show();
         thread->start();
-    }
-    else
-    {
-        std::cout << "File NOT chosen" << std::endl;
     }
 }
 
