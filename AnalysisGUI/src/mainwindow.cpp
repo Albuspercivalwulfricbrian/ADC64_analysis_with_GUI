@@ -971,6 +971,7 @@ void MainWindow::on_action_Open_triggered()
 
         progressDialog->show();
         thread->start();
+        progressDialog->exec();
     }
     else
     {
