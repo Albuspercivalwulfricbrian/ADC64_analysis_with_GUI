@@ -297,8 +297,9 @@ void MainWindow::UpdateGraph()
                 // Check if we should perform Prony fitting
                 if (action_Show_Prony_Fit && action_Show_Prony_Fit->isChecked() &&
                     !action_Show_Filtered->isChecked() &&
-                    !action_Show_Fourier_Transform->isChecked() &&
-                    !m_histogramWindow)
+                    !action_Show_Fourier_Transform->isChecked()
+                    //  && !m_histogramWindow
+                )
                 // {
                 //     // Create a copy for Prony fitting (as in original)
                 //     ChannelEntry pronyWaveform = DFR.event_waveform;
@@ -397,18 +398,20 @@ void MainWindow::UpdateGraph()
                         positive_wf[i] = zl - (float)poleWaveform.wf[i];
                     }
 
+                    // DischargeFitter disFitter(poleWaveform.GetLeftBoarder(), poleWaveform.GetRightBoarder());
+                    // disFitter.SetTauBounds(6.0f, 8.0f, 12.0f, 22.0f);
+                    // disFitter.SetWaveform(positive_wf, 0.0f);
+                    // disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
+                    // disFitter.Fit(15);
+
                     DischargeFitter disFitter(poleWaveform.GetLeftBoarder(), poleWaveform.GetRightBoarder());
-                    disFitter.SetTauBounds(6.0f, 8.0f, 12.0f, 22.0f);
+                    // disFitter.SetDebugMode(1);
+                    disFitter.SetFixedTauValues(6.4, 19.5);
                     disFitter.SetWaveform(positive_wf, 0.0f);
                     disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
                     disFitter.Fit(15);
 
-                    // DischargeFitter disFitter(poleWaveform.GetLeftBoarder(), poleWaveform.GetRightBoarder());
-                    // disFitter.SetDebugMode(1);
-                    // disFitter.SetFixedTauValues(6.2, 19.2);
-                    // disFitter.SetWaveform(positive_wf, 0.0f);
-                    // disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
-                    // disFitter.Fit(15);
+                    lastCalculatedRSquare = disFitter.GetRSquare();
 
                     QVector<double> y_fit(size);
                     for (int i = 0; i < size; ++i)
@@ -500,7 +503,7 @@ void MainWindow::UpdateGraph()
                     tempWfData.DeleteCurrentPeak();
                 }
                 // cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
-                m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time());
+                m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time(), lastCalculatedRSquare);
                 delete sci;
             }
         }

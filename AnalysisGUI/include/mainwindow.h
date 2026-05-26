@@ -49,8 +49,9 @@ private:
     double currentX = 0;
     int32_t xLeftBoundary = -1000;
     int32_t xRightBoundary = 3000;
-    int32_t smartScopeLeft = 0;  // Smart scope left boundary
-    int32_t smartScopeRight = 0; // Smart scope right boundary
+    int32_t smartScopeLeft = 0;         // Smart scope left boundary
+    int32_t smartScopeRight = 0;        // Smart scope right boundary
+    float lastCalculatedRSquare = 0.0f; // Add this line to store R² from DischargeFitter
 
     QLabel *coordinateLabel = new QLabel();
     QLabel *FileNameLabel;

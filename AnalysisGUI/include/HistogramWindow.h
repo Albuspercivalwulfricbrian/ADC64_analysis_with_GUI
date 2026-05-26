@@ -24,7 +24,6 @@
 #include <QTimer>
 #include "ProgressDialog.h"
 
-// Forward declaration
 namespace ctpl
 {
     class thread_pool;
@@ -51,7 +50,7 @@ public slots:
     void onChannelChanged(int channel);
     void onHistogramSelectionChanged();
     void onOpenRootFile();
-    void setEventValues(uint32_t amplitude, float charge, float time);
+    void setEventValues(uint32_t amplitude, float charge, float time, float r2 = 0.0f);
     void onTimeout();
 
 private slots:
@@ -68,20 +67,18 @@ private:
     bool showHistogramEventLimitDialog();
 
 private:
-    // Histogram plots
     HistogramPlot *m_amplitudePlot;
     HistogramPlot *m_chargePlot;
     HistogramPlot *m_timePlot;
     Histogram2DPlot *m_amplitudeVsChargePlot;
+    Histogram2DPlot *m_r2VsChargePlot; // Добавлен новый 2D график
 
     ProgressDialog *m_progressDialog = nullptr;
     QTimer *m_progressTimer = nullptr;
 
-    // Layout and widgets
     QVBoxLayout *m_mainLayout;
     QWidget *m_centralWidget;
 
-    // Controls
     QLabel *m_eventTimeLabel;
     QSpinBox *m_channelSpinBox;
     QPushButton *m_updateButton;
@@ -89,30 +86,31 @@ private:
     QComboBox *m_histogramSelectionCombo;
     QListWidget *m_histogramListWidget;
 
-    // Menu action
     QAction *m_openRootFileAction;
 
-    // Checkbox items
     QListWidgetItem *m_amplitudeItem;
     QListWidgetItem *m_chargeItem;
     QListWidgetItem *m_timeItem;
     QListWidgetItem *m_amplitudeVsChargeItem;
+    QListWidgetItem *m_r2VsChargeItem; // Добавлен новый чекбокс
 
-    // File path display
     QLabel *m_filePathLabel;
 
     QString m_currentRootFile;
     int m_currentChannel;
 
-    // Data storage - CHANGED: amplitude is now float
     TFile *RootDataFile = nullptr;
     TTree *RootDataTree = nullptr;
-    std::vector<float> m_amplitudeData; // CHANGED from uint32_t to float
+    std::vector<float> m_amplitudeData;
     std::vector<float> m_chargeData;
     std::vector<float> m_timeData;
+    std::vector<float> m_oneMinusR2Data; // Добавлен вектор данных для 1-R2
+
     uint32_t event_amplitude = 0;
     float event_charge = 0;
     float event_time = 0;
+    float event_r2 = 0.0f; // Add this line to store R² value
+
     std::atomic<bool> m_dataLoaded;
     float rootLoadedpercentage = 0;
     int64_t m_histogramEventLimit;

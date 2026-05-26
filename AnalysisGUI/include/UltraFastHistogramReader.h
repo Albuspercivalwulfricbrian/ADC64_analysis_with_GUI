@@ -1,10 +1,10 @@
 #ifndef ULTRAFASTHISTOGRAMREADER_H
 #define ULTRAFASTHISTOGRAMREADER_H
 
-#include <vector>
-#include <functional>
 #include <TTree.h>
 #include <TString.h>
+#include <vector>
+#include <functional>
 
 class UltraFastHistogramReader
 {
@@ -12,12 +12,12 @@ public:
     UltraFastHistogramReader(TTree *tree, int channel);
     ~UltraFastHistogramReader();
 
-    // Single, main function - all floats
     void readData(std::vector<float> &ampData,
                   std::vector<float> &chargeData,
                   std::vector<float> &timeData,
+                  std::vector<float> &oneMinusR2Data, // Добавлен вектор для 1-R2
                   std::function<void(float)> progressCallback,
-                  Long64_t maxEntries = -1); // Add maxEntries parameter with default -1
+                  Long64_t maxEntries = -1);
 
 private:
     bool isPeaksInfoTree(TTree *tree, int channel);
