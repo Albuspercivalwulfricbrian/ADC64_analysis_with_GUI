@@ -7,6 +7,7 @@
 #include "DataFileReader.h"
 #include "thread"
 #include "FourierFilter.h"
+#include "DischargeFitter.h"
 #include <QScrollArea>
 #include "HistogramWindow.h"
 #include "EventFilterWidget.h"
@@ -40,9 +41,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->MultiplePeaksCheckBox, &QCheckBox::stateChanged, this, &MainWindow::on_MultiplePeaksCheckBox_stateChanged);
 
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
-
+    connect(customPlot, &QCustomPlot::mouseDoubleClick, this, &MainWindow::onPlotDoubleClick);
     for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
-        channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0);
+        channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0, 0);
 
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
     RightBoundaryEdit->setText(QString("%1").arg(xRightBoundary));
@@ -103,7 +104,9 @@ MainWindow::MainWindow(QWidget *parent)
     actionSavePng = ui->actionSavePng;
     actionSaveJpeg = ui->actionSaveJpeg;
     actionSavePdf = ui->actionSavePdf;
+    action_Fit_Peaks = ui->action_Fit_Peaks;
     action_Show_Histogram = ui->action_Show_Histogram;
+    action_Show_Prony_Fit = ui->action_Show_Prony_Fit;
     maxReadoutEvents = -1;
 
     connect(actionSavePng, &QAction::triggered, this, &MainWindow::savePlotAsPng);
@@ -125,6 +128,46 @@ MainWindow::MainWindow(QWidget *parent)
             { xRightBoundary = obj.toInt(); ReDrawBoundaries(); });
 
     connect(action_Show_Histogram, &QAction::triggered, this, &MainWindow::on_action_Show_Histogram_triggered);
+    // Add these connections in MainWindow constructor after other action connections:
+
+    // Prony fit action connection
+    connect(action_Show_Prony_Fit, &QAction::toggled, this, [this](bool checked)
+            {
+            if (checked) 
+            {
+                // Uncheck conflicting actions
+                action_Show_Filtered->setChecked(false);
+                action_Show_Fourier_Transform->setChecked(false);
+                
+                if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
+                {
+                    UpdateGraph();
+                }
+            } });
+
+    // Ensure Prony fit is unchecked when other modes are enabled
+    connect(action_Show_Filtered, &QAction::toggled, this, [this](bool checked)
+            {
+            if (checked) 
+            {
+                action_Show_Prony_Fit->setChecked(false);
+                if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
+                {
+                    UpdateGraph();
+                }
+            } });
+
+    connect(action_Show_Fourier_Transform, &QAction::toggled, this, [this](bool checked)
+            {
+            if (checked) 
+            {
+                action_Show_Prony_Fit->setChecked(false);
+                action_Show_Filtered->setChecked(false);
+                if (DFR.FileIsSet == 1 && currEvent < DFR.GetTotalEvents() && currEvent >= 0)
+                {
+                    UpdateGraph();
+                }
+            } });
 
     if (!action_Event_Filter)
     {
@@ -186,7 +229,9 @@ void MainWindow::setupGraph()
 
     customPlot->replot(QCustomPlot::rpQueuedRefresh);
     customPlot->addGraph();
+    // Set up graph(1) for Prony fits (or filtered signals)
     customPlot->graph(1)->setPen(QPen(Qt::red, 2, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
+    customPlot->graph(1)->setName("Prony Fit"); // Optional: set a name for the legend
 }
 
 void MainWindow::UpdateGraph()
@@ -213,6 +258,9 @@ void MainWindow::UpdateGraph()
             customPlot->yAxis->setScaleType(QCPAxis::stLogarithmic);
             customPlot->graph(0)->setData(x, y);
             customPlot->graph(1)->data()->clear();
+            customPlot->yAxis->rescale();
+            customPlot->xAxis->rescale();
+            customPlot->replot();
         }
         else
         {
@@ -242,77 +290,222 @@ void MainWindow::UpdateGraph()
                     customPlot->graph(1)->data()->clear();
             }
             else
+            {
+                // Clear filtered graph initially
                 customPlot->graph(1)->data()->clear();
-        }
 
-        customPlot->yAxis->rescale();
-        customPlot->xAxis->rescale();
-        customPlot->replot();
+                // Check if we should perform Prony fitting
+                if (action_Show_Prony_Fit && action_Show_Prony_Fit->isChecked() &&
+                    !action_Show_Filtered->isChecked() &&
+                    !action_Show_Fourier_Transform->isChecked()
+                    //  && !m_histogramWindow
+                )
+                // {
+                //     // Create a copy for Prony fitting (as in original)
+                //     ChannelEntry pronyWaveform = DFR.event_waveform;
 
-        ChannelEntry tempWfData = DFR.event_waveform;
-        // Calculate waveform parameters if histogram window is visible
-        if (m_histogramWindow && m_histogramWindow->isVisible() && tempWfData.wf.size() > 0)
-        {
-            PeaksInfo *sci = new PeaksInfo();
-            if (channels[currChannel])
-            {
-                tempWfData.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
-            }
-            else
-            {
-                tempWfData.Set_Zero_Level_Area(60);
-            }
-            sci->zl = tempWfData.CalculateZlwithNoisePeaks(130);
-            sci->zl_rms = tempWfData.Get_Zero_Level_RMS();
+                //     // Set up the waveform
+                //     if (channels[currChannel])
+                //     {
+                //         pronyWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                //         pronyWaveform.SetBoarders(channels[currChannel]->leftBoundary,
+                //                                   channels[currChannel]->rightBoundary);
+                //     }
+                //     else
+                //     {
+                //         pronyWaveform.Set_Zero_Level_Area(60);
+                //         pronyWaveform.SetBoarders(50, 100);
+                //     }
 
-            if (channels[currChannel])
-            {
-                tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
-            }
-            else
-            {
-                tempWfData.SetBoarders(50, 100);
-            }
+                //     float zl = pronyWaveform.CalculateZlwithNoisePeaks(160);
+                //     pronyWaveform.Get_time();
 
-            sci->ADC_ID = tempWfData.ADCID;
-            int count = 0;
+                //     if (action_UseSmartScope->isChecked())
+                //         pronyWaveform.AssumeSmartScope();
+                //     // PronyFitResult pronyResult = pronyWaveform.PerformPronyFit();
+                //     PronyFitResult pronyResult = pronyWaveform.PerformPronyFitWithOverrideHarmonics();
+                //     cout << "=== Prony Fitting Results ===" << endl;
+                //     cout << "Event: " << currEvent << ", Channel: " << currChannel << endl;
+                //     cout << "Baseline: " << zl << endl;
+                //     cout << "Signal begin: " << pronyResult.signal_begin << endl;
+                //     cout << "Integral: " << pronyResult.integral << endl;
+                //     cout << "Chi2: " << pronyResult.chi2 << endl;
+                //     cout << "R2: " << pronyResult.r2 << endl;
+                //     cout << "Harmonics:" << endl;
 
-            // Clear smart scope lines initially
-            clearSmartScopeLines();
+                //     for (size_t i = 0; i < pronyResult.harmonics.size(); i++)
+                //     {
+                //         cout << "  Harmonic " << i << ": " << pronyResult.harmonics[i] << " Amplitude: " << pronyResult.amplitudes[i] << endl;
+                //     }
+                //     cout << "=============================" << endl;
 
-            while (true)
-            {
-                SinglePeakInfo peakInfo;
+                //     // If we got valid harmonics, create the fit curve
+                //     if (pronyResult.signal_begin > 0 && pronyResult.fitter)
+                //     {
+                //         // Use the fitter from the result
+                //         QVector<double> y_fit(size);
+                //         for (int i = 0; i < size; ++i)
+                //         {
+                //             float fit_value = pronyResult.fitter->GetFitValue(i);
+                //             y_fit[i] = zl - fit_value;
+                //         }
 
-                tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+                //         customPlot->graph(1)->setData(x, y_fit);
+                //         customPlot->graph(1)->setPen(QPen(Qt::red, 2, Qt::SolidLine));
 
-                int pp = tempWfData.Get_time();
-                peakInfo.amp = tempWfData.Get_Amplitude();
-                if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
+                //         // Clean up the fitter
+                //         delete pronyResult.fitter;
+                //     }
+                //     else
+                //     {
+                //         cout << "Prony fitting failed or no valid harmonics." << endl;
+                //         customPlot->graph(1)->data()->clear();
+
+                //         // Clean up if fitter exists but signal begin is invalid
+                //         if (pronyResult.fitter)
+                //         {
+                //             delete pronyResult.fitter;
+                //         }
+                //     }
+                // }
+
+                // Replace Prony fitting section with Discharge fitting:
+
                 {
-                    tempWfData.AssumeSmartScope();
-                    smartScopeLeft = tempWfData.GetLeftBoarder();
-                    smartScopeRight = tempWfData.GetRightBoarder();
-                    // Update smart scope lines
-                    updateSmartScopeLines(smartScopeLeft, smartScopeRight);
+                    ChannelEntry poleWaveform = DFR.event_waveform;
+
+                    if (channels[currChannel])
+                    {
+                        poleWaveform.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                        poleWaveform.SetBoarders(channels[currChannel]->leftBoundary,
+                                                 channels[currChannel]->rightBoundary);
+                    }
+                    else
+                    {
+                        poleWaveform.Set_Zero_Level_Area(60);
+                        poleWaveform.SetBoarders(50, 100);
+                    }
+
+                    float zl = poleWaveform.CalculateZlwithNoisePeaks(160);
+                    poleWaveform.Get_time();
+
+                    if (action_UseSmartScope->isChecked())
+                        poleWaveform.AssumeSmartScope();
+
+                    std::vector<float> positive_wf(poleWaveform.wf.size());
+                    for (size_t i = 0; i < poleWaveform.wf.size(); i++)
+                    {
+                        positive_wf[i] = zl - (float)poleWaveform.wf[i];
+                    }
+
+                    // DischargeFitter disFitter(poleWaveform.GetLeftBoarder(), poleWaveform.GetRightBoarder());
+                    // disFitter.SetTauBounds(6.0f, 8.0f, 12.0f, 22.0f);
+                    // disFitter.SetWaveform(positive_wf, 0.0f);
+                    // disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
+                    // disFitter.Fit(15);
+
+                    DischargeFitter disFitter(poleWaveform.GetLeftBoarder(), poleWaveform.GetRightBoarder());
+                    // disFitter.SetDebugMode(1);
+                    disFitter.SetFixedTauValues(6.4, 19.5);
+                    disFitter.SetWaveform(positive_wf, 0.0f);
+                    disFitter.SetSignalBegin(poleWaveform.GetLeftBoarder() - 1);
+                    disFitter.Fit(15);
+
+                    lastCalculatedRSquare = disFitter.GetRSquare();
+
+                    QVector<double> y_fit(size);
+                    for (int i = 0; i < size; ++i)
+                    {
+                        float fit_value = disFitter.GetFitValue(i);
+                        y_fit[i] = zl - fit_value; // Convert back to original scale
+                    }
+
+                    customPlot->graph(1)->setData(x, y_fit);
+                    customPlot->graph(1)->setPen(QPen(Qt::magenta, 2, Qt::SolidLine));
+
+                    cout << "Discharge Fit: A=" << disFitter.GetAmplitude()
+                         << ", τ_c=" << disFitter.GetTauC()
+                         << ", τ_e=" << disFitter.GetTauE()
+                         << ", χ²=" << disFitter.GetChiSquare()
+                         << ", R²=" << 1. - disFitter.GetRSquare() << endl;
                 }
 
-                peakInfo.time = tempWfData.Get_time_gauss();
-
-                peakInfo.charge = tempWfData.Get_Charge();
-                peakInfo.II = tempWfData.GetIntegralInfo();
-                if (peakInfo.amp < 500 && count > 0)
-                    break;
-
-                sci->AddPeak(peakInfo);
-                if (WriteMode == "Single")
-                    break;
-                count++;
-                tempWfData.DeleteCurrentPeak();
+                else
+                {
+                    // If Prony fit is not checked, clear graph(1)
+                    customPlot->graph(1)->data()->clear();
+                }
             }
-            cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
-            m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time());
-            delete sci;
+
+            customPlot->yAxis->rescale();
+            customPlot->xAxis->rescale();
+            customPlot->replot();
+
+            ChannelEntry tempWfData = DFR.event_waveform;
+            // Calculate waveform parameters if histogram window is visible
+            if (m_histogramWindow && m_histogramWindow->isVisible() && tempWfData.wf.size() > 0)
+            {
+                PeaksInfo *sci = new PeaksInfo();
+                if (channels[currChannel])
+                {
+                    tempWfData.Set_Zero_Level_Area(channels[currChannel]->leftBoundary);
+                }
+                else
+                {
+                    tempWfData.Set_Zero_Level_Area(60);
+                }
+                sci->zl = tempWfData.CalculateZlwithNoisePeaks(130);
+                sci->zl_rms = tempWfData.Get_Zero_Level_RMS();
+
+                if (channels[currChannel])
+                {
+                    tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+                }
+                else
+                {
+                    tempWfData.SetBoarders(50, 100);
+                }
+
+                sci->ADC_ID = tempWfData.ADCID;
+                int count = 0;
+
+                // Clear smart scope lines initially
+                clearSmartScopeLines();
+
+                while (true)
+                {
+                    SinglePeakInfo peakInfo;
+
+                    tempWfData.SetBoarders(channels[currChannel]->leftBoundary, channels[currChannel]->rightBoundary);
+
+                    int pp = tempWfData.Get_time();
+                    peakInfo.amp = tempWfData.Get_Amplitude();
+                    if (channels[currChannel] && channels[currChannel]->UseSmartScope == 1)
+                    {
+                        tempWfData.AssumeSmartScope();
+                        smartScopeLeft = tempWfData.GetLeftBoarder();
+                        smartScopeRight = tempWfData.GetRightBoarder();
+                        // Update smart scope lines
+                        updateSmartScopeLines(smartScopeLeft, smartScopeRight);
+                    }
+
+                    peakInfo.time = tempWfData.Get_time_gauss();
+
+                    peakInfo.charge = tempWfData.Get_Charge();
+                    peakInfo.II = tempWfData.GetIntegralInfo();
+                    if (peakInfo.amp < 500 && count > 0)
+                        break;
+
+                    sci->AddPeak(peakInfo);
+                    if (WriteMode == "Single")
+                        break;
+                    count++;
+                    tempWfData.DeleteCurrentPeak();
+                }
+                // cout << sci->amp() << "  " << sci->charge() << " " << sci->time() << endl;
+                m_histogramWindow->setEventValues(sci->amp(), sci->charge(), sci->time(), lastCalculatedRSquare);
+                delete sci;
+            }
         }
     }
 }
@@ -406,6 +599,47 @@ void MainWindow::onMouseMove(QMouseEvent *event)
     coordinateLabel->setText(QString("X: %1, Y: %2").arg(x).arg(y));
 }
 
+// void MainWindow::onPlotDoubleClick(QMouseEvent *event)
+// {
+//     if (event->button() == Qt::LeftButton)
+//     {
+//         // // Reset both X and Y axes to their initial/default ranges
+//         // customPlot->xAxis->setRange(0, 2048);
+
+//         // // Calculate appropriate Y range based on waveform data if available
+//         // if (DFR.FileIsSet == 1 && !DFR.event_waveform.wf.empty())
+//         // {
+//         //     // Find min and max values in the current waveform
+//         //     auto minmax = std::minmax_element(DFR.event_waveform.wf.begin(), DFR.event_waveform.wf.end());
+//         //     int32_t minVal = *minmax.first;
+//         //     int32_t maxVal = *minmax.second;
+
+//         //     // Add 10% padding to the range
+//         //     double padding = (maxVal - minVal) * 0.1;
+//         //     customPlot->yAxis->setRange(minVal - padding, maxVal + padding);
+//         // }
+//         // else
+//         // {
+//         //     // Default range if no waveform data
+//         //     customPlot->yAxis->setRange(-30000, 30000);
+//         // }
+
+//         // // Replot to apply changes
+//         customPlot->replot();
+//     }
+// }
+
+void MainWindow::onPlotDoubleClick(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        customPlot->xAxis->setRange(0, DFR.event_waveform.wf.size());
+        customPlot->yAxis->rescale();
+        customPlot->replot();
+        ReDrawBoundaries();
+    }
+}
+
 void MainWindow::ReDrawBoundaries()
 {
     // Use EXTENDED Y range for ALL vertical lines
@@ -467,6 +701,7 @@ void MainWindow::on_channelSpinBox_valueChanged(int)
     action_UseSmartScope->setChecked(channels[currChannel]->UseSmartScope);
     action_UseSpline->setChecked(channels[currChannel]->UseSpline);
     action_Signal_is_Negative->setChecked(channels[currChannel]->SignalNegative);
+    action_Fit_Peaks->setChecked(channels[currChannel]->UseFitPeaks); // Add this line
 
     // Clear smart scope lines when channel changes
     clearSmartScopeLines();
@@ -653,6 +888,7 @@ void MainWindow::on_SetChannelBoundaries_clicked()
     channels[currChannel]->SignalNegative = action_Signal_is_Negative->isChecked();
     channels[currChannel]->UseFourierFiltering = action_Signal_is_Negative->isChecked();
     channels[currChannel]->FrequencyCutoff = passfilter;
+    channels[currChannel]->UseFitPeaks = action_Fit_Peaks->isChecked(); // Add this line
 }
 
 void MainWindow::on_SetAllChannelsBoundaries_clicked()
@@ -664,6 +900,7 @@ void MainWindow::on_SetAllChannelsBoundaries_clicked()
         channels[i]->UseSpline = action_UseSpline->isChecked();
         channels[i]->UseSmartScope = action_UseSmartScope->isChecked();
         channels[i]->SignalNegative = action_Signal_is_Negative->isChecked();
+        channels[i]->UseFitPeaks = action_Fit_Peaks->isChecked(); // Add this line
     }
 }
 
@@ -698,6 +935,9 @@ void MainWindow::on_action_Open_triggered()
 
         FileNameLabel->setText("Open File: " + fileName);
         std::cout << a << " is set" << std::endl;
+
+        DFR.~Worker();       // Call destructor explicitly
+        new (&DFR) Worker(); // Construct new Worker in place
         DFR.setName(a);
 
         // Set the max event limit in DFR
@@ -734,6 +974,7 @@ void MainWindow::on_action_Open_triggered()
 
         progressDialog->show();
         thread->start();
+        progressDialog->exec();
     }
     else
     {

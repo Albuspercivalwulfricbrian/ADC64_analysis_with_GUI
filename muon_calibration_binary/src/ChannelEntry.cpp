@@ -1,16 +1,29 @@
-
-// #include <TTree.h>
 #include "ChannelEntry.h"
-#include <cstdint>
-#include "iostream"
+#include "PronyFitter.h"
+#include <iostream>
+#include <cstring>
+#include <cmath>
+#include <limits>
+#include <algorithm>
+
 using namespace std;
 
 void IntegralInfo::Initialize()
 {
     signal_length = 0;
-    // npeaks = 0;
     end_amplitude = 0;
 }
+
+void FitParameters::Initialize()
+{
+    fit_charge = 0.0f;
+    chi2 = 999.0f;
+    r2 = 0.0f;
+    tau_c = 0.0f;
+    tau_e = 0.0f;
+    fit_amplitude = 0.0f;
+}
+
 void short_energy_ChannelEntry::Initialize()
 {
     charge = 0.;
@@ -21,6 +34,7 @@ void short_energy_ChannelEntry::Initialize()
     ADC_ID = 0;
     ADCTimeStamp = 0.;
     II.Initialize();
+    FP.Initialize();
 }
 
 void SinglePeakInfo::Initialize()
@@ -29,6 +43,7 @@ void SinglePeakInfo::Initialize()
     time = 0.;
     amp = 0;
     II.Initialize();
+    FP.Initialize();
 }
 
 void PeaksInfo::Initialize()
@@ -44,10 +59,12 @@ void PeaksInfo::ResetVector()
 {
     peaks = {};
 }
+
 int PeaksInfo::GetCurrentSize()
 {
     return peaks.size();
 }
+
 void PeaksInfo::AddPeak(const SinglePeakInfo &peak)
 {
     peaks.push_back(peak);
@@ -97,7 +114,7 @@ void ChannelEntry::Initialize()
 
 void ChannelEntry::GetWfSize() { wf_size = wf.size(); }
 
-void ChannelEntry::SplineWf() //! Smoothing waveform
+void ChannelEntry::SplineWf()
 {
     vector<float> wf1;
     const int32_t SplineWidth = 2;
@@ -128,6 +145,7 @@ int32_t ChannelEntry::PointAmpl(int32_t i)
     int32_t v = zl - wf[i];
     return v;
 }
+
 int32_t ChannelEntry::CountCoincidencePeaks(int32_t threshold1, int32_t threshold2)
 {
     int32_t nCoincidencePeaks = 0;
@@ -147,7 +165,7 @@ int32_t ChannelEntry::CountCoincidencePeaks(int32_t threshold1, int32_t threshol
     return nCoincidencePeaks;
 }
 
-void ChannelEntry::CalculateDiffWf() //! differentiate waveform
+void ChannelEntry::CalculateDiffWf()
 {
     const float Diff_window = 4;
     dwf.clear();
@@ -163,14 +181,13 @@ void ChannelEntry::CalculateDiffWf() //! differentiate waveform
     }
 }
 
-float ChannelEntry::CalculateZlwithNoisePeaks(int a) //! Calculating base line level without large noise burst taken into account
+float ChannelEntry::CalculateZlwithNoisePeaks(int a)
 {
     CalculateDiffWf();
     float sum = 0;
     float counter = 0;
     for (int s = fZlLeft + 1; s < fZlRight; ++s)
     {
-
         if (abs(dwf[s]) < a && abs(dwf[s - 1]) < a && abs(dwf[s + 1]) < a)
         {
             sum += wf[s];
@@ -181,7 +198,7 @@ float ChannelEntry::CalculateZlwithNoisePeaks(int a) //! Calculating base line l
     return zl;
 }
 
-void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
+void ChannelEntry::AssumeSmartScope()
 {
     fGATE_BEG = peak_position;
     fGATE_END = peak_position;
@@ -210,6 +227,215 @@ void ChannelEntry::AssumeSmartScope() //! Finding waveform on snapshot
     }
 }
 
+float ChannelEntry::LevelBy2Points(float X1, float Y1, float X2, float Y2, float Y0)
+{
+    if (Y1 == Y2)
+        return X1;
+    return (X1 * Y0 - X1 * Y2 - X2 * Y0 + X2 * Y1) / (Y1 - Y2);
+}
+
+float ChannelEntry::GoToLevel(float Level)
+{
+    int point = peak_position;
+    float targetADC = zl - Level * amp;
+
+    while (point > fGATE_BEG)
+    {
+        float currentValue = static_cast<float>(wf[point]);
+        float prevValue = static_cast<float>(wf[point - 1]);
+
+        if ((targetADC - currentValue) * (targetADC - prevValue) <= 0)
+        {
+            return LevelBy2Points(static_cast<float>(point), currentValue,
+                                  static_cast<float>(point - 1), prevValue, targetADC);
+        }
+        point--;
+    }
+    return 0.0f;
+}
+
+PronyFitResult ChannelEntry::PerformPronyFitWithOverrideHarmonics()
+{
+    PronyFitResult result = {};
+
+    if (amp == 0 || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
+        return result;
+
+    std::vector<float> positive_wf(wf.size());
+    for (size_t i = 0; i < wf.size(); i++)
+    {
+        positive_wf[i] = zl - (float)wf[i];
+    }
+
+    // Create PronyFitter on heap
+    PronyFitter *pfitter = new PronyFitter(2, 2, fGATE_BEG, fGATE_END);
+
+    pfitter->SetWaveform(positive_wf, 0.0f);
+    int SignalBeg = pfitter->CalcSignalBeginStraight();
+
+    if (SignalBeg < 0)
+        SignalBeg = 0;
+
+    pfitter->SetSignalBegin(SignalBeg + 2);
+
+    // OVERRIDE HARMONICS - NO DC TERM, SetExternalHarmonics adds it internally
+    std::vector<std::complex<float>> override_harmonics = {
+        {0.881099f, 0.0f},  // This will be harmonic 1
+        {0.9617225f, 0.0f}, // This will be harmonic 2
+    };
+
+    pfitter->SetExternalHarmonics(override_harmonics);
+
+    // Store harmonics in result (SetExternalHarmonics already added DC)
+    std::complex<float> *all_harmonics = pfitter->GetHarmonics();
+    int num_harmonics = pfitter->GetNumberOfHarmonics(); // Should return 3
+
+    if (all_harmonics && num_harmonics > 0)
+    {
+        result.harmonics.assign(all_harmonics, all_harmonics + num_harmonics);
+    }
+
+    result.fitter = pfitter;
+    result.signal_begin = SignalBeg;
+
+    pfitter->CalculateFitAmplitudes();
+
+    // Get amplitudes and store them
+    std::complex<float> *amplitudes = pfitter->GetAmplitudes();
+
+    if (amplitudes && num_harmonics > 0)
+    {
+        result.amplitudes.assign(amplitudes, amplitudes + num_harmonics);
+    }
+
+    result.integral = pfitter->GetIntegral(fGATE_BEG, fGATE_END);
+    result.chi2 = pfitter->GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
+    result.r2 = pfitter->GetRSquare(fGATE_BEG, fGATE_END);
+
+    return result;
+}
+
+PronyFitResult ChannelEntry::PerformPronyFit()
+{
+    PronyFitResult result = {};
+
+    if (amp == 0 || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
+        return result;
+
+    std::vector<float> positive_wf(wf.size());
+    for (size_t i = 0; i < wf.size(); i++)
+    {
+        positive_wf[i] = zl - (float)wf[i];
+    }
+
+    // Create PronyFitter on heap
+    PronyFitter *pfitter = new PronyFitter(5, 3, fGATE_BEG, fGATE_END);
+    // std::cout << fGATE_BEG << " " << fGATE_END << endl;
+    pfitter->SetWaveform(positive_wf, 0.0f);
+    // pfitter->SetDebugMode(1);
+    int SignalBeg = pfitter->CalcSignalBeginStraight();
+
+    if (SignalBeg < 0)
+        SignalBeg = 0;
+
+    pfitter->SetSignalBegin(SignalBeg + 2);
+    pfitter->CalculateFitHarmonics();
+
+    std::complex<float> *harmonics = pfitter->GetHarmonics();
+    int num_harmonics = pfitter->GetNumberOfHarmonics();
+
+    if (harmonics && num_harmonics > 0)
+    {
+        result.harmonics.assign(harmonics, harmonics + num_harmonics);
+    }
+    result.fitter = pfitter;
+    result.signal_begin = SignalBeg;
+
+    pfitter->CalculateFitAmplitudes();
+    std::complex<float> *amplitudes = pfitter->GetAmplitudes();
+
+    if (amplitudes && num_harmonics > 0)
+        result.amplitudes.assign(amplitudes, amplitudes + num_harmonics);
+
+    result.integral = pfitter->GetIntegral(fGATE_BEG, fGATE_END);
+    result.chi2 = pfitter->GetChiSquare(fGATE_BEG, fGATE_END, peak_position);
+    result.r2 = pfitter->GetRSquare(fGATE_BEG, fGATE_END);
+
+    return result;
+}
+
+FitParameters ChannelEntry::CalculateDischargeFit()
+{
+    FitParameters result;
+    result.Initialize();
+
+    if (amp == 0 || fGATE_BEG < 0 || fGATE_END >= wf.size() || fGATE_BEG >= fGATE_END)
+        return result;
+
+    std::vector<float> positive_wf(wf.size());
+    for (size_t i = 0; i < wf.size(); i++)
+    {
+        positive_wf[i] = zl - (float)wf[i];
+    }
+
+    // Create DischargeFitter
+    DischargeFitter dischargeFit(fGATE_BEG, fGATE_END);
+    dischargeFit.SetWaveform(positive_wf, 0.0f);
+    dischargeFit.SetFixedTauValues(6.4, 19.5);
+    // dischargeFit.SetTauBounds(5.0f, 10.0f, 15.0f, 20.0f);
+    int SignalBeg = dischargeFit.CalcSignalBeginStraight();
+    if (SignalBeg < 2)
+        SignalBeg = 2;
+    dischargeFit.SetSignalBegin(GetLeftBoarder() - 1);
+    dischargeFit.Fit(15);
+
+    // Store results
+    result.fit_charge = dischargeFit.GetIntegral(fGATE_BEG, fGATE_END);
+    result.chi2 = dischargeFit.GetChiSquare();
+    result.r2 = dischargeFit.GetRSquare();
+    result.tau_c = dischargeFit.GetTauC();
+    result.tau_e = dischargeFit.GetTauE();
+    result.fit_amplitude = dischargeFit.GetAmplitude();
+
+    return result;
+}
+
+FitParameters ChannelEntry::CalculatePronyFit()
+{
+    FitParameters result;
+    result.Initialize();
+
+    PronyFitResult pronyResult = PerformPronyFit();
+    if (pronyResult.fitter)
+    {
+        result.chi2 = pronyResult.chi2;
+        result.r2 = pronyResult.r2;
+        result.fit_charge = pronyResult.integral;
+        result.fit_amplitude = (pronyResult.amplitudes.size() > 0) ? std::real(pronyResult.amplitudes[0]) : 0.0f;
+        delete pronyResult.fitter;
+    }
+
+    return result;
+}
+
+FitParameters ChannelEntry::CalculatePronyFitWithOverrideHarmonics()
+{
+    FitParameters result;
+    result.Initialize();
+
+    PronyFitResult pronyResult = PerformPronyFitWithOverrideHarmonics();
+    if (pronyResult.fitter)
+    {
+        result.chi2 = pronyResult.chi2;
+        result.r2 = pronyResult.r2;
+        result.fit_charge = pronyResult.integral;
+        result.fit_amplitude = (pronyResult.amplitudes.size() > 0) ? std::real(pronyResult.amplitudes[0]) : 0.0f;
+        delete pronyResult.fitter;
+    }
+
+    return result;
+}
+
 int32_t ChannelEntry::GetLeftBoarder()
 {
     return fGATE_BEG;
@@ -229,11 +455,12 @@ void ChannelEntry::DeleteCurrentPeak()
     }
 }
 
-void ChannelEntry::SetBoarders(int32_t BEG, int32_t END) //! Setting boarders for event waveform analysis
+void ChannelEntry::SetBoarders(int32_t BEG, int32_t END)
 {
     fGATE_BEG = BEG;
     fGATE_END = END;
 }
+
 void ChannelEntry::FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t &max_diff, int32_t &max_time)
 {
     for (int32_t s = fGATE_BEG; s < fGATE_END; ++s)
@@ -252,7 +479,7 @@ void ChannelEntry::FindDiffWfPars(int32_t &min_diff, int32_t &min_time, int32_t 
     }
 }
 
-void ChannelEntry::Set_Zero_Level_Area(int32_t i) //! Setting Area for base line level calculation
+void ChannelEntry::Set_Zero_Level_Area(int32_t i)
 {
     fZlLeft = 0;
     fZlRight = i;
@@ -294,6 +521,7 @@ float ChannelEntry::Get_Zero_Level()
     }
     return zero_lvl;
 }
+
 float ChannelEntry::Get_Zero_Level_RMS()
 {
     const int32_t interv_num = 1;
@@ -329,14 +557,12 @@ float ChannelEntry::Get_Zero_Level_RMS()
 float ChannelEntry::Get_Charge()
 {
     float gateInteg = 0;
+    for (int s = fGATE_BEG; s <= fGATE_END; ++s)
     {
-        for (int s = fGATE_BEG; s <= fGATE_END; ++s)
-        {
-            gateInteg += ((float)zl - (float)wf[s]);
-        }
-        II.signal_length = fGATE_END - fGATE_BEG;
-        II.end_amplitude = (float)zl - (float)wf[fGATE_END];
+        gateInteg += ((float)zl - (float)wf[s]);
     }
+    II.signal_length = fGATE_END - fGATE_BEG;
+    II.end_amplitude = (float)zl - (float)wf[fGATE_END];
 
     return gateInteg;
 }
@@ -346,14 +572,12 @@ IntegralInfo ChannelEntry::GetIntegralInfo()
     return II;
 }
 
-int32_t ChannelEntry::Get_time() //! this time is the number of peak point of waveform
+int32_t ChannelEntry::Get_time()
 {
     amp = 0;
     peak_position = 0;
     if (wf.size() == 0)
     {
-        // amp = 0;
-        // peak_position = 0;
         return peak_position;
     }
     for (int s = fGATE_BEG; s < fGATE_END; ++s)
@@ -367,7 +591,8 @@ int32_t ChannelEntry::Get_time() //! this time is the number of peak point of wa
     }
     return peak_position;
 }
-float ChannelEntry::Get_time_gauss() //! average time of event waveform
+
+float ChannelEntry::Get_time_gauss()
 {
     if (wf.size() == 0)
         return 0;
@@ -385,24 +610,14 @@ float ChannelEntry::Get_time_gauss() //! average time of event waveform
     peak_search /= ampl_sum;
     return 16.0 * peak_search;
 }
-////////////
+
 uint32_t ChannelEntry::Get_Amplitude()
 {
     return (uint32_t)amp;
 }
-
-// void ChannelEntry::FillWf(int32_t *Ewf)
-// {
-//     for (int i = 0; i < 1024; i++)
-//     {
-//         wf[i] = Ewf[i];
-//         wf_size++;
-//     }
-// }
 
 void ChannelEntry::InvertSignal()
 {
     for (int i = 0; i < wf_size; i++)
         wf[i] = -wf[i];
 }
-// ##################

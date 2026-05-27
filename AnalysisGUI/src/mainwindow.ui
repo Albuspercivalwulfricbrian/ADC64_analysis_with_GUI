@@ -48,9 +48,6 @@
         <property name="text">
          <string>Open File:</string>
         </property>
-        <property name="alignment">
-         <set>Qt::AlignmentFlag::AlignCenter</set>
-        </property>
        </widget>
       </item>
       <item>
@@ -103,9 +100,6 @@
           </property>
           <property name="text">
            <string>Frequency Cutoff:</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
           </property>
          </widget>
         </item>
@@ -197,6 +191,24 @@
              </colorrole>
             </inactive>
             <disabled>
+             <colorrole role="Text">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </brush>
+             </colorrole>
+             <colorrole role="ButtonText">
+              <brush brushstyle="SolidPattern">
+               <color alpha="255">
+                <red>0</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </brush>
+             </colorrole>
              <colorrole role="ToolTipText">
               <brush brushstyle="SolidPattern">
                <color alpha="255">
@@ -361,9 +373,6 @@
         <property name="text">
          <string/>
         </property>
-        <property name="alignment">
-         <set>Qt::AlignmentFlag::AlignCenter</set>
-        </property>
        </widget>
       </item>
       <item>
@@ -469,9 +478,6 @@
           <property name="text">
            <string>Analysis Threads</string>
           </property>
-          <property name="alignment">
-           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-          </property>
          </widget>
         </item>
         <item>
@@ -489,13 +495,13 @@
         </item>
         <item>
          <widget class="QCheckBox" name="MultiplePeaksCheckBox">
-          <property name="text">
-           <string>Use multiple peaks</string>
-          </property>
           <property name="font">
            <font>
             <pointsize>14</pointsize>
            </font>
+          </property>
+          <property name="text">
+           <string>Use multiple peaks</string>
           </property>
          </widget>
         </item>
@@ -561,6 +567,7 @@
     <addaction name="action_Use_Smart_Boarders"/>
     <addaction name="action_Signal_is_Negative"/>
     <addaction name="action_Use_Fourier_Filtering"/>
+    <addaction name="action_Fit_Peaks"/>
     <addaction name="action_Show_Histogram"/>
    </widget>
    <widget class="QMenu" name="menuGraphics">
@@ -569,7 +576,8 @@
     </property>
     <addaction name="action_Show_Fourier_Transform"/>
     <addaction name="action_Show_Filtered"/>
-    <addaction name="action_Event_Filter"/>  <!-- ADDED THIS LINE -->
+    <addaction name="action_Event_Filter"/>
+    <addaction name="action_Show_Prony_Fit"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Analysis_Options"/>
@@ -724,10 +732,28 @@
     <string>&amp;Show Histogram</string>
    </property>
   </action>
-  <!-- ADD THIS ACTION FOR EVENT FILTER -->
   <action name="action_Event_Filter">
    <property name="text">
     <string>&amp;Event Filter</string>
+   </property>
+  </action>
+  <action name="action_Show_Prony_Fit">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Show Prony Fit</string>
+   </property>
+  </action>
+  <action name="action_Fit_Peaks">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Fit Peaks</string>
    </property>
   </action>
  </widget>
