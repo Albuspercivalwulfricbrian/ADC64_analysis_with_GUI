@@ -232,14 +232,23 @@ void Histogram2DPlot::setupEventMarkers()
 
 void Histogram2DPlot::initializeColorGradients()
 {
-    // Create ROOT Bird gradient (kBird equivalent)
+
     QCPColorGradient birdGradient;
+
+    // ROOT kBird exact RGB values (9 anchors)
     birdGradient.setColorStopAt(0.0, QColor("transparent"));
-    birdGradient.setColorStopAt(1e-9, QColor(5, 5, 100));  // Dark blue
-    birdGradient.setColorStopAt(0.15, QColor(0, 0, 255));  // Blue
-    birdGradient.setColorStopAt(0.5, QColor(0, 255, 200)); // Cyan
-    birdGradient.setColorStopAt(0.7, QColor(255, 200, 0)); // Orange (was yellow)
-    birdGradient.setColorStopAt(1.0, QColor(255, 255, 0)); // Yellow (was light yellow)
+
+    birdGradient.setColorStopAt(0.1e-9, QColor(53, 42, 135));  // RGB: 0.2082,0.1664,0.5293
+    birdGradient.setColorStopAt(0.125, QColor(15, 92, 221));   // RGB: 0.0592,0.3599,0.8684
+    birdGradient.setColorStopAt(0.250, QColor(20, 129, 214));  // RGB: 0.0780,0.5041,0.8385
+    birdGradient.setColorStopAt(0.375, QColor(6, 164, 202));   // RGB: 0.0232,0.6419,0.7914
+    birdGradient.setColorStopAt(0.500, QColor(46, 183, 164));  // RGB: 0.1802,0.7178,0.6425
+    birdGradient.setColorStopAt(0.625, QColor(135, 191, 119)); // RGB: 0.5301,0.7492,0.4662
+    birdGradient.setColorStopAt(0.750, QColor(209, 187, 89));  // RGB: 0.8186,0.7328,0.3499
+    birdGradient.setColorStopAt(0.875, QColor(254, 200, 50));  // RGB: 0.9956,0.7862,0.1968
+    birdGradient.setColorStopAt(1.000, QColor(249, 251, 14));  // RGB: 0.9764,0.9832,0.0539
+
+    birdGradient.setLevelCount(256);
 
     m_colorGradients.append(qMakePair(QString("ROOT Bird"), birdGradient));
     m_colorGradients.append(qMakePair(QString("Hot"), QCPColorGradient::gpHot));

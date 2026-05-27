@@ -53,7 +53,7 @@ HistogramWindow::HistogramWindow(QWidget *parent)
     m_amplitudeVsChargePlot->setLogZScale(false);
     m_amplitudeVsChargePlot->setAutoRangeOnDataChange(false);
 
-    m_r2VsChargePlot->setXRange(-0.1, 1.1);
+    m_r2VsChargePlot->setXRange(0, 5);
     m_r2VsChargePlot->setYRange(1000, 10000000);
     m_r2VsChargePlot->setXBins(300);
     m_r2VsChargePlot->setYBins(300);
