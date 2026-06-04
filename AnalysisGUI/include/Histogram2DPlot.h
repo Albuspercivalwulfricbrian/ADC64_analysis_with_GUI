@@ -73,6 +73,9 @@ signals:
     void logYScaleToggled(bool);
     void logZScaleToggled(bool);
 
+protected:
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
+
 private:
     void setupUI(const QString &title, const QString &xAxisLabel, const QString &yAxisLabel);
     void setupPlot(const QString &xAxisLabel, const QString &yAxisLabel);
@@ -83,7 +86,7 @@ private:
     void setupEventMarkers();
     void updateEventMarker();
 
-private:
+    // private:
     // UI elements
     QCustomPlot *m_customPlot;
     QCPColorMap *m_colorMap;

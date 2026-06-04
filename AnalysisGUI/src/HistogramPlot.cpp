@@ -2,7 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cmath>
-
+#include "QDebug"
 HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QWidget *parent)
     : QWidget(parent),
       m_customPlot(new QCustomPlot(this)),
@@ -22,7 +22,12 @@ HistogramPlot::HistogramPlot(const QString &title, const QString &xAxisLabel, QW
 {
     setupUI(title, xAxisLabel);
     setupPlot(xAxisLabel);
-
+    connect(m_customPlot, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent *event)
+            {
+    qDebug() << "Double-click detected";
+    if (event->button() == Qt::LeftButton) {
+        resetToLineEditRanges();
+    } });
     // Connect signals
     connect(m_minEdit, &QLineEdit::editingFinished, this, &HistogramPlot::onRangeChanged);
     connect(m_maxEdit, &QLineEdit::editingFinished, this, &HistogramPlot::onRangeChanged);
@@ -280,4 +285,52 @@ void HistogramPlot::onLogXScaleToggled(bool checked)
     }
     m_customPlot->replot();
     emit logXScaleToggled(checked);
+}
+
+// void HistogramPlot::mouseDoubleClickEvent(QMouseEvent *event)
+// {
+
+//     if (event->button() == Qt::LeftButton)
+//     {
+//         // Reset X range to values in line edits
+//         float minVal = getMinRange();
+//         float maxVal = getMaxRange();
+
+//         if (minVal < maxVal)
+//         {
+//             m_customPlot->xAxis->setRange(minVal, maxVal);
+//         }
+
+//         // Rescale Y axis based on current data within the X range
+//         if (!m_data.empty())
+//         {
+//             updatePlot(); // This will recalculate and rescale Y axis
+//         }
+//         else
+//         {
+//             m_customPlot->replot();
+//         }
+
+//         event->accept();
+//     }
+//     else
+//     {
+//         QWidget::mouseDoubleClickEvent(event);
+//     }
+// }
+
+void HistogramPlot::resetToLineEditRanges()
+{
+    float minVal = getMinRange();
+    float maxVal = getMaxRange();
+
+    if (minVal < maxVal)
+    {
+        m_customPlot->xAxis->setRange(minVal, maxVal);
+        updatePlot(); // This will recalculate Y range based on current data
+    }
+    else
+    {
+        m_customPlot->replot();
+    }
 }

@@ -56,7 +56,11 @@ Histogram2DPlot::Histogram2DPlot(const QString &title, const QString &xAxisLabel
     setupPlot(xAxisLabel, yAxisLabel);
     initializeColorGradients();
     setupEventMarkers();
-
+    connect(m_customPlot, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent *event)
+            {
+    if (event->button() == Qt::LeftButton) {
+        onRangeChanged();
+    } });
     // Connect signals
     connect(m_xMinEdit, &QLineEdit::editingFinished, this, &Histogram2DPlot::onRangeChanged);
     connect(m_xMaxEdit, &QLineEdit::editingFinished, this, &Histogram2DPlot::onRangeChanged);
@@ -969,5 +973,18 @@ void Histogram2DPlot::onDataRangeChanged()
     {
         // If invalid range, still replot with current settings
         m_customPlot->replot();
+    }
+}
+
+void Histogram2DPlot::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        onRangeChanged();
+        event->accept();
+    }
+    else
+    {
+        QWidget::mouseDoubleClickEvent(event);
     }
 }

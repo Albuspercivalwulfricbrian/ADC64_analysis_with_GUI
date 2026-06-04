@@ -34,6 +34,7 @@ public:
     int getBins() const { return m_binsEdit->text().toInt(); }
     bool getlogYScale() const { return m_logYScaleCheck->isChecked(); }
     bool getLogXScale() const { return m_logXScaleCheck->isChecked(); }
+    void resetToLineEditRanges();
 
     // Plot access
     QCustomPlot *plot() { return m_customPlot; }
@@ -53,16 +54,20 @@ signals:
     void logYScaleToggled(bool);
     void logXScaleToggled(bool);
 
+protected:
+    // void mouseDoubleClickEvent(QMouseEvent *event) override; // ADD THIS LINE
+
 private:
     void setupUI(const QString &title, const QString &xAxisLabel);
     void setupPlot(const QString &xAxisLabel);
+
     void calculateHistogram(QVector<double> &x, QVector<double> &y);
 
 private:
     QCustomPlot *m_customPlot;
     QVBoxLayout *m_mainLayout;
-    QWidget *m_controlWidget; // Changed from QGroupBox to QWidget
-    QLabel *m_titleLabel;     // Added separate title label
+    QWidget *m_controlWidget;
+    QLabel *m_titleLabel;
 
     // Controls
     QLabel *m_minLabel;
@@ -78,7 +83,7 @@ private:
     float m_eventValue;
     QCPItemLine *m_eventLine;
     QPen m_eventLinePen;
-    float m_eventPosition; // Renamed for clarity
+    float m_eventPosition;
 
     // Data
     std::vector<float> m_data;
