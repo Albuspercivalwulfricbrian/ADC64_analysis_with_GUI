@@ -58,20 +58,19 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
     gErrorIgnoreLevel = kFatal;
 
     // Process in batches for progress reporting
-    Long64_t batchSize = 50000; // Adjust based on your memory/performance needs
+    Long64_t batchSize = 50000;
     Long64_t processedEntries = 0;
 
     TString ampFormula = m_isPeaksInfo ? TString::Format("channel_%i.amp()", m_channel + 1) : TString::Format("channel_%i.amp", m_channel + 1);
     TString timeFormula = m_isPeaksInfo ? TString::Format("channel_%i.time()", m_channel + 1) : TString::Format("channel_%i.time", m_channel + 1);
-    TString chargeVar = m_isPeaksInfo ? TString::Format("channel_%i.charge()", m_channel + 1) : TString::Format("channel_%i.charge", m_channel + 1);
-    TString r2Var = TString::Format("channel_%i.FP.r2", m_channel + 1);
-    TString combinedFormula = TString::Format("%s:%s", r2Var.Data(), chargeVar.Data());
+    TString chargeFormula = m_isPeaksInfo ? TString::Format("channel_%i.charge()", m_channel + 1) : TString::Format("channel_%i.charge", m_channel + 1);
+    TString r2Formula = TString::Format("channel_%i.FP.r2", m_channel + 1);
 
     while (processedEntries < entriesToProcess)
     {
         Long64_t currentBatchSize = std::min(batchSize, entriesToProcess - processedEntries);
 
-        // Read amplitude for this batch
+        // Read amplitude
         m_tree->Draw(ampFormula.Data(), "", "goff", currentBatchSize, processedEntries);
         if (m_tree->GetSelectedRows() < currentBatchSize)
             throw std::runtime_error("ROOT read error (Amp)");
@@ -80,7 +79,7 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
         ampData.resize(currentSize + currentBatchSize);
         std::copy(m_tree->GetV1(), m_tree->GetV1() + currentBatchSize, ampData.begin() + currentSize);
 
-        // Read time for this batch
+        // Read time
         m_tree->Draw(timeFormula.Data(), "", "goff", currentBatchSize, processedEntries);
         if (m_tree->GetSelectedRows() < currentBatchSize)
             throw std::runtime_error("ROOT read error (Time)");
@@ -89,22 +88,25 @@ void UltraFastHistogramReader::readData(std::vector<float> &ampData,
         timeData.resize(currentSize + currentBatchSize);
         std::copy(m_tree->GetV1(), m_tree->GetV1() + currentBatchSize, timeData.begin() + currentSize);
 
-        // Read charge and R2 for this batch
-        m_tree->Draw(combinedFormula.Data(), "", "goff", currentBatchSize, processedEntries);
+        // Read charge (SEPARATE, like original working code)
+        m_tree->Draw(chargeFormula.Data(), "", "goff", currentBatchSize, processedEntries);
         if (m_tree->GetSelectedRows() < currentBatchSize)
-            throw std::runtime_error("ROOT read error (Charge/R2)");
-
-        Double_t *r2Array = m_tree->GetV1();
-        Double_t *chargeArray = m_tree->GetV2();
+            throw std::runtime_error("ROOT read error (Charge)");
 
         currentSize = chargeData.size();
         chargeData.resize(currentSize + currentBatchSize);
-        oneMinusR2Data.resize(currentSize + currentBatchSize);
+        std::copy(m_tree->GetV1(), m_tree->GetV1() + currentBatchSize, chargeData.begin() + currentSize);
 
+        // Read R2 (SEPARATE, just like amp/time/charge)
+        m_tree->Draw(r2Formula.Data(), "", "goff", currentBatchSize, processedEntries);
+        if (m_tree->GetSelectedRows() < currentBatchSize)
+            throw std::runtime_error("ROOT read error (R2)");
+
+        currentSize = oneMinusR2Data.size();
+        oneMinusR2Data.resize(currentSize + currentBatchSize);
         for (Long64_t i = 0; i < currentBatchSize; ++i)
         {
-            chargeData[currentSize + i] = static_cast<float>(chargeArray[i]);
-            oneMinusR2Data[currentSize + i] = 1.0f - static_cast<float>(r2Array[i]);
+            oneMinusR2Data[currentSize + i] = 1.0f - static_cast<float>(m_tree->GetV1()[i]);
         }
 
         processedEntries += currentBatchSize;
