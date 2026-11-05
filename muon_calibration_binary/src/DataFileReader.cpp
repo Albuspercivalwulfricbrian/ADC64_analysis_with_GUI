@@ -108,6 +108,13 @@ uint32_t DataFileReader::ConsequentialEventsReading(Progress *progress)
             offset++;
             break;
           case 1:
+            // CHANGED: skip waveform payload of ADCs not in adcmap
+            if (adcmap.find(TotalHeader.DeviceHeader.sn) == adcmap.end())
+            {
+              offset += TotalHeader.ChHeader.length;
+              break;
+            }
+
             float zl = 0;
             float zl_rms = 0;
             uint16_t ch = TotalHeader.ChHeader.ch;

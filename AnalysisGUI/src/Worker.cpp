@@ -109,6 +109,13 @@ void Worker::ReadEvent(int64_t i, int16_t extChannel)
 
         break;
       case 1:
+        // CHANGED: skip waveform payload of ADCs not in adcmap
+        if (adcmap.find(TotalHeader.DeviceHeader.sn) == adcmap.end())
+        {
+          offset += TotalHeader.ChHeader.length;
+          break;
+        }
+
         uint16_t ch = TotalHeader.ChHeader.ch;
         // event_waveform.wf.clear();
         // if (TotalHeader.DeviceHeader.sn == 101830393) ch+=64;//If many ADCs IDs should be added +n*64
