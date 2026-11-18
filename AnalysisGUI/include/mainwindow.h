@@ -43,6 +43,7 @@ private:
 
     int64_t maxReadoutEvents;
     bool m_programmaticallyChangingEvent = false;
+    bool scanMode = false;
     int32_t passfilter = 0;
     int64_t currEvent = 1;
     int16_t currChannel = 0;
@@ -109,6 +110,7 @@ private slots:
     void on_PreviousEventButton_clicked();
     void on_SetFileAnalysisButton_clicked();
     void on_action_Open_triggered();
+    void on_action_Scan_ADC_Devices_triggered();
     void on_action_Open_Config_triggered();
     void on_channelSpinBox_valueChanged(int);
     void on_eventSpinBox_valueChanged(int);

@@ -1,19 +1,19 @@
 #include "DataFormat.h"
 
-// const std::map<uint32_t, int16_t> DataFormat::adcmap = //Some random stuff
-//     {
-//         // {51232681, 0},
-//         // {101830393,1},
+std::map<uint32_t, int16_t> DataFormat::adcmap = // Some random stuff
+    {
+        // {51232681, 0},
+        // {101830393,1},
 
-//         // {0x0cd97915, 1},
-//         {0x0f229ac3, 0},
-//         // {0x0f229ad5, 4},
-//         // {0x0f383f3a, 2},
-//         // {0x0f383f49, 3},
+        // {0x0cd97915, 1},
+        {0x0f229ac3, 0},
+        // {0x0f229ad5, 4},
+        // {0x0f383f3a, 2},
+        // {0x0f383f49, 3},
 
-// };
+};
 
-// const std::map<uint32_t, int16_t> DataFormat::adcmap = //FHCal West
+// std::map<uint32_t, int16_t> DataFormat::adcmap = // FHCal West
 //     {
 
 //         {0x0f229ab6, 0},
@@ -26,18 +26,18 @@
 
 // };
 
-const std::map<uint32_t, int16_t> DataFormat::adcmap = // FHCal East
-    {
+// std::map<uint32_t, int16_t> DataFormat::adcmap = // FHCal East
+//     {
 
-        {0x0f229ada, 0},
-        {0x0cd97915, 1},
-        {0x0f383f3a, 2},
-        {0x0f383f49, 3},
-        {0x0f229ac3, 4},
-        // {0x0f383f3a, 2},
-        // {0x0f383f49, 3},
+//         {0x0f229ada, 0},
+//         {0x0cd97915, 1},
+//         {0x0f383f3a, 2},
+//         {0x0f383f49, 3},
+//         {0x0f229ac3, 4},
+//         // {0x0f383f3a, 2},
+//         // {0x0f383f49, 3},
 
-};
+// };
 
 const int32_t DataFormat::total_channels = DataFormat::adcmap.size() * 64;
 

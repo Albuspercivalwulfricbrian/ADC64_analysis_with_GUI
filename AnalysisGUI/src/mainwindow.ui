@@ -556,6 +556,7 @@
      <addaction name="actionSaveJpeg"/>
     </widget>
     <addaction name="action_Open"/>
+    <addaction name="action_Scan_ADC_Devices"/>
     <addaction name="action_Open_Config"/>
     <addaction name="menu_Save_Graph"/>
    </widget>
@@ -593,6 +594,19 @@
    </property>
    <property name="toolTip">
     <string>Open Binary</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>12</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="action_Scan_ADC_Devices">
+   <property name="text">
+    <string>&amp;Scan ADC Devices</string>
+   </property>
+   <property name="toolTip">
+    <string>Scan the opened binary file and list unique ADC device IDs</string>
    </property>
    <property name="font">
     <font>

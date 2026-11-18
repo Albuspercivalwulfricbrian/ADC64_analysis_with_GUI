@@ -16,6 +16,10 @@
 #include <QIntValidator>
 #include <QFormLayout>
 #include <QDialogButtonBox>
+#include "AdcMapConfig.h"
+#include <QMessageBox>
+#include <QCoreApplication>
+#include <QDir>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow), p(8)
@@ -42,7 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
     connect(customPlot, &QCustomPlot::mouseDoubleClick, this, &MainWindow::onPlotDoubleClick);
-    for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
+    for (int i = 0; i < static_cast<int>(DataFormat::adcmap.size()) * 64; i++)
         channels[i] = new ConfigManager(i, "channel_" + to_string(i + 1), 0.0, 2048., 1, 1, 1, 0, 0, 0);
 
     LeftBoundaryEdit->setText(QString("%1").arg(xLeftBoundary));
@@ -893,7 +897,7 @@ void MainWindow::on_SetChannelBoundaries_clicked()
 
 void MainWindow::on_SetAllChannelsBoundaries_clicked()
 {
-    for (int i = 0; i < (new DataFormat)->adcmap.size() * 64; i++)
+    for (int i = 0; i < static_cast<int>(DataFormat::adcmap.size()) * 64; i++)
     {
         channels[i]->leftBoundary = xLeftBoundary;
         channels[i]->rightBoundary = xRightBoundary;
@@ -980,6 +984,125 @@ void MainWindow::on_action_Open_triggered()
     {
         std::cout << "File NOT chosen" << std::endl;
     }
+}
+
+void MainWindow::on_action_Scan_ADC_Devices_triggered()
+{
+    if (!DFR.FileIsSet)
+    {
+        QMessageBox::warning(this, "Scan ADC Devices",
+                             "Open a binary file first.");
+        return;
+    }
+
+    DFR.setName(fileName.toUtf8().constData());
+
+    scanMode = true;
+
+    ProgressDialog *progressDialog = new ProgressDialog(this);
+    progressDialog->setWindowTitle("Scanning file for ADC devices...");
+
+    QThread *thread = new QThread();
+
+    DFR.moveToThread(thread);
+    connect(timer, &QTimer::timeout, this, &MainWindow::onTimeout);
+    timer->start(100);
+    connect(thread, &QThread::started, [=]()
+            { DFR.doScan(progressDialog); });
+    connect(this, &MainWindow::progressUpdated, progressDialog, &ProgressDialog::updateProgress);
+
+    connect(progressDialog, &QDialog::finished, thread, &QThread::quit);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    connect(thread, &QThread::finished, timer, &QTimer::stop);
+
+    progressDialog->show();
+    thread->start();
+    progressDialog->exec();
+
+    scanMode = false;
+
+    std::vector<uint32_t> scanned = DFR.lastScanResult;
+
+    if (scanned.empty())
+    {
+        QMessageBox::warning(this, "Scan ADC Devices",
+                             "No ADC devices found in the file.");
+        return;
+    }
+
+    QStringList lines;
+    lines << "ADC devices found in file:";
+    for (size_t i = 0; i < scanned.size(); ++i)
+        lines << QString("  [%1]  0x%2").arg(i).arg(scanned[i], 8, 16, QChar('0'));
+
+    bool sameIds = (scanned.size() == DataFormat::adcmap.size());
+    if (sameIds)
+    {
+        for (uint32_t sn : scanned)
+            if (DataFormat::adcmap.find(sn) == DataFormat::adcmap.end())
+            {
+                sameIds = false;
+                break;
+            }
+    }
+
+    if (sameIds)
+    {
+        lines << "\nCurrent ADC map already contains all of these IDs.";
+        QMessageBox::information(this, "Scan ADC Devices", lines.join('\n'));
+        return;
+    }
+
+    QStringList missing, extra;
+    for (uint32_t sn : scanned)
+        if (DataFormat::adcmap.find(sn) == DataFormat::adcmap.end())
+            missing << QString("0x%1").arg(sn, 8, 16, QChar('0'));
+    for (auto &kv : DataFormat::adcmap)
+    {
+        bool found = false;
+        for (uint32_t sn : scanned)
+            if (sn == kv.first)
+            {
+                found = true;
+                break;
+            }
+        if (!found)
+            extra << QString("0x%1").arg(kv.first, 8, 16, QChar('0'));
+    }
+
+    if (!missing.isEmpty())
+        lines << "\nMissing from current map: " + missing.join(", ");
+    if (!extra.isEmpty())
+        lines << "In map but not in file: " + extra.join(", ");
+
+    lines << "\nReplace the current ADC map with the scanned one?";
+    auto ans = QMessageBox::question(this, "Scan ADC Devices",
+                                     lines.join('\n'),
+                                     QMessageBox::Yes | QMessageBox::No,
+                                     QMessageBox::No);
+    if (ans != QMessageBox::Yes)
+        return;
+
+    DFR.setAdcMapFromIds(scanned);
+
+    std::string exeDir = QCoreApplication::applicationDirPath().toStdString();
+    std::string cfgDir = AdcMapConfig::findConfigsDir(exeDir);
+    if (cfgDir.empty())
+    {
+        QString newDir = QDir(QString::fromStdString(exeDir)).absoluteFilePath("../configs");
+        QDir().mkpath(newDir);
+        cfgDir = newDir.toStdString();
+    }
+    std::string path = cfgDir + "/adcmap.json";
+
+    if (AdcMapConfig::save(path, DataFormat::adcmap))
+        QMessageBox::information(this, "Scan ADC Devices",
+                                 QString("ADC map updated: %1 device(s).\nSaved to:\n%2")
+                                     .arg(scanned.size())
+                                     .arg(QString::fromStdString(path)));
+    else
+        QMessageBox::warning(this, "Scan ADC Devices",
+                             "ADC map updated in memory, but failed to save adcmap.json.");
 }
 
 void MainWindow::on_action_Open_Config_triggered()
@@ -1091,8 +1214,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::onTimeout()
 {
-    // Update the value in the custom class
-    emit progressUpdated(1000 * DFR.getIndexationProgress());
+    if (scanMode)
+        emit progressUpdated(static_cast<int>(100 * DFR.getScanProgress()));
+    else
+        emit progressUpdated(1000 * DFR.getIndexationProgress());
     timer->start(100);
 }
 
